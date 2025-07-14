@@ -12,6 +12,7 @@
         <module>ripple-api-server-spring</module>
         <module>ripple-transfer-server</module>
         <module>ripple-websocket-server</module>
+        <module>ripple-snowflakeid-server</module>
     </modules>
 
     <properties>
