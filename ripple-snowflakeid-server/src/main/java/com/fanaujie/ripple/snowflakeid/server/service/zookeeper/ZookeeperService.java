@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.snowflakeid.server.zookeeper;
+package com.fanaujie.ripple.snowflakeid.server.service.zookeeper;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -47,6 +47,12 @@ public class ZookeeperService {
             lock.release();
         }
         return 0;
+    }
+
+    public void close() {
+        if (client != null) {
+            client.close();
+        }
     }
 
     private void createPathIfNotExists(String path) throws Exception {

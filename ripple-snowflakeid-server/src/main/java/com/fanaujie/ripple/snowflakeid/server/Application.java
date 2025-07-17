@@ -1,6 +1,10 @@
 package com.fanaujie.ripple.snowflakeid.server;
 
-import com.fanaujie.ripple.snowflakeid.server.zookeeper.ZookeeperService;
+import com.fanaujie.ripple.snowflakeid.server.config.Config;
+import com.fanaujie.ripple.snowflakeid.server.service.snowflakeid.SnowflakeIdService;
+import com.fanaujie.ripple.snowflakeid.server.service.zookeeper.ZookeeperService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
@@ -11,14 +15,12 @@ import picocli.CommandLine.Option;
          description = "Snowflake ID generation server")
 public class Application implements Runnable {
 
+    Logger logger = LoggerFactory.getLogger(Application.class);
+
     private int port;
     private String zookeeperAddr;
 
     @Spec CommandSpec spec;
-
-    @Option(names = {"-s", "--host"}, description = "Server host (default: ${DEFAULT-VALUE})",
-            defaultValue = "localhost")
-    private String host;
 
     @Option(names = {"-p", "--port"}, description = "Server port (default: ${DEFAULT-VALUE})",
             defaultValue = "8080")
@@ -66,25 +68,44 @@ public class Application implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Starting Snowflake ID Server...");
-        System.out.println("Host: " + host);
-        System.out.println("Port: " + port);
-        System.out.println("Zookeeper Address: " + zookeeperAddr);
-
-        try {
-            ZookeeperService zk = new ZookeeperService(zookeeperAddr, "/snowflakeid/lock", "/snowflakeid/workerIds");
-            System.out.println("WorkerID: "+ zk.acquiredWorkerId());
-            Thread.sleep(1000); // Simulate some work
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (Exception e) {
-            System.err.println("Error initializing Zookeeper service: " + e.getMessage());
+        int workerId = acquiredWorkerId();
+        if (workerId == 0) {
+            logger.error("Failed to acquire a worker ID from Zookeeper.");
+        } else {
+            Config cfg = new Config(port, zookeeperAddr, workerId);
+            logger.info("Acquired worker ID: {}", workerId);
+            SnowflakeIdService snowflakeIdService = new SnowflakeIdService(cfg);
+            try {
+                snowflakeIdService.start();
+            } catch (Exception e) {
+                logger.error("Error starting Snowflake ID service", e);
+                throw new RuntimeException(e);
+            } finally {
+                snowflakeIdService.stop();
+                logger.info("Snowflake ID service stopped.");
+            }
         }
     }
     
     public static void main(String[] args) {
         int exitCode = new CommandLine(new Application()).execute(args);
         System.exit(exitCode);
+    }
+
+    private int acquiredWorkerId() {
+        int workerId = 0;
+        ZookeeperService zk = null;
+        try {
+            zk = new ZookeeperService(zookeeperAddr, "/snowflakeid/lock", "/snowflakeid/workerIds");
+            workerId = zk.acquiredWorkerId();
+        } catch (Exception e) {
+            logger.error("Error acquiring worker ID from Zookeeper", e);
+        } finally {
+            if (zk != null) {
+                zk.close();
+            }
+        }
+        return workerId;
     }
 }
 
