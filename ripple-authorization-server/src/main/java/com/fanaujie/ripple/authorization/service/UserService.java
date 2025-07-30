@@ -55,19 +55,20 @@ public class UserService {
     }
 
     public void handleGoogleOAuth2User(OAuth2User oauth2User) {
+        String openId = oauth2User.getAttribute("sub");
         String email = oauth2User.getAttribute("email");
         String name = oauth2User.getAttribute("name");
         String picture = oauth2User.getAttribute("picture");
 
-        if (email == null) {
-            throw new IllegalArgumentException("Google OAuth2 user email is required");
+        if (openId == null) {
+            throw new IllegalArgumentException("OpenID is required for Google OAuth2 user");
         }
 
         // Check if user already exists
-        if (!userManager.userExists(email)) {
+        if (!userManager.userExists(openId)) {
             // Create new user account
             User newUser = new User();
-            newUser.setAccount(email);
+            newUser.setAccount(openId);
             newUser.setPassword(""); // No password for OAuth2 users
             newUser.setEnabled(true);
             newUser.setRole(User.DEFAULT_ROLE_USER);
@@ -75,24 +76,11 @@ public class UserService {
 
             // Create corresponding user profile
             UserProfile userProfile = new UserProfile();
-            userProfile.setAccount(email);
+            userProfile.setAccount(openId);
             userProfile.setUserType(0); // Default user type
             userProfile.setNickName(name != null ? name : email); // Use name or fallback to email
             userProfile.setUserPortrait(picture); // Google profile picture URL
             userProfileMapper.insertUserProfile(userProfile);
-        } else {
-            // User exists, optionally update profile information
-            UserProfile existingProfile = userProfileMapper.findByAccount(email);
-            if (existingProfile != null) {
-                // Update profile picture if Google provides one
-                if (picture != null && !picture.equals(existingProfile.getUserPortrait())) {
-                    userProfileMapper.updateUserPortrait(email, picture);
-                }
-                // Update nickname if Google provides a name and current nickname is just email
-                if (name != null && email.equals(existingProfile.getNickName())) {
-                    userProfileMapper.updateNickName(email, name);
-                }
-            }
         }
     }
 }
