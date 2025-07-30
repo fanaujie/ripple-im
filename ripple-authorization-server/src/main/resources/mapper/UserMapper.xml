@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fanaujie.ripple.authorization.mapper.UserMapper">
+    <resultMap id="UserResultMap" type="User">
+        <id property="id" column="id"/>
+        <result property="account" column="account"/>
+        <result property="password" column="password"/>
+        <result property="enabled" column="enabled"/>
+        <result property="role" column="role"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="updatedTime" column="updated_time"/>
+    </resultMap>
+
+    <select id="findByAccount" parameterType="string" resultMap="UserResultMap">
+        SELECT u.id, u.account, u.password, u.enabled, u.role, u.created_time, u.updated_time
+        FROM user u
+        WHERE u.account = #{account}
+    </select>
+
+
+    <insert id="insertUser" parameterType="User"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (account, password, enabled, role)
+        VALUES (#{account}, #{password}, #{enabled}, #{role})
+    </insert>
+
+    <update id="updateUser" parameterType="User">
+        UPDATE user
+        SET password = #{password},
+            enabled  = #{enabled},
+            role     = #{role}
+        WHERE account = #{account}
+    </update>
+
+    <delete id="deleteUser" parameterType="string">
+        DELETE
+        FROM user
+        WHERE account = #{account}
+    </delete>
+
+    <select id="countByAccount" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM user
+        WHERE account = #{account}
+    </select>
+
+    <select id="findUserIdByAccount" parameterType="string" resultType="Long">
+        SELECT id
+        FROM user
+        WHERE account = #{account}
+    </select>
+
+
+    <update id="changePassword">
+        UPDATE user
+        SET password = #{newPassword}
+        WHERE account = #{account}
+    </update>
+
+</mapper>
