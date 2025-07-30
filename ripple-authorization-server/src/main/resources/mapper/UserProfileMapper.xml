@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.fanaujie.ripple.authorization.mapper.UserProfileMapper">
+    <resultMap id="UserProfileResultMap" type="UserProfile">
+        <id property="id" column="id"/>
+        <result property="account" column="account"/>
+        <result property="userType" column="user_type"/>
+        <result property="nickName" column="nick_name"/>
+        <result property="userPortrait" column="user_portrait"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="updatedTime" column="updated_time"/>
+    </resultMap>
+
+    <select id="findByAccount" parameterType="string" resultMap="UserProfileResultMap">
+        SELECT up.id, up.account, up.user_type, up.nick_name, up.user_portrait, up.created_time, up.updated_time
+        FROM user_profile up
+        WHERE up.account = #{account}
+    </select>
+
+    <insert id="insertUserProfile" parameterType="UserProfile"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_profile (account, user_type, nick_name, user_portrait)
+        VALUES (#{account}, #{userType}, #{nickName}, #{userPortrait})
+    </insert>
+
+    <update id="updateUserProfile" parameterType="UserProfile">
+        UPDATE user_profile
+        SET user_type = #{userType},
+            nick_name = #{nickName},
+            user_portrait = #{userPortrait}
+        WHERE account = #{account}
+    </update>
+
+    <delete id="deleteUserProfile" parameterType="string">
+        DELETE
+        FROM user_profile
+        WHERE account = #{account}
+    </delete>
+
+    <select id="countByAccount" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM user_profile
+        WHERE account = #{account}
+    </select>
+
+    <update id="updateNickName">
+        UPDATE user_profile
+        SET nick_name = #{nickName}
+        WHERE account = #{account}
+    </update>
+
+    <update id="updateUserPortrait">
+        UPDATE user_profile
+        SET user_portrait = #{userPortrait}
+        WHERE account = #{account}
+    </update>
+
+</mapper>
