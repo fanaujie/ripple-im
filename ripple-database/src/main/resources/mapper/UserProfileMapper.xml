@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.fanaujie.ripple.authorization.mapper.UserProfileMapper">
+<mapper namespace="com.fanaujie.ripple.database.mapper.UserProfileMapper">
     <resultMap id="UserProfileResultMap" type="UserProfile">
         <id property="id" column="id"/>
         <result property="account" column="account"/>

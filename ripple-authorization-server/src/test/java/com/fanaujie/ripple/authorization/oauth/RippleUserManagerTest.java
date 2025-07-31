@@ -1,18 +1,16 @@
 package com.fanaujie.ripple.authorization.oauth;
 
-import com.fanaujie.ripple.authorization.mapper.UserMapper;
-import com.fanaujie.ripple.authorization.model.mapper.User;
+import com.fanaujie.ripple.database.mapper.UserMapper;
+import com.fanaujie.ripple.database.model.User;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
@@ -303,7 +301,7 @@ class RippleUserManagerTest {
         assertEquals(1, user.getAuthorities().size());
 
         GrantedAuthority authority = user.getAuthorities().iterator().next();
-        assertEquals("MANAGER".toLowerCase(), authority.getAuthority());
+        assertEquals("MANAGER", authority.getAuthority());
     }
 
     @Test

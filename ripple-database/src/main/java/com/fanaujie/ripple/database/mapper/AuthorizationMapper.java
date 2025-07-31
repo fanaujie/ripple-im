@@ -1,6 +1,6 @@
-package com.fanaujie.ripple.authorization.mapper;
+package com.fanaujie.ripple.database.mapper;
 
-import com.fanaujie.ripple.authorization.model.mapper.Authorization;
+import com.fanaujie.ripple.database.model.Authorization;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;

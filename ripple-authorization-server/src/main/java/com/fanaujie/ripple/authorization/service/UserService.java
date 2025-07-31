@@ -1,9 +1,9 @@
 package com.fanaujie.ripple.authorization.service;
 
 import com.fanaujie.ripple.authorization.model.api.CommonResponse;
-import com.fanaujie.ripple.authorization.model.mapper.User;
-import com.fanaujie.ripple.authorization.model.mapper.UserProfile;
-import com.fanaujie.ripple.authorization.mapper.UserProfileMapper;
+import com.fanaujie.ripple.database.model.User;
+import com.fanaujie.ripple.database.model.UserProfile;
+import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;

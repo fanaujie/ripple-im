@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.authorization.config;
 
-import com.fanaujie.ripple.authorization.model.mapper.User;
+import com.fanaujie.ripple.database.model.User;
 import com.fanaujie.ripple.authorization.oauth.OauthLoginAuthenticationSuccessHandler;
 import com.fanaujie.ripple.authorization.service.UserService;
 import com.nimbusds.jose.JWSAlgorithm;

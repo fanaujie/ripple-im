@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.authorization.oauth;
 
-import com.fanaujie.ripple.authorization.mapper.UserMapper;
-import com.fanaujie.ripple.authorization.model.mapper.User;
+import com.fanaujie.ripple.database.mapper.UserMapper;
+import com.fanaujie.ripple.database.model.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.provisioning.UserDetailsManager;

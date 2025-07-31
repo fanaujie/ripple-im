@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.authorization.model.mapper;
+package com.fanaujie.ripple.database.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -37,7 +37,7 @@ public class User implements UserDetails {
         if (Objects.isNull(role) || role.isEmpty()) {
             return List.of(new SimpleGrantedAuthority(DEFAULT_ROLE_USER));
         }
-        return List.of(new SimpleGrantedAuthority(role.toLowerCase()));
+        return List.of(new SimpleGrantedAuthority(role));
     }
 
 

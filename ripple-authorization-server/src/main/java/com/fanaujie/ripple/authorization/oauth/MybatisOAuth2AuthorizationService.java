@@ -9,8 +9,8 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fanaujie.ripple.authorization.mapper.AuthorizationMapper;
-import com.fanaujie.ripple.authorization.model.mapper.Authorization;
+import com.fanaujie.ripple.database.mapper.AuthorizationMapper;
+import com.fanaujie.ripple.database.model.Authorization;
 
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.jackson2.CoreJackson2Module;

@@ -1,6 +1,6 @@
-package com.fanaujie.ripple.authorization.mapper;
+package com.fanaujie.ripple.database.mapper;
 
-import com.fanaujie.ripple.authorization.model.mapper.UserProfile;
+import com.fanaujie.ripple.database.model.UserProfile;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
+@ActiveProfiles("test")
 class UserProfileMapperTest {
 
     @Container

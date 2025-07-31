@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.fanaujie.ripple.authorization.mapper")
+@MapperScan("com.fanaujie.ripple.database.mapper")
 public class Application {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);

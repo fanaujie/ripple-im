@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.fanaujie.ripple.authorization.mapper.AuthorizationMapper">
+<mapper namespace="com.fanaujie.ripple.database.mapper.AuthorizationMapper">
     <resultMap id="AuthorizationResultMap" type="Authorization">
         <id property="id" column="id"/>
         <result property="registeredClientId" column="registeredClientId"/>
