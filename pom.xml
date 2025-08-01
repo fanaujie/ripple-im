@@ -12,7 +12,7 @@
         <module>ripple-database</module>
         <module>ripple-authorization-server</module>
         <module>ripple-transfer-server</module>
-        <module>ripple-websocket-server</module>
+        <module>ripple-message-gateway</module>
         <module>ripple-snowflakeid-server</module>
         <module>ripple-protobuf</module>
     </modules>

@@ -19,14 +19,13 @@ public class SnowflakeIdService {
 
     Logger logger = LoggerFactory.getLogger(Application.class);
 
-    private Config config;
+    private final Config config;
 
     public SnowflakeIdService(Config config) {
         this.config = config;
     }
 
 
-    private ChannelFuture serverChannelFuture;
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
 
@@ -37,7 +36,7 @@ public class SnowflakeIdService {
         SnowflakeIdGenerator snowflakeIdGenerator = new SnowflakeIdGenerator(this.config.getWorkerId());
         serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new ChannelInitializer<NioSocketChannel>(){
+                .childHandler(new ChannelInitializer<NioSocketChannel>() {
                     @Override
                     protected void initChannel(NioSocketChannel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
@@ -49,20 +48,28 @@ public class SnowflakeIdService {
                     }
                 });
         try {
-            serverChannelFuture = serverBootstrap.bind(this.config.getPort()).sync();
+            ChannelFuture serverChannelFuture = serverBootstrap.bind(this.config.getPort()).sync();
             logger.info("Server started on port: {}", this.config.getPort());
+            serverChannelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    
+
     public void stop() {
-        if (workerGroup != null) {
-            workerGroup.shutdownGracefully();
-        }
-        if (bossGroup != null) {
-            bossGroup.shutdownGracefully();
+        try {
+            if (workerGroup != null) {
+                workerGroup.shutdownGracefully().sync();
+            }
+            if (bossGroup != null) {
+                bossGroup.shutdownGracefully().sync();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Error stopping the server", e);
+        } finally {
+            logger.info("Server stopped.");
         }
     }
 }
