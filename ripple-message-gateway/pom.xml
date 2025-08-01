@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>ripple-websocket-server</artifactId>
+    <artifactId>ripple-message-gateway</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
