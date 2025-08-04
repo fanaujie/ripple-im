@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 public class SnowflakeIdService {
 
-    Logger logger = LoggerFactory.getLogger(Application.class);
+    Logger logger = LoggerFactory.getLogger(SnowflakeIdService.class);
 
     private final Config config;
 
