@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger level for tests -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <!-- Reduce Netty noise in tests -->
+    <logger name="io.netty" level="WARN" />
+    
+    <!-- Test specific loggers -->
+    <logger name="com.fanaujie.ripple.msggateway.integration" level="INFO" />
+    <logger name="com.fanaujie.ripple.msggateway.client" level="INFO" />
+    <logger name="com.fanaujie.ripple.msggateway.server" level="INFO" />
+</configuration>
