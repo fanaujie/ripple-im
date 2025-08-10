@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -45,86 +46,96 @@ import java.util.UUID;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Value("${oauth2.client.id}")
+    private String clientId;
+
+    @Value("${oauth2.client.secret}")
+    private String clientSecret;
+
+    @Value("${oauth2.client.redirect-uri}")
+    private String redirectUri;
+
+    @Value("${oauth2.jwk.secret}")
+    private String jwkSecret;
 
     @Bean
     @Order(1)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
-        http
-                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer,
-                        (authorizationServer) -> {
-                        })
-                .authorizeHttpRequests((authorize) ->
-                        authorize
-                                .anyRequest().authenticated()
-                )
+        http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) -> {})
+                .authorizeHttpRequests((authorize) -> authorize.anyRequest().authenticated())
                 // Redirect to the login page when not authenticated from the
                 // authorization endpoint
-                .exceptionHandling((exceptions) -> exceptions
-                        .authenticationEntryPoint(
-                                new LoginUrlAuthenticationEntryPoint("/login")
-                        )
-                );
+                .exceptionHandling(
+                        (exceptions) ->
+                                exceptions.authenticationEntryPoint(
+                                        new LoginUrlAuthenticationEntryPoint("/login")));
         return http.build();
     }
 
     @Bean
     @Order(2)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, UserService userService)
-            throws Exception {
+    public SecurityFilterChain defaultSecurityFilterChain(
+            HttpSecurity http, UserService userService) throws Exception {
         http.csrf(c -> c.disable());
         http.authorizeHttpRequests(
-                c ->
-                        c.requestMatchers("/signup").permitAll().
-                                anyRequest().authenticated()
-        ).formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
-        ).oauth2Login(o ->
-                o.loginPage("/login").permitAll()
-                        .successHandler(new OauthLoginAuthenticationSuccessHandler(userService)));
+                        c -> c.requestMatchers("/signup").permitAll().anyRequest().authenticated())
+                .formLogin(form -> form.loginPage("/login").permitAll())
+                .oauth2Login(
+                        o ->
+                                o.loginPage("/login")
+                                        .permitAll()
+                                        .successHandler(
+                                                new OauthLoginAuthenticationSuccessHandler(
+                                                        userService)));
         return http.build();
     }
-
 
     @Bean
     PasswordEncoder passwordEncoder() throws NoSuchAlgorithmException {
         return new BCryptPasswordEncoder(4, SecureRandom.getInstance("NativePRNG"));
     }
 
-
     @Bean
     public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-        RegisteredClient rippleClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("ripple-im-desktop")
-                .clientSecret(passwordEncoder.encode("ripple"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://localhost:8000/callback")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(1))
-                        .refreshTokenTimeToLive(Duration.ofDays(30))
-                        .reuseRefreshTokens(false)
-                        .build())
-                .scope(User.DEFAULT_ROLE_USER)
-                .clientSettings(ClientSettings.builder().requireProofKey(true).requireAuthorizationConsent(false).build())
-                .build();
+        RegisteredClient rippleClient =
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                        .clientId(clientId)
+                        .clientSecret(passwordEncoder.encode(clientSecret))
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .redirectUri(redirectUri)
+                        .tokenSettings(
+                                TokenSettings.builder()
+                                        .accessTokenTimeToLive(Duration.ofHours(1))
+                                        .refreshTokenTimeToLive(Duration.ofDays(30))
+                                        .reuseRefreshTokens(false)
+                                        .build())
+                        .scope(User.DEFAULT_ROLE_USER)
+                        .clientSettings(
+                                ClientSettings.builder()
+                                        .requireProofKey(true)
+                                        .requireAuthorizationConsent(false)
+                                        .build())
+                        .build();
 
         return new InMemoryRegisteredClientRepository(rippleClient);
     }
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-        byte[] secretBytes = Base64.getDecoder().decode("YjA4ZTY1MjAtM2I0OC00OGJiLTgyOTUtODY0Y2VlM2M4ZWJm");
+        byte[] secretBytes =
+                Base64.getDecoder().decode(jwkSecret);
 
-        OctetSequenceKey octetKey = new OctetSequenceKey.Builder(secretBytes)
-                .keyID(UUID.randomUUID().toString())
-                .algorithm(JWSAlgorithm.HS256)
-                .keyUse(KeyUse.SIGNATURE)
-                .build();
+        OctetSequenceKey octetKey =
+                new OctetSequenceKey.Builder(secretBytes)
+                        .keyID(UUID.randomUUID().toString())
+                        .algorithm(JWSAlgorithm.HS256)
+                        .keyUse(KeyUse.SIGNATURE)
+                        .build();
 
         JWKSet jwkSet = new JWKSet(octetKey);
 
@@ -138,11 +149,6 @@ public class SecurityConfig {
                 context.getJwsHeader().algorithm(MacAlgorithm.HS256);
             }
         };
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
-        return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
 
     @Bean
