@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.uploadgateway.controller;
 
-import com.fanaujie.ripple.uploadgateway.constants.SupportedContentTypes;
+import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import com.fanaujie.ripple.uploadgateway.service.AvatarUploadService;
 import com.fanaujie.ripple.uploadgateway.service.AvatarFileValidationService;
@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/upload")
@@ -21,8 +22,9 @@ public class UploadController {
 
     private final AvatarUploadService avatarUploadService;
     private final AvatarFileValidationService fileValidationService;
+    private final AvatarProperties avatarProperties;
 
-    @PostMapping(value = "/avatar")
+    @PutMapping(value = "/avatar")
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
             @RequestParam("hash") String hash,
             @RequestParam("avatar") MultipartFile avatarFile,
@@ -61,9 +63,12 @@ public class UploadController {
         }
 
         // Generate object name with hash + file extension
-        String fileExtension =
-                SupportedContentTypes.getContentType(avatarFile.getContentType()).getExtension();
-        String objectName = hash + "." + fileExtension;
+        Optional<String> fileExtension = avatarProperties.getExtension(avatarFile.getContentType());
+        if (fileExtension.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new AvatarUploadResponse(400, "Unsupported file type", null));
+        }
+        String objectName = hash + "." + fileExtension.get();
 
         return avatarUploadService.uploadAvatar(
                 authentication.getName(), fileData, objectName, avatarFile.getContentType());

@@ -1,7 +1,6 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.uploadgateway.constants.AvatarFileValidationConstants;
-import com.fanaujie.ripple.uploadgateway.constants.SupportedContentTypes;
+import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
@@ -14,11 +13,16 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 @Service
 @Slf4j
 public class AvatarFileValidationService {
+
+    private final AvatarProperties avatarProperties;
+
+    public AvatarFileValidationService(AvatarProperties avatarProperties) {
+        this.avatarProperties = avatarProperties;
+    }
 
     public AvatarUploadResponse validateFileType(MultipartFile file) {
         String fileType = file.getContentType();
@@ -26,7 +30,7 @@ public class AvatarFileValidationService {
             return new AvatarUploadResponse(400, "File type is missing", null);
         }
 
-        if (!SupportedContentTypes.isSupported(fileType)) {
+        if (!avatarProperties.isContentTypeAllowed(fileType)) {
             return new AvatarUploadResponse(400, "Invalid file type", null);
         }
         return null;
@@ -43,8 +47,7 @@ public class AvatarFileValidationService {
 
         int width = image.getWidth();
         int height = image.getHeight();
-        if (width > AvatarFileValidationConstants.MAX_WIDTH
-                || height > AvatarFileValidationConstants.MAX_HEIGHT) {
+        if (width > avatarProperties.getMaxWidth() || height > avatarProperties.getMaxHeight()) {
             return new AvatarUploadResponse(
                     400, "Image dimensions exceed maximum allowed size", null);
         }
@@ -72,7 +75,7 @@ public class AvatarFileValidationService {
     }
 
     public AvatarUploadResponse validateFileSize(MultipartFile file) {
-        if (file.getSize() > AvatarFileValidationConstants.MAX_FILE_SIZE) {
+        if (file.getSize() > avatarProperties.getMaxSize().toBytes()) {
             return new AvatarUploadResponse(400, "File size exceeds maximum allowed size", null);
         }
         return null;

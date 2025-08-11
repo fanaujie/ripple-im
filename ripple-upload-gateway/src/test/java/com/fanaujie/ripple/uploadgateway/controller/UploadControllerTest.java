@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.uploadgateway.controller;
 
+import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.config.SecurityConfig;
-import com.fanaujie.ripple.uploadgateway.constants.SupportedContentTypes;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadData;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import com.fanaujie.ripple.uploadgateway.service.AvatarFileValidationService;
@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,14 +34,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
-@ContextConfiguration(classes = {SecurityConfig.class, UploadController.class})
+@ContextConfiguration(
+        classes = {SecurityConfig.class, UploadController.class, AvatarProperties.class})
 @WebMvcTest
-@TestPropertySource(locations = "classpath:application-test.properties")
 class UploadControllerTest {
 
     private MockMvc mockMvc;
 
     @Autowired private WebApplicationContext context;
+    @Autowired private AvatarProperties avatarProperties;
 
     @MockitoBean private AvatarUploadService avatarUploadService;
 
@@ -62,7 +63,7 @@ class UploadControllerTest {
         return new MockMultipartFile(
                 "avatar",
                 "test.jpg",
-                SupportedContentTypes.JPEG.getContentType(),
+                avatarProperties.getAllowedContentTypes()[0],
                 "test image content".getBytes());
     }
 
@@ -74,7 +75,7 @@ class UploadControllerTest {
         return new MockMultipartFile(
                 "avatar",
                 "large.jpg",
-                SupportedContentTypes.JPEG.getContentType(),
+                avatarProperties.getAllowedContentTypes()[0],
                 new byte[6 * 1024 * 1024]);
     }
 
@@ -101,7 +102,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -119,7 +120,10 @@ class UploadControllerTest {
         MockMultipartFile file = createTestImageFile();
 
         // When & Then
-        mockMvc.perform(multipart("/api/upload/avatar").file(file).param("hash", TEST_HASH))
+        mockMvc.perform(
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
+                                .file(file)
+                                .param("hash", TEST_HASH))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -134,7 +138,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
@@ -156,7 +160,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
@@ -180,7 +184,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
@@ -206,7 +210,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", "invalid_hash")
                                 .accept(MediaType.APPLICATION_JSON)
@@ -223,7 +227,7 @@ class UploadControllerTest {
                 new MockMultipartFile(
                         "avatar",
                         "test.jpg",
-                        SupportedContentTypes.JPEG.getContentType(),
+                        avatarProperties.getAllowedContentTypes()[0],
                         (byte[]) null) {
                     @Override
                     public byte[] getBytes() throws IOException {
@@ -236,7 +240,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
@@ -264,7 +268,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
@@ -281,7 +285,7 @@ class UploadControllerTest {
 
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
@@ -292,7 +296,7 @@ class UploadControllerTest {
     void uploadAvatar_MissingFileParameter() throws Exception {
         // When & Then
         mockMvc.perform(
-                        multipart("/api/upload/avatar")
+                        multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .param("hash", TEST_HASH)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))

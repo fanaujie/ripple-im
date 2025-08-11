@@ -2,8 +2,7 @@ package com.fanaujie.ripple.uploadgateway.service;
 
 import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import com.fanaujie.ripple.database.model.UserProfile;
-import com.fanaujie.ripple.uploadgateway.constants.AvatarFileValidationConstants;
-import com.fanaujie.ripple.uploadgateway.constants.SupportedContentTypes;
+import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MinIOContainer;
@@ -28,8 +26,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Testcontainers
-@ActiveProfiles("test")
 class AvatarUploadServiceTest {
+
+    private static final String MINIO_BUCKET_NAME = "ripple-avatars";
 
     @Container
     static MySQLContainer<?> mysql =
@@ -63,6 +62,8 @@ class AvatarUploadServiceTest {
 
     @Autowired private MinioClient minioClient;
 
+    @Autowired private AvatarProperties avatarProperties;
+
     private final String testAccount = "testuser";
     private final String testObjectName = "avatar_" + testAccount + ".jpg";
     private final byte[] testImageData = createTestImageData();
@@ -86,9 +87,9 @@ class AvatarUploadServiceTest {
         userProfileMapper.insertUserProfile(testUser);
 
         // Ensure MinIO bucket exists
-        String bucketName = "ripple-avatars-test";
-        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build())) {
-            minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+        if (!minioClient.bucketExists(
+                BucketExistsArgs.builder().bucket(MINIO_BUCKET_NAME).build())) {
+            minioClient.makeBucket(MakeBucketArgs.builder().bucket(MINIO_BUCKET_NAME).build());
         }
     }
 
@@ -116,7 +117,7 @@ class AvatarUploadServiceTest {
                         account,
                         testImageData,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then
         assertNotNull(response);
@@ -142,7 +143,7 @@ class AvatarUploadServiceTest {
 
         // Pre-upload the file to simulate existing file
         avatarUploadService.uploadAvatar(
-                account, testImageData, objectName, SupportedContentTypes.JPEG.getContentType());
+                account, testImageData, objectName, avatarProperties.getAllowedContentTypes()[0]);
 
         // When - Upload again with same objectName
         ResponseEntity<AvatarUploadResponse> response =
@@ -150,7 +151,7 @@ class AvatarUploadServiceTest {
                         account,
                         testImageData,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then
         assertNotNull(response);
@@ -175,7 +176,7 @@ class AvatarUploadServiceTest {
                         invalidAccount,
                         testImageData,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then - Since MyBatis UPDATE doesn't throw exception for 0 affected rows, this succeeds
         assertNotNull(response);
@@ -193,15 +194,14 @@ class AvatarUploadServiceTest {
     void testUploadAvatar_WithNullData() {
         // Given
         String objectName = "null_data_test.jpg"; // Use different object name to avoid conflicts
-        byte[] fileData = null;
 
         // When
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
                         testAccount,
-                        fileData,
+                        null,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then - Based on logs, null data should cause upload failure and return 500
         assertNotNull(response);
@@ -219,14 +219,14 @@ class AvatarUploadServiceTest {
                 testAccount,
                 testImageData,
                 testObjectName,
-                SupportedContentTypes.JPEG.getContentType());
+                avatarProperties.getAllowedContentTypes()[0]);
 
         // When - Check if file exists using MinIO client directly
         boolean exists = false;
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
-                            .bucket("ripple-avatars-test")
+                            .bucket(MINIO_BUCKET_NAME)
                             .object(testObjectName)
                             .build());
             exists = true;
@@ -248,7 +248,7 @@ class AvatarUploadServiceTest {
                         testAccount,
                         testImageData,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then
         assertNotNull(response.getBody());
@@ -256,7 +256,7 @@ class AvatarUploadServiceTest {
         String avatarUrl = response.getBody().getData().getAvatarUrl();
 
         // Verify URL format
-        assertTrue(avatarUrl.contains("ripple-avatars-test"));
+        assertTrue(avatarUrl.contains(MINIO_BUCKET_NAME));
         assertTrue(avatarUrl.contains(objectName));
         assertTrue(avatarUrl.startsWith("http"));
     }
@@ -277,7 +277,7 @@ class AvatarUploadServiceTest {
                         testAccount,
                         testImageData,
                         objectName,
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then
         // Verify HTTP response
@@ -299,7 +299,7 @@ class AvatarUploadServiceTest {
                 () -> {
                     minioClient.statObject(
                             StatObjectArgs.builder()
-                                    .bucket("ripple-avatars-test")
+                                    .bucket(MINIO_BUCKET_NAME)
                                     .object(objectName)
                                     .build());
                 });
@@ -322,13 +322,13 @@ class AvatarUploadServiceTest {
                         testAccount,
                         testImageData,
                         "avatar1.jpg",
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
         ResponseEntity<AvatarUploadResponse> response2 =
                 avatarUploadService.uploadAvatar(
                         account2,
                         testImageData,
                         "avatar2.jpg",
-                        SupportedContentTypes.JPEG.getContentType());
+                        avatarProperties.getAllowedContentTypes()[0]);
 
         // Then
         assertEquals(200, response1.getStatusCode().value());
