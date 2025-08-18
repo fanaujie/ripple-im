@@ -7,6 +7,7 @@ import com.fanaujie.ripple.uploadgateway.service.AvatarFileValidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,13 +25,13 @@ public class UploadController {
     private final AvatarFileValidationService fileValidationService;
     private final AvatarProperties avatarProperties;
 
-    @PutMapping(value = "/avatar")
+    @PutMapping(value = "/avatar", consumes = "multipart/form-data")
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
-            @RequestParam("hash") String hash,
-            @RequestParam("avatar") MultipartFile avatarFile,
+            @RequestPart("hash") String hash,
+            @RequestPart("avatar") MultipartFile avatarFile,
             Authentication authentication) {
 
-        // Validate file type
+        // Validate file type３
         AvatarUploadResponse fileTypeError = fileValidationService.validateFileType(avatarFile);
         if (fileTypeError != null) {
             return ResponseEntity.badRequest().body(fileTypeError);

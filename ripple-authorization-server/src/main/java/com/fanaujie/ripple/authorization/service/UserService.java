@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -18,24 +20,31 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserProfileMapper userProfileMapper;
 
-    public UserService(RippleUserManager userManager, PasswordEncoder passwordEncoder, UserProfileMapper userProfileMapper) {
+    public UserService(
+            RippleUserManager userManager,
+            PasswordEncoder passwordEncoder,
+            UserProfileMapper userProfileMapper) {
         this.userManager = userManager;
         this.passwordEncoder = passwordEncoder;
         this.userProfileMapper = userProfileMapper;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ResponseEntity<CommonResponse> signup(HttpServletRequest request) {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
         if (email == null || password == null || confirmPassword == null) {
-            return ResponseEntity.badRequest().body(new CommonResponse("400", "Missing required fields"));
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse("400", "Missing required fields"));
         }
         if (!password.equals(confirmPassword)) {
-            return ResponseEntity.badRequest().body(new CommonResponse("400", "Passwords do not match"));
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse("400", "Passwords do not match"));
         }
         if (userManager.userExists(email)) {
-            return ResponseEntity.badRequest().body(new CommonResponse("400", "User already exists"));
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse("400", "User already exists"));
         }
         User newUser = new User();
         newUser.setAccount(email);

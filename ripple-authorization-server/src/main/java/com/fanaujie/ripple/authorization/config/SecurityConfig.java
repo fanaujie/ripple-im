@@ -114,7 +114,7 @@ public class SecurityConfig {
                                         .refreshTokenTimeToLive(Duration.ofDays(30))
                                         .reuseRefreshTokens(false)
                                         .build())
-                        .scope(User.DEFAULT_ROLE_USER)
+                        .scope("user")
                         .clientSettings(
                                 ClientSettings.builder()
                                         .requireProofKey(true)
@@ -127,8 +127,7 @@ public class SecurityConfig {
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-        byte[] secretBytes =
-                Base64.getDecoder().decode(jwkSecret);
+        byte[] secretBytes = Base64.getDecoder().decode(jwkSecret);
 
         OctetSequenceKey octetKey =
                 new OctetSequenceKey.Builder(secretBytes)

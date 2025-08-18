@@ -80,7 +80,7 @@ class UploadControllerTest {
     }
 
     private RequestPostProcessor authenticatedUser() {
-        return jwt().authorities(new SimpleGrantedAuthority("user"))
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_user"))
                 .jwt(jwt -> jwt.header("alg", "HS256").claim("sub", TEST_ACCOUNT));
     }
 
@@ -101,10 +101,11 @@ class UploadControllerTest {
                 .thenReturn(ResponseEntity.ok(successResponse));
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .contentType(MediaType.MULTIPART_FORM_DATA)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
@@ -137,10 +138,11 @@ class UploadControllerTest {
         when(fileValidationService.validateFileType(any())).thenReturn(errorResponse);
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest())
@@ -159,10 +161,11 @@ class UploadControllerTest {
         when(fileValidationService.validateFileSize(any())).thenReturn(errorResponse);
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest())
@@ -183,10 +186,11 @@ class UploadControllerTest {
                 .thenReturn(errorResponse);
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest())
@@ -209,10 +213,11 @@ class UploadControllerTest {
         when(fileValidationService.validateFileHash(anyString(), any())).thenReturn(errorResponse);
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", "invalid_hash".getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", "invalid_hash")
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest())
@@ -239,10 +244,11 @@ class UploadControllerTest {
         when(fileValidationService.validateFileSize(any())).thenReturn(null);
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest())
@@ -267,10 +273,11 @@ class UploadControllerTest {
                 .thenReturn(ResponseEntity.status(500).body(errorResponse));
 
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
                                 .file(file)
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isInternalServerError())
@@ -295,9 +302,10 @@ class UploadControllerTest {
     @Test
     void uploadAvatar_MissingFileParameter() throws Exception {
         // When & Then
+        MockMultipartFile hashPart = new MockMultipartFile("hash", "", "text/plain", TEST_HASH.getBytes());
         mockMvc.perform(
                         multipart(HttpMethod.PUT, "/api/upload/avatar")
-                                .param("hash", TEST_HASH)
+                                .file(hashPart)
                                 .accept(MediaType.APPLICATION_JSON)
                                 .with(authenticatedUser()))
                 .andExpect(status().isBadRequest());

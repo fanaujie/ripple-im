@@ -24,10 +24,11 @@ import static org.junit.jupiter.api.Assertions.*;
 class RippleUserManagerTest {
 
     @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.5")
-            .withDatabaseName("test_ripple")
-            .withUsername("test")
-            .withPassword("test");
+    static MySQLContainer<?> mysql =
+            new MySQLContainer<>("mysql:8.4.5")
+                    .withDatabaseName("test_ripple")
+                    .withUsername("test")
+                    .withPassword("test");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -36,28 +37,28 @@ class RippleUserManagerTest {
         registry.add("spring.datasource.password", mysql::getPassword);
     }
 
-    @Autowired
-    private RippleUserManager rippleUserManager;
+    @Autowired private RippleUserManager rippleUserManager;
 
-    @Autowired
-    private UserMapper userMapper;
+    @Autowired private UserMapper userMapper;
 
     @BeforeEach
     void setUp() {
-        Flyway flyway = Flyway.configure()
-                .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                .locations("classpath:db/migration")
-                .load();
+        Flyway flyway =
+                Flyway.configure()
+                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                        .locations("classpath:db/migration")
+                        .load();
         flyway.migrate();
     }
 
     @AfterEach
     void tearDown() {
-        Flyway flyway = Flyway.configure()
-                .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                .locations("classpath:db/migration")
-                .cleanDisabled(false)
-                .load();
+        Flyway flyway =
+                Flyway.configure()
+                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                        .locations("classpath:db/migration")
+                        .cleanDisabled(false)
+                        .load();
         flyway.clean();
     }
 
@@ -193,11 +194,12 @@ class RippleUserManagerTest {
 
     @Test
     void testLoadUserByUsernameNotFound() {
-        assertThrows(UsernameNotFoundException.class, () -> {
-            rippleUserManager.loadUserByUsername("nonexistent");
-        });
+        assertThrows(
+                UsernameNotFoundException.class,
+                () -> {
+                    rippleUserManager.loadUserByUsername("nonexistent");
+                });
     }
-
 
     @Test
     void testCreateUserWithDisabledStatus() {
@@ -244,7 +246,7 @@ class RippleUserManagerTest {
         user.setAccount("testuser");
         user.setPassword("password123");
         user.setEnabled(true);
-        user.setRole("USER");
+        user.setRole("ROLE_USER");
 
         rippleUserManager.createUser(user);
 
@@ -253,7 +255,7 @@ class RippleUserManagerTest {
         assertEquals(1, loadedUser.getAuthorities().size());
 
         GrantedAuthority authority = loadedUser.getAuthorities().iterator().next();
-        assertEquals("USER", authority.getAuthority());
+        assertEquals("ROLE_USER", authority.getAuthority());
     }
 
     @Test
@@ -262,7 +264,7 @@ class RippleUserManagerTest {
         user.setAccount("adminuser");
         user.setPassword("password123");
         user.setEnabled(true);
-        user.setRole("ADMIN");
+        user.setRole("ROLE_ADMIN");
 
         rippleUserManager.createUser(user);
 
@@ -271,7 +273,7 @@ class RippleUserManagerTest {
         assertEquals(1, loadedUser.getAuthorities().size());
 
         GrantedAuthority authority = loadedUser.getAuthorities().iterator().next();
-        assertEquals("ADMIN", authority.getAuthority());
+        assertEquals("ROLE_ADMIN", authority.getAuthority());
     }
 
     @Test
@@ -295,13 +297,13 @@ class RippleUserManagerTest {
     @Test
     void testUserGetAuthoritiesDirectly() {
         User user = new User();
-        user.setRole("MANAGER");
+        user.setRole("ROLE_MANAGER");
 
         assertNotNull(user.getAuthorities());
         assertEquals(1, user.getAuthorities().size());
 
         GrantedAuthority authority = user.getAuthorities().iterator().next();
-        assertEquals("MANAGER", authority.getAuthority());
+        assertEquals("ROLE_MANAGER", authority.getAuthority());
     }
 
     @Test
