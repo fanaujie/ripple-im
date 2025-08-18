@@ -16,6 +16,7 @@
         <module>ripple-snowflakeid-server</module>
         <module>ripple-protobuf</module>
         <module>ripple-upload-gateway</module>
+        <module>ripple-api-gateway</module>
     </modules>
 
     <properties>
