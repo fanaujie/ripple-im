@@ -21,7 +21,7 @@ import java.util.Objects;
 @JsonDeserialize
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public class User implements UserDetails {
-    public static final String DEFAULT_ROLE_USER = "user";
+    public static final String DEFAULT_ROLE_USER = "ROLE_user";
     private long id;
     private String account;
     private String password;
@@ -29,7 +29,6 @@ public class User implements UserDetails {
     private String role;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
-
 
     @Override
     @JsonIgnore
@@ -39,7 +38,6 @@ public class User implements UserDetails {
         }
         return List.of(new SimpleGrantedAuthority(role));
     }
-
 
     @Override
     @JsonIgnore
@@ -70,5 +68,4 @@ public class User implements UserDetails {
     public String getUsername() {
         return account;
     }
-
 }
