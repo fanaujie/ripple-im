@@ -1,13 +1,14 @@
 package com.fanaujie.ripple.database.mapper;
 
+import com.fanaujie.ripple.database.config.MyBatisConfig;
 import com.fanaujie.ripple.database.model.UserProfile;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
@@ -16,16 +17,22 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest(
+        classes = MyBatisConfig.class,
+        properties = {
+            "mybatis.mapper-locations=classpath:mapper/*.xml",
+            "mybatis.type-aliases-package=com.fanaujie.ripple.database.model"
+        })
 @Testcontainers
-@ActiveProfiles("test")
+@EnableAutoConfiguration
 class UserProfileMapperTest {
 
     @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4.5")
-            .withDatabaseName("test_ripple")
-            .withUsername("test")
-            .withPassword("test");
+    static MySQLContainer<?> mysql =
+            new MySQLContainer<>("mysql:8.4.5")
+                    .withDatabaseName("test_ripple")
+                    .withUsername("test")
+                    .withPassword("test");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -34,25 +41,26 @@ class UserProfileMapperTest {
         registry.add("spring.datasource.password", mysql::getPassword);
     }
 
-    @Autowired
-    private UserProfileMapper userProfileMapper;
+    @Autowired private UserProfileMapper userProfileMapper;
 
     @BeforeEach
     void setUp() {
-        Flyway flyway = Flyway.configure()
-                .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                .locations("classpath:db/migration")
-                .load();
+        Flyway flyway =
+                Flyway.configure()
+                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                        .locations("classpath:db/migration")
+                        .load();
         flyway.migrate();
     }
 
     @AfterEach
     void tearDown() {
-        Flyway flyway = Flyway.configure()
-                .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                .locations("classpath:db/migration")
-                .cleanDisabled(false)
-                .load();
+        Flyway flyway =
+                Flyway.configure()
+                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                        .locations("classpath:db/migration")
+                        .cleanDisabled(false)
+                        .load();
         flyway.clean();
     }
 

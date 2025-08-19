@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.authorization.config;
 
-import com.fanaujie.ripple.database.model.User;
 import com.fanaujie.ripple.authorization.oauth.OauthLoginAuthenticationSuccessHandler;
 import com.fanaujie.ripple.authorization.service.UserService;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -21,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
