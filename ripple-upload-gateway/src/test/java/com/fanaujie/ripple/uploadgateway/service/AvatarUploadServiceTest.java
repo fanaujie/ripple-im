@@ -64,8 +64,8 @@ class AvatarUploadServiceTest {
 
     @Autowired private AvatarProperties avatarProperties;
 
-    private final String testAccount = "testuser";
-    private final String testObjectName = "avatar_" + testAccount + ".jpg";
+    private final long testUserId = 100;
+    private final String testObjectName = "avatar_" + testUserId + ".jpg";
     private final byte[] testImageData = createTestImageData();
 
     @BeforeEach
@@ -80,10 +80,10 @@ class AvatarUploadServiceTest {
 
         // Create test user profile
         UserProfile testUser = new UserProfile();
-        testUser.setAccount(testAccount);
+        testUser.setUserId(testUserId);
         testUser.setUserType(1);
         testUser.setNickName("Test User");
-        testUser.setUserPortrait("default_avatar.jpg");
+        testUser.setAvatar("default_avatar.jpg");
         userProfileMapper.insertUserProfile(testUser);
 
         // Ensure MinIO bucket exists
@@ -108,13 +108,12 @@ class AvatarUploadServiceTest {
     @Test
     void testUploadAvatar_Success_NewFile() {
         // Given
-        String account = testAccount;
         String objectName = testObjectName;
 
         // When
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
-                        account,
+                        testUserId,
                         testImageData,
                         objectName,
                         avatarProperties.getAllowedContentTypes()[0]);
@@ -130,25 +129,27 @@ class AvatarUploadServiceTest {
         assertTrue(response.getBody().getData().getAvatarUrl().contains(objectName));
 
         // Verify database was updated
-        UserProfile updatedProfile = userProfileMapper.findByAccount(account);
+        UserProfile updatedProfile = userProfileMapper.findById(testUserId);
         assertNotNull(updatedProfile);
-        assertEquals(response.getBody().getData().getAvatarUrl(), updatedProfile.getUserPortrait());
+        assertEquals(response.getBody().getData().getAvatarUrl(), updatedProfile.getAvatar());
     }
 
     @Test
     void testUploadAvatar_Success_FileExists() throws Exception {
         // Given - First upload the file to MinIO
-        String account = testAccount;
         String objectName = testObjectName;
 
         // Pre-upload the file to simulate existing file
         avatarUploadService.uploadAvatar(
-                account, testImageData, objectName, avatarProperties.getAllowedContentTypes()[0]);
+                testUserId,
+                testImageData,
+                objectName,
+                avatarProperties.getAllowedContentTypes()[0]);
 
         // When - Upload again with same objectName
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
-                        account,
+                        testUserId,
                         testImageData,
                         objectName,
                         avatarProperties.getAllowedContentTypes()[0]);
@@ -167,7 +168,7 @@ class AvatarUploadServiceTest {
     void testUploadAvatar_DatabaseUpdateFails() {
         // Given - The MyBatis UPDATE won't fail for non-existent users, it just updates 0 rows
         // So this test actually demonstrates successful upload even for non-existent users
-        String invalidAccount = "nonexistent_user";
+        long invalidAccount = 123;
         String objectName = "avatar_invalid.jpg";
 
         // When
@@ -198,10 +199,7 @@ class AvatarUploadServiceTest {
         // When
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
-                        testAccount,
-                        null,
-                        objectName,
-                        avatarProperties.getAllowedContentTypes()[0]);
+                        testUserId, null, objectName, avatarProperties.getAllowedContentTypes()[0]);
 
         // Then - Based on logs, null data should cause upload failure and return 500
         assertNotNull(response);
@@ -216,7 +214,7 @@ class AvatarUploadServiceTest {
     void testFileExistenceCheck() throws Exception {
         // Given - Upload a file first
         avatarUploadService.uploadAvatar(
-                testAccount,
+                testUserId,
                 testImageData,
                 testObjectName,
                 avatarProperties.getAllowedContentTypes()[0]);
@@ -245,7 +243,7 @@ class AvatarUploadServiceTest {
         // When
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
-                        testAccount,
+                        testUserId,
                         testImageData,
                         objectName,
                         avatarProperties.getAllowedContentTypes()[0]);
@@ -267,14 +265,14 @@ class AvatarUploadServiceTest {
         String objectName = "full_workflow_test.jpg";
 
         // Verify user exists before upload
-        UserProfile beforeUpload = userProfileMapper.findByAccount(testAccount);
+        UserProfile beforeUpload = userProfileMapper.findById(testUserId);
         assertNotNull(beforeUpload);
-        String originalAvatar = beforeUpload.getUserPortrait();
+        String originalAvatar = beforeUpload.getAvatar();
 
         // When
         ResponseEntity<AvatarUploadResponse> response =
                 avatarUploadService.uploadAvatar(
-                        testAccount,
+                        testUserId,
                         testImageData,
                         objectName,
                         avatarProperties.getAllowedContentTypes()[0]);
@@ -291,8 +289,8 @@ class AvatarUploadServiceTest {
         assertNotEquals(originalAvatar, newAvatarUrl);
 
         // Verify database update
-        UserProfile afterUpload = userProfileMapper.findByAccount(testAccount);
-        assertEquals(newAvatarUrl, afterUpload.getUserPortrait());
+        UserProfile afterUpload = userProfileMapper.findById(testUserId);
+        assertEquals(newAvatarUrl, afterUpload.getAvatar());
 
         // Verify file exists in MinIO
         assertDoesNotThrow(
@@ -308,24 +306,24 @@ class AvatarUploadServiceTest {
     @Test
     void testUploadAvatar_MultipleUsers() {
         // Given
-        String account2 = "testuser2";
+        long userId2 = 200;
         UserProfile testUser2 = new UserProfile();
-        testUser2.setAccount(account2);
+        testUser2.setUserId(userId2);
         testUser2.setUserType(1);
         testUser2.setNickName("Test User 2");
-        testUser2.setUserPortrait("default_avatar.jpg");
+        testUser2.setAvatar("default_avatar.jpg");
         userProfileMapper.insertUserProfile(testUser2);
 
         // When
         ResponseEntity<AvatarUploadResponse> response1 =
                 avatarUploadService.uploadAvatar(
-                        testAccount,
+                        testUserId,
                         testImageData,
                         "avatar1.jpg",
                         avatarProperties.getAllowedContentTypes()[0]);
         ResponseEntity<AvatarUploadResponse> response2 =
                 avatarUploadService.uploadAvatar(
-                        account2,
+                        userId2,
                         testImageData,
                         "avatar2.jpg",
                         avatarProperties.getAllowedContentTypes()[0]);
@@ -342,11 +340,11 @@ class AvatarUploadServiceTest {
         assertTrue(url2.contains("avatar2.jpg"));
 
         // Verify both users have different avatar URLs in database
-        UserProfile user1Profile = userProfileMapper.findByAccount(testAccount);
-        UserProfile user2Profile = userProfileMapper.findByAccount(account2);
+        UserProfile user1Profile = userProfileMapper.findById(testUserId);
+        UserProfile user2Profile = userProfileMapper.findById(userId2);
 
-        assertEquals(url1, user1Profile.getUserPortrait());
-        assertEquals(url2, user2Profile.getUserPortrait());
+        assertEquals(url1, user1Profile.getAvatar());
+        assertEquals(url2, user2Profile.getAvatar());
     }
 
     private static byte[] createTestImageData() {

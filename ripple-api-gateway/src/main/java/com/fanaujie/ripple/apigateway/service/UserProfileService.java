@@ -18,41 +18,41 @@ public class UserProfileService {
 
     private final UserProfileMapper userProfileMapper;
 
-    public ResponseEntity<UserProfileResponse> getUserProfile(String account) {
-        UserProfile userProfile = userProfileMapper.findByAccount(account);
+    public ResponseEntity<UserProfileResponse> getUserProfile(long userId) {
+        UserProfile userProfile = userProfileMapper.findById(userId);
         if (userProfile == null) {
             return ResponseEntity.status(401)
                     .body(new UserProfileResponse(401, "User profile not found", null));
         }
         UserProfileData userProfileData =
                 new UserProfileData(
-                        userProfile.getAccount(),
+                        userProfile.getUserId(),
                         userProfile.getNickName(),
-                        userProfile.getUserPortrait());
+                        userProfile.getAvatar());
         return ResponseEntity.ok(new UserProfileResponse(200, "success", userProfileData));
     }
 
     @Transactional
-    public ResponseEntity<CommonResponse> updateNickName(String account, String nickName) {
-        if (!userProfileExists(account)) {
+    public ResponseEntity<CommonResponse> updateNickName(long userId, String nickName) {
+        if (!userProfileExists(userId)) {
             return ResponseEntity.status(401)
                     .body(new CommonResponse(401, "User profile not found"));
         }
-        userProfileMapper.updateNickName(account, nickName);
+        userProfileMapper.updateNickName(userId, nickName);
         return ResponseEntity.ok(new CommonResponse(200, "success"));
     }
 
     @Transactional
-    public ResponseEntity<CommonResponse> deleteUserPortrait(String account) {
-        if (!userProfileExists(account)) {
+    public ResponseEntity<CommonResponse> deleteAvatar(long userId) {
+        if (!userProfileExists(userId)) {
             return ResponseEntity.status(401)
                     .body(new CommonResponse(401, "User profile not found"));
         }
-        userProfileMapper.updateUserPortrait(account, null);
+        userProfileMapper.updateAvatar(userId, null);
         return ResponseEntity.ok(new CommonResponse(200, "success"));
     }
 
-    private boolean userProfileExists(String account) {
-        return userProfileMapper.countByAccount(account) > 0;
+    private boolean userProfileExists(long userId) {
+        return userProfileMapper.countById(userId) > 0;
     }
 }

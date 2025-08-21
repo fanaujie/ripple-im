@@ -9,17 +9,17 @@ import org.springframework.stereotype.Repository;
 @Mapper
 public interface UserProfileMapper {
 
-    UserProfile findByAccount(String account);
+    UserProfile findById(long userId);
 
     void insertUserProfile(UserProfile userProfile);
 
     void updateUserProfile(UserProfile userProfile);
 
-    void deleteUserProfile(String account);
+    void deleteUserProfile(long userId);
 
-    int countByAccount(String account);
+    int countById(long userId);
 
-    void updateNickName(@Param("account") String account, @Param("nickName") String nickName);
+    void updateNickName(@Param("userId") long userId, @Param("nickName") String nickName);
 
-    void updateUserPortrait(@Param("account") String account, @Param("userPortrait") String userPortrait);
+    void updateAvatar(@Param("userId") long userId, @Param("avatar") String avatar);
 }

@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -34,31 +33,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
-@ContextConfiguration(
-        classes = {SecurityConfig.class, UserProfileController.class})
+@ContextConfiguration(classes = {SecurityConfig.class, UserProfileController.class})
 @WebMvcTest
-@TestPropertySource(properties = {
-    "oauth2.jwk.secret=dGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQ="
-})
+@TestPropertySource(
+        properties = {
+            "oauth2.jwk.secret=dGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQ="
+        })
 class UserProfileControllerTest {
 
     private MockMvc mockMvc;
 
     @Autowired private WebApplicationContext context;
 
-    @MockitoBean
-    private UserProfileService userProfileService;
+    @MockitoBean private UserProfileService userProfileService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private ObjectMapper objectMapper;
 
-    private static final String TEST_ACCOUNT = "testuser";
+    private static final Long TEST_ID = 1L;
     private static final String TEST_NICKNAME = "Test User";
     private static final String TEST_PORTRAIT = "avatar.jpg";
 
     private RequestPostProcessor authenticatedUser() {
         return jwt().authorities(new SimpleGrantedAuthority("ROLE_user"))
-                .jwt(jwt -> jwt.header("alg", "HS256").claim("sub", TEST_ACCOUNT));
+                .jwt(jwt -> jwt.header("alg", "HS256").claim("sub", TEST_ID.toString()));
     }
 
     @BeforeEach
@@ -69,51 +66,51 @@ class UserProfileControllerTest {
     @Test
     void getUserProfile_Success() throws Exception {
         // Given
-        UserProfileData profileData = new UserProfileData(TEST_ACCOUNT, TEST_NICKNAME, TEST_PORTRAIT);
+        UserProfileData profileData = new UserProfileData(TEST_ID, TEST_NICKNAME, TEST_PORTRAIT);
         UserProfileResponse response = new UserProfileResponse(200, "success", profileData);
-        
-        when(userProfileService.getUserProfile(TEST_ACCOUNT))
-                .thenReturn(ResponseEntity.ok(response));
+
+        when(userProfileService.getUserProfile(TEST_ID)).thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(get("/api/profile")
-                        .with(authenticatedUser())
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        get("/api/profile")
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"))
-                .andExpect(jsonPath("$.data.account").value(TEST_ACCOUNT))
+                .andExpect(jsonPath("$.data.userId").value(TEST_ID))
                 .andExpect(jsonPath("$.data.nickName").value(TEST_NICKNAME))
-                .andExpect(jsonPath("$.data.userPortrait").value(TEST_PORTRAIT));
+                .andExpect(jsonPath("$.data.avatar").value(TEST_PORTRAIT));
 
-        verify(userProfileService).getUserProfile(TEST_ACCOUNT);
+        verify(userProfileService).getUserProfile(TEST_ID);
     }
 
     @Test
     void getUserProfile_UserNotFound() throws Exception {
         // Given
         UserProfileResponse response = new UserProfileResponse(401, "User profile not found", null);
-        
-        when(userProfileService.getUserProfile(TEST_ACCOUNT))
+
+        when(userProfileService.getUserProfile(TEST_ID))
                 .thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response));
 
         // When & Then
-        mockMvc.perform(get("/api/profile")
-                        .with(authenticatedUser())
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        get("/api/profile")
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401))
                 .andExpect(jsonPath("$.message").value("User profile not found"))
                 .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(userProfileService).getUserProfile(TEST_ACCOUNT);
+        verify(userProfileService).getUserProfile(TEST_ID);
     }
 
     @Test
     void getUserProfile_Unauthorized() throws Exception {
         // When & Then - No authentication
-        mockMvc.perform(get("/api/profile")
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/profile").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -123,21 +120,22 @@ class UserProfileControllerTest {
         String newNickName = "New Nickname";
         UpdateNickNameRequest request = new UpdateNickNameRequest(newNickName);
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, newNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, newNickName))
                 .thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, newNickName);
+        verify(userProfileService).updateNickName(TEST_ID, newNickName);
     }
 
     @Test
@@ -146,21 +144,22 @@ class UserProfileControllerTest {
         String newNickName = "New Nickname";
         UpdateNickNameRequest request = new UpdateNickNameRequest(newNickName);
         CommonResponse response = new CommonResponse(401, "User profile not found");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, newNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, newNickName))
                 .thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401))
                 .andExpect(jsonPath("$.message").value("User profile not found"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, newNickName);
+        verify(userProfileService).updateNickName(TEST_ID, newNickName);
     }
 
     @Test
@@ -169,10 +168,11 @@ class UserProfileControllerTest {
         UpdateNickNameRequest request = new UpdateNickNameRequest("New Nickname");
 
         // When & Then - No authentication
-        mockMvc.perform(put("/api/profile/nickname")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -182,11 +182,12 @@ class UserProfileControllerTest {
         UpdateNickNameRequest request = new UpdateNickNameRequest("");
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -196,26 +197,29 @@ class UserProfileControllerTest {
         UpdateNickNameRequest request = new UpdateNickNameRequest(null);
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void updateNickName_ValidationError_TooLongNickName() throws Exception {
         // Given - Create a nickname longer than 50 characters
-        String longNickName = "This is a very long nickname that exceeds the maximum allowed length of fifty characters";
+        String longNickName =
+                "This is a very long nickname that exceeds the maximum allowed length of fifty characters";
         UpdateNickNameRequest request = new UpdateNickNameRequest(longNickName);
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -225,11 +229,12 @@ class UserProfileControllerTest {
         String invalidJson = "{invalid json}";
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidJson)
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(invalidJson)
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -239,56 +244,57 @@ class UserProfileControllerTest {
         UpdateNickNameRequest request = new UpdateNickNameRequest("Valid Nickname");
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnsupportedMediaType());
     }
 
     @Test
-    void deleteUserPortrait_Success() throws Exception {
+    void deleteAvatar_Success() throws Exception {
         // Given
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.deleteUserPortrait(TEST_ACCOUNT))
-                .thenReturn(ResponseEntity.ok(response));
+
+        when(userProfileService.deleteAvatar(TEST_ID)).thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(delete("/api/profile/portrait")
-                        .with(authenticatedUser())
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        delete("/api/profile/avatar")
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).deleteUserPortrait(TEST_ACCOUNT);
+        verify(userProfileService).deleteAvatar(TEST_ID);
     }
 
     @Test
-    void deleteUserPortrait_UserNotFound() throws Exception {
+    void deleteAvatar_UserNotFound() throws Exception {
         // Given
         CommonResponse serviceResponse = new CommonResponse(401, "User profile not found");
-        
-        when(userProfileService.deleteUserPortrait(TEST_ACCOUNT))
+
+        when(userProfileService.deleteAvatar(TEST_ID))
                 .thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(serviceResponse));
 
         // When & Then - Controller returns 200 regardless of service response
-        mockMvc.perform(delete("/api/profile/portrait")
-                        .with(authenticatedUser())
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        delete("/api/profile/avatar")
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).deleteUserPortrait(TEST_ACCOUNT);
+        verify(userProfileService).deleteAvatar(TEST_ID);
     }
 
     @Test
-    void deleteUserPortrait_Unauthorized() throws Exception {
+    void deleteAvatar_Unauthorized() throws Exception {
         // When & Then - No authentication
-        mockMvc.perform(delete("/api/profile/portrait")
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(delete("/api/profile/avatar").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -298,21 +304,22 @@ class UserProfileControllerTest {
         String specialNickName = "User@123!";
         UpdateNickNameRequest request = new UpdateNickNameRequest(specialNickName);
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, specialNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, specialNickName))
                 .thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, specialNickName);
+        verify(userProfileService).updateNickName(TEST_ID, specialNickName);
     }
 
     @Test
@@ -321,21 +328,22 @@ class UserProfileControllerTest {
         String unicodeNickName = "用户123";
         UpdateNickNameRequest request = new UpdateNickNameRequest(unicodeNickName);
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, unicodeNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, unicodeNickName))
                 .thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, unicodeNickName);
+        verify(userProfileService).updateNickName(TEST_ID, unicodeNickName);
     }
 
     @Test
@@ -344,21 +352,22 @@ class UserProfileControllerTest {
         String maxLengthNickName = "A".repeat(50);
         UpdateNickNameRequest request = new UpdateNickNameRequest(maxLengthNickName);
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, maxLengthNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, maxLengthNickName))
                 .thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, maxLengthNickName);
+        verify(userProfileService).updateNickName(TEST_ID, maxLengthNickName);
     }
 
     @Test
@@ -367,20 +376,21 @@ class UserProfileControllerTest {
         String minLengthNickName = "A";
         UpdateNickNameRequest request = new UpdateNickNameRequest(minLengthNickName);
         CommonResponse response = new CommonResponse(200, "success");
-        
-        when(userProfileService.updateNickName(TEST_ACCOUNT, minLengthNickName))
+
+        when(userProfileService.updateNickName(TEST_ID, minLengthNickName))
                 .thenReturn(ResponseEntity.ok(response));
 
         // When & Then
-        mockMvc.perform(put("/api/profile/nickname")
-                        .with(authenticatedUser())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(
+                        put("/api/profile/nickname")
+                                .with(authenticatedUser())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("success"));
 
-        verify(userProfileService).updateNickName(TEST_ACCOUNT, minLengthNickName);
+        verify(userProfileService).updateNickName(TEST_ID, minLengthNickName);
     }
 }

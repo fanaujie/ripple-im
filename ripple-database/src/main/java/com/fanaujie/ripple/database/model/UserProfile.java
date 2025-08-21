@@ -10,11 +10,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserProfile {
-    private Long id;
-    private String account;
+    private long userId;
     private Integer userType;
     private String nickName;
-    private String userPortrait;
+    private String avatar;
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
 }

@@ -8,6 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CommonResponse {
-    public String code;
+    public int code;
     public String message;
 }

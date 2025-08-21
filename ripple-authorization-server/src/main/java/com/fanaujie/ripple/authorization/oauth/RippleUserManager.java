@@ -16,7 +16,6 @@ public class RippleUserManager implements UserDetailsManager {
         this.userMapper = userMapper;
     }
 
-
     @Override
     public void createUser(UserDetails userDetails) {
         if (userDetails instanceof User) {
@@ -37,10 +36,10 @@ public class RippleUserManager implements UserDetailsManager {
     }
 
     @Override
-    public void deleteUser(String username) {
-        Long userId = userMapper.findUserIdByAccount(username);
+    public void deleteUser(String account) {
+        Long userId = userMapper.findUserIdByAccount(account);
         if (userId != null) {
-            userMapper.deleteUser(username);
+            userMapper.deleteUser(account);
         }
     }
 
@@ -49,17 +48,16 @@ public class RippleUserManager implements UserDetailsManager {
         // not implemented in this context
     }
 
-
     @Override
-    public boolean userExists(String username) {
-        return userMapper.countByAccount(username) > 0;
+    public boolean userExists(String account) {
+        return userMapper.countByAccount(account) > 0;
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userMapper.findByAccount(username);
+    public UserDetails loadUserByUsername(String account) throws UsernameNotFoundException {
+        User user = userMapper.findByAccount(account);
         if (user == null) {
-            throw new UsernameNotFoundException("User not found: " + username);
+            throw new UsernameNotFoundException("User not found: " + account);
         }
         return user;
     }

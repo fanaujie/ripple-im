@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,22 +23,20 @@ public class UserProfileController {
     private final UserProfileService userProfileService;
 
     @GetMapping
-    public ResponseEntity<UserProfileResponse> getUserProfile(Authentication authentication) {
-        return userProfileService.getUserProfile(authentication.getName());
+    public ResponseEntity<UserProfileResponse> getUserProfile(@AuthenticationPrincipal Jwt jwt) {
+        return userProfileService.getUserProfile(Long.parseLong(jwt.getSubject()));
     }
 
     @PutMapping("/nickname")
     public ResponseEntity<CommonResponse> updateNickName(
-            @Valid @RequestBody UpdateNickNameRequest request, Authentication authentication) {
-
-        String account = authentication.getName();
-        return userProfileService.updateNickName(account, request.getNickName());
+            @Valid @RequestBody UpdateNickNameRequest request, @AuthenticationPrincipal Jwt jwt) {
+        return userProfileService.updateNickName(
+                Long.parseLong(jwt.getSubject()), request.getNickName());
     }
 
-    @DeleteMapping("/portrait")
-    public ResponseEntity<CommonResponse> deleteUserPortrait(Authentication authentication) {
-        String account = authentication.getName();
-        userProfileService.deleteUserPortrait(account);
+    @DeleteMapping("/avatar")
+    public ResponseEntity<CommonResponse> deleteAvatar(@AuthenticationPrincipal Jwt jwt) {
+        userProfileService.deleteAvatar(Long.parseLong(jwt.getSubject()));
         return ResponseEntity.status(200).body(new CommonResponse(200, "success"));
     }
 }

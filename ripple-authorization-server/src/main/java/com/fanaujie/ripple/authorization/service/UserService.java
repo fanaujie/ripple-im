@@ -5,7 +5,6 @@ import com.fanaujie.ripple.database.model.User;
 import com.fanaujie.ripple.database.model.UserProfile;
 import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -30,24 +29,11 @@ public class UserService {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<CommonResponse> signup(HttpServletRequest request) {
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
-        String confirmPassword = request.getParameter("confirmPassword");
-        if (email == null || password == null || confirmPassword == null) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse("400", "Missing required fields"));
-        }
-        if (!password.equals(confirmPassword)) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse("400", "Passwords do not match"));
-        }
-        if (userManager.userExists(email)) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse("400", "User already exists"));
-        }
+    public ResponseEntity<CommonResponse> signup(
+            String account, String password, String confirmPassword) {
+
         User newUser = new User();
-        newUser.setAccount(email);
+        newUser.setAccount(account);
         newUser.setPassword(this.passwordEncoder.encode(password));
         newUser.setEnabled(true);
         newUser.setRole(User.DEFAULT_ROLE_USER);
@@ -55,12 +41,12 @@ public class UserService {
 
         // Create corresponding user profile
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount(email);
+        userProfile.setUserId(newUser.getId());
         userProfile.setUserType(0); // Default user type
-        userProfile.setNickName(email); // Default nickname is email
+        userProfile.setNickName(account); // Default nickname is email
         userProfileMapper.insertUserProfile(userProfile);
 
-        return ResponseEntity.ok().body(new CommonResponse("200", "User registered successfully"));
+        return ResponseEntity.ok().body(new CommonResponse(200, "success"));
     }
 
     public void handleGoogleOAuth2User(OAuth2User oauth2User) {
@@ -85,10 +71,10 @@ public class UserService {
 
             // Create corresponding user profile
             UserProfile userProfile = new UserProfile();
-            userProfile.setAccount(openId);
+            userProfile.setUserId(newUser.getId());
             userProfile.setUserType(0); // Default user type
             userProfile.setNickName(name != null ? name : email); // Use name or fallback to email
-            userProfile.setUserPortrait(picture); // Google profile picture URL
+            userProfile.setAvatar(picture); // Google profile picture URL
             userProfileMapper.insertUserProfile(userProfile);
         }
     }

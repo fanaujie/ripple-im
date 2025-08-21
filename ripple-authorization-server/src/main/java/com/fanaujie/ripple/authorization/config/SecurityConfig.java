@@ -1,7 +1,10 @@
 package com.fanaujie.ripple.authorization.config;
 
 import com.fanaujie.ripple.authorization.oauth.OauthLoginAuthenticationSuccessHandler;
+import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
 import com.fanaujie.ripple.authorization.service.UserService;
+import com.fanaujie.ripple.database.mapper.UserMapper;
+import com.fanaujie.ripple.database.model.User;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.KeyUse;
@@ -24,7 +27,6 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -55,6 +57,12 @@ public class SecurityConfig {
 
     @Value("${oauth2.jwk.secret}")
     private String jwkSecret;
+
+    private final RippleUserManager userManager;
+
+    public SecurityConfig(RippleUserManager userManager) {
+        this.userManager = userManager;
+    }
 
     @Bean
     @Order(1)
@@ -144,6 +152,8 @@ public class SecurityConfig {
         return context -> {
             if (context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) {
                 context.getJwsHeader().algorithm(MacAlgorithm.HS256);
+                User u = (User) userManager.loadUserByUsername(context.getPrincipal().getName());
+                context.getClaims().subject(String.valueOf(u.getId()));
             }
         };
     }

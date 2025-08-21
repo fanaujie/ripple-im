@@ -10,11 +10,10 @@ CREATE TABLE user (
 );
 
 CREATE TABLE user_profile (
-    id  BIGINT PRIMARY KEY AUTO_INCREMENT,
-    account varchar(50) UNIQUE NOT NULL,
+    user_id BIGINT PRIMARY KEY NOT NULL,
     user_type tinyint DEFAULT '0',
     nick_name varchar(50) DEFAULT NULL,
-    user_portrait varchar(200) DEFAULT NULL,
+    avatar varchar(200) DEFAULT NULL,
     created_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 );

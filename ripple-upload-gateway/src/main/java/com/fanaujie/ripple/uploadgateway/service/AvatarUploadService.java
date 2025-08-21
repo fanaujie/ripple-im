@@ -17,7 +17,7 @@ public class AvatarUploadService {
     private final UserProfileMapper userProfileMapper;
 
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
-            String account, byte[] fileData, String objectName, String contentType) {
+            long userId, byte[] fileData, String objectName, String contentType) {
         boolean bucketExists = minioStorageService.isBucketExists();
         if (!bucketExists) {
             return ResponseEntity.status(500)
@@ -35,14 +35,13 @@ public class AvatarUploadService {
             }
         }
         try {
-            userProfileMapper.updateUserPortrait(account, avatarUrl);
+            userProfileMapper.updateAvatar(userId, avatarUrl);
         } catch (Exception e) {
-            log.error("Failed to update user profile for account {}: {}", account, e.getMessage());
+            log.error("Failed to update user profile for userId {}: {}", userId, e.getMessage());
             return ResponseEntity.status(500)
                     .body(new AvatarUploadResponse(500, "Failed to update user profile", null));
         }
         return ResponseEntity.ok(
                 new AvatarUploadResponse(200, "success", new AvatarUploadData(avatarUrl)));
     }
-
 }

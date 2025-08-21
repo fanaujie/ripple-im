@@ -24,7 +24,7 @@ class UserProfileServiceTest {
 
     @InjectMocks private UserProfileService userProfileService;
 
-    private static final String TEST_ACCOUNT = "testuser";
+    private static final long TEST_ID = 1L;
     private static final String TEST_NICKNAME = "Test User";
     private static final String TEST_PORTRAIT = "avatar.jpg";
 
@@ -35,15 +35,14 @@ class UserProfileServiceTest {
     void getUserProfile_Success() {
         // Given
         UserProfile mockProfile = new UserProfile();
-        mockProfile.setAccount(TEST_ACCOUNT);
+        mockProfile.setUserId(TEST_ID);
         mockProfile.setNickName(TEST_NICKNAME);
-        mockProfile.setUserPortrait(TEST_PORTRAIT);
+        mockProfile.setAvatar(TEST_PORTRAIT);
 
-        when(userProfileMapper.findByAccount(TEST_ACCOUNT)).thenReturn(mockProfile);
+        when(userProfileMapper.findById(TEST_ID)).thenReturn(mockProfile);
 
         // When
-        ResponseEntity<UserProfileResponse> response =
-                userProfileService.getUserProfile(TEST_ACCOUNT);
+        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
 
         // Then
         assertNotNull(response);
@@ -54,21 +53,20 @@ class UserProfileServiceTest {
 
         UserProfileData data = response.getBody().getData();
         assertNotNull(data);
-        assertEquals(TEST_ACCOUNT, data.getAccount());
+        assertEquals(TEST_ID, data.getUserId());
         assertEquals(TEST_NICKNAME, data.getNickName());
-        assertEquals(TEST_PORTRAIT, data.getUserPortrait());
+        assertEquals(TEST_PORTRAIT, data.getAvatar());
 
-        verify(userProfileMapper).findByAccount(TEST_ACCOUNT);
+        verify(userProfileMapper).findById(TEST_ID);
     }
 
     @Test
     void getUserProfile_UserNotFound() {
         // Given
-        when(userProfileMapper.findByAccount(TEST_ACCOUNT)).thenReturn(null);
+        when(userProfileMapper.findById(TEST_ID)).thenReturn(null);
 
         // When
-        ResponseEntity<UserProfileResponse> response =
-                userProfileService.getUserProfile(TEST_ACCOUNT);
+        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
 
         // Then
         assertNotNull(response);
@@ -78,18 +76,18 @@ class UserProfileServiceTest {
         assertEquals("User profile not found", response.getBody().getMessage());
         assertNull(response.getBody().getData());
 
-        verify(userProfileMapper).findByAccount(TEST_ACCOUNT);
+        verify(userProfileMapper).findById(TEST_ID);
     }
 
     @Test
     void updateNickName_Success() {
         // Given
         String newNickName = "New Nickname";
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, newNickName);
+                userProfileService.updateNickName(TEST_ID, newNickName);
 
         // Then
         assertNotNull(response);
@@ -98,19 +96,19 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper).updateNickName(TEST_ACCOUNT, newNickName);
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper).updateNickName(TEST_ID, newNickName);
     }
 
     @Test
     void updateNickName_UserNotFound() {
         // Given
         String newNickName = "New Nickname";
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(0);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, newNickName);
+                userProfileService.updateNickName(TEST_ID, newNickName);
 
         // Then
         assertNotNull(response);
@@ -119,18 +117,17 @@ class UserProfileServiceTest {
         assertEquals(401, response.getBody().getCode());
         assertEquals("User profile not found", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper, never()).updateNickName(anyString(), anyString());
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper, never()).updateNickName(anyLong(), anyString());
     }
 
     @Test
     void updateNickName_WithNullNickName() {
         // Given
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, null);
+        ResponseEntity<CommonResponse> response = userProfileService.updateNickName(TEST_ID, null);
 
         // Then
         assertNotNull(response);
@@ -139,19 +136,19 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper).updateNickName(TEST_ACCOUNT, null);
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper).updateNickName(TEST_ID, null);
     }
 
     @Test
     void updateNickName_WithEmptyNickName() {
         // Given
         String emptyNickName = "";
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, emptyNickName);
+                userProfileService.updateNickName(TEST_ID, emptyNickName);
 
         // Then
         assertNotNull(response);
@@ -160,18 +157,17 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper).updateNickName(TEST_ACCOUNT, emptyNickName);
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper).updateNickName(TEST_ID, emptyNickName);
     }
 
     @Test
     void deleteUserPortrait_Success() {
         // Given
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.deleteUserPortrait(TEST_ACCOUNT);
+        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(TEST_ID);
 
         // Then
         assertNotNull(response);
@@ -180,18 +176,17 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper).updateUserPortrait(TEST_ACCOUNT, null);
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper).updateAvatar(TEST_ID, null);
     }
 
     @Test
     void deleteUserPortrait_UserNotFound() {
         // Given
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(0);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.deleteUserPortrait(TEST_ACCOUNT);
+        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(TEST_ID);
 
         // Then
         assertNotNull(response);
@@ -200,47 +195,47 @@ class UserProfileServiceTest {
         assertEquals(401, response.getBody().getCode());
         assertEquals("User profile not found", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper, never()).updateUserPortrait(anyString(), any());
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper, never()).updateAvatar(anyLong(), any());
     }
 
     @Test
     void userProfileExists_ReturnsTrue_WhenUserExists() {
         // Given
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, "test");
+                userProfileService.updateNickName(TEST_ID, "test");
 
         // Then
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
+        verify(userProfileMapper).countById(TEST_ID);
     }
 
     @Test
     void userProfileExists_ReturnsFalse_WhenUserDoesNotExist() {
         // Given
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(0);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, "test");
+                userProfileService.updateNickName(TEST_ID, "test");
 
         // Then
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
+        verify(userProfileMapper).countById(TEST_ID);
     }
 
     @Test
     void updateNickName_WithLongNickName() {
         // Given
         String longNickName = "This is a very long nickname that might exceed normal limits";
-        when(userProfileMapper.countByAccount(TEST_ACCOUNT)).thenReturn(1);
+        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
 
         // When
         ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ACCOUNT, longNickName);
+                userProfileService.updateNickName(TEST_ID, longNickName);
 
         // Then
         assertNotNull(response);
@@ -249,23 +244,22 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countByAccount(TEST_ACCOUNT);
-        verify(userProfileMapper).updateNickName(TEST_ACCOUNT, longNickName);
+        verify(userProfileMapper).countById(TEST_ID);
+        verify(userProfileMapper).updateNickName(TEST_ID, longNickName);
     }
 
     @Test
     void getUserProfile_WithNullPortrait() {
         // Given
         UserProfile mockProfile = new UserProfile();
-        mockProfile.setAccount(TEST_ACCOUNT);
+        mockProfile.setUserId(TEST_ID);
         mockProfile.setNickName(TEST_NICKNAME);
-        mockProfile.setUserPortrait(null);
+        mockProfile.setAvatar(null);
 
-        when(userProfileMapper.findByAccount(TEST_ACCOUNT)).thenReturn(mockProfile);
+        when(userProfileMapper.findById(TEST_ID)).thenReturn(mockProfile);
 
         // When
-        ResponseEntity<UserProfileResponse> response =
-                userProfileService.getUserProfile(TEST_ACCOUNT);
+        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
 
         // Then
         assertNotNull(response);
@@ -276,10 +270,10 @@ class UserProfileServiceTest {
 
         UserProfileData data = response.getBody().getData();
         assertNotNull(data);
-        assertEquals(TEST_ACCOUNT, data.getAccount());
+        assertEquals(TEST_ID, data.getUserId());
         assertEquals(TEST_NICKNAME, data.getNickName());
-        assertNull(data.getUserPortrait());
+        assertNull(data.getAvatar());
 
-        verify(userProfileMapper).findByAccount(TEST_ACCOUNT);
+        verify(userProfileMapper).findById(TEST_ID);
     }
 }

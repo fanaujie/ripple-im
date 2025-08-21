@@ -67,19 +67,21 @@ class UserProfileMapperTest {
     @Test
     void testInsertAndFindUserProfile() {
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount("testuser");
+        userProfile.setUserId(1);
         userProfile.setUserType(1);
         userProfile.setNickName("Test User");
-        userProfile.setUserPortrait("avatar.jpg");
+        userProfile.setAvatar("avatar.jpg");
 
         userProfileMapper.insertUserProfile(userProfile);
+        long insertedId = userProfile.getUserId();
+        assertTrue(insertedId > 0);
 
-        UserProfile foundProfile = userProfileMapper.findByAccount("testuser");
+        UserProfile foundProfile = userProfileMapper.findById(insertedId);
         assertNotNull(foundProfile);
-        assertEquals("testuser", foundProfile.getAccount());
+        assertEquals(insertedId, foundProfile.getUserId());
         assertEquals(1, foundProfile.getUserType());
         assertEquals("Test User", foundProfile.getNickName());
-        assertEquals("avatar.jpg", foundProfile.getUserPortrait());
+        assertEquals("avatar.jpg", foundProfile.getAvatar());
         assertNotNull(foundProfile.getCreatedTime());
         assertNotNull(foundProfile.getUpdatedTime());
     }
@@ -87,66 +89,71 @@ class UserProfileMapperTest {
     @Test
     void testUpdateUserProfile() {
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount("testuser");
+        userProfile.setUserId(1);
         userProfile.setUserType(0);
         userProfile.setNickName("Original Name");
-        userProfile.setUserPortrait("original.jpg");
+        userProfile.setAvatar("original.jpg");
 
         userProfileMapper.insertUserProfile(userProfile);
+        long insertedId = userProfile.getUserId();
 
         UserProfile updateProfile = new UserProfile();
-        updateProfile.setAccount("testuser");
+        updateProfile.setUserId(1);
+        updateProfile.setUserId(insertedId);
         updateProfile.setUserType(1);
         updateProfile.setNickName("Updated Name");
-        updateProfile.setUserPortrait("updated.jpg");
+        updateProfile.setAvatar("updated.jpg");
 
         userProfileMapper.updateUserProfile(updateProfile);
 
-        UserProfile foundProfile = userProfileMapper.findByAccount("testuser");
+        UserProfile foundProfile = userProfileMapper.findById(insertedId);
         assertNotNull(foundProfile);
         assertEquals(1, foundProfile.getUserType());
         assertEquals("Updated Name", foundProfile.getNickName());
-        assertEquals("updated.jpg", foundProfile.getUserPortrait());
+        assertEquals("updated.jpg", foundProfile.getAvatar());
     }
 
     @Test
     void testDeleteUserProfile() {
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount("testuser");
+        userProfile.setUserId(1);
         userProfile.setUserType(0);
 
         userProfileMapper.insertUserProfile(userProfile);
-        assertTrue(userProfileMapper.countByAccount("testuser") > 0);
+        long insertedId = userProfile.getUserId();
+        assertTrue(userProfileMapper.countById(insertedId) > 0);
 
-        userProfileMapper.deleteUserProfile("testuser");
-        assertEquals(0, userProfileMapper.countByAccount("testuser"));
+        userProfileMapper.deleteUserProfile(insertedId);
+        assertEquals(0, userProfileMapper.countById(insertedId));
     }
 
     @Test
     void testUpdateNickName() {
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount("testuser");
+        userProfile.setUserId(1);
         userProfile.setNickName("Original Name");
 
         userProfileMapper.insertUserProfile(userProfile);
+        long insertedId = userProfile.getUserId();
 
-        userProfileMapper.updateNickName("testuser", "New Nickname");
+        userProfileMapper.updateNickName(insertedId, "New Nickname");
 
-        UserProfile foundProfile = userProfileMapper.findByAccount("testuser");
+        UserProfile foundProfile = userProfileMapper.findById(insertedId);
         assertEquals("New Nickname", foundProfile.getNickName());
     }
 
     @Test
     void testUpdateUserPortrait() {
         UserProfile userProfile = new UserProfile();
-        userProfile.setAccount("testuser");
-        userProfile.setUserPortrait("original.jpg");
+        userProfile.setUserId(1);
+        userProfile.setAvatar("original.jpg");
 
         userProfileMapper.insertUserProfile(userProfile);
+        long insertedId = userProfile.getUserId();
 
-        userProfileMapper.updateUserPortrait("testuser", "new_avatar.jpg");
+        userProfileMapper.updateAvatar(insertedId, "new_avatar.jpg");
 
-        UserProfile foundProfile = userProfileMapper.findByAccount("testuser");
-        assertEquals("new_avatar.jpg", foundProfile.getUserPortrait());
+        UserProfile foundProfile = userProfileMapper.findById(insertedId);
+        assertEquals("new_avatar.jpg", foundProfile.getAvatar());
     }
 }

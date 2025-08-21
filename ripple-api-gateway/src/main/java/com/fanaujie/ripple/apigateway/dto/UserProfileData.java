@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserProfileData {
-    private String account;
+    private long userId;
     private String nickName;
-    private String userPortrait;
+    private String avatar;
 }

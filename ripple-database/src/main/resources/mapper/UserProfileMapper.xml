@@ -5,57 +5,56 @@
 
 <mapper namespace="com.fanaujie.ripple.database.mapper.UserProfileMapper">
     <resultMap id="UserProfileResultMap" type="UserProfile">
-        <id property="id" column="id"/>
-        <result property="account" column="account"/>
+        <id property="userId" column="user_id"/>
         <result property="userType" column="user_type"/>
         <result property="nickName" column="nick_name"/>
-        <result property="userPortrait" column="user_portrait"/>
+        <result property="avatar" column="avatar"/>
         <result property="createdTime" column="created_time"/>
         <result property="updatedTime" column="updated_time"/>
     </resultMap>
 
-    <select id="findByAccount" parameterType="string" resultMap="UserProfileResultMap">
-        SELECT up.id, up.account, up.user_type, up.nick_name, up.user_portrait, up.created_time, up.updated_time
-        FROM user_profile up
-        WHERE up.account = #{account}
+    <select id="findById" parameterType="long" resultMap="UserProfileResultMap">
+        SELECT user_id, user_type, nick_name, avatar, created_time, updated_time
+        FROM user_profile
+        WHERE user_id = #{userId}
     </select>
 
     <insert id="insertUserProfile" parameterType="UserProfile"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user_profile (account, user_type, nick_name, user_portrait)
-        VALUES (#{account}, #{userType}, #{nickName}, #{userPortrait})
+        INSERT INTO user_profile (user_id, user_type, nick_name, avatar)
+        VALUES (#{userId}, #{userType}, #{nickName}, #{avatar})
     </insert>
 
     <update id="updateUserProfile" parameterType="UserProfile">
         UPDATE user_profile
         SET user_type = #{userType},
             nick_name = #{nickName},
-            user_portrait = #{userPortrait}
-        WHERE account = #{account}
+            avatar    = #{avatar}
+        WHERE user_id = #{userId}
     </update>
 
-    <delete id="deleteUserProfile" parameterType="string">
+    <delete id="deleteUserProfile" parameterType="long">
         DELETE
         FROM user_profile
-        WHERE account = #{account}
+        WHERE user_id = #{userId}
     </delete>
 
-    <select id="countByAccount" parameterType="string" resultType="int">
+    <select id="countById" parameterType="long" resultType="int">
         SELECT COUNT(*)
         FROM user_profile
-        WHERE account = #{account}
+        WHERE user_id = #{userId}
     </select>
 
     <update id="updateNickName">
         UPDATE user_profile
         SET nick_name = #{nickName}
-        WHERE account = #{account}
+        WHERE user_id = #{userId}
     </update>
 
-    <update id="updateUserPortrait">
+    <update id="updateAvatar">
         UPDATE user_profile
-        SET user_portrait = #{userPortrait}
-        WHERE account = #{account}
+        SET avatar = #{avatar}
+        WHERE user_id = #{userId}
     </update>
 
 </mapper>
