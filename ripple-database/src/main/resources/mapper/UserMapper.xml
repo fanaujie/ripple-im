@@ -5,50 +5,43 @@
 
 <mapper namespace="com.fanaujie.ripple.database.mapper.UserMapper">
     <resultMap id="UserResultMap" type="User">
-        <id property="id" column="id"/>
+        <id property="userId" column="user_id"/>
         <result property="account" column="account"/>
         <result property="password" column="password"/>
-        <result property="enabled" column="enabled"/>
+        <result property="userProfileStatus" column="status"/>
         <result property="role" column="role"/>
         <result property="createdTime" column="created_time"/>
         <result property="updatedTime" column="updated_time"/>
     </resultMap>
 
     <select id="findByAccount" parameterType="string" resultMap="UserResultMap">
-        SELECT u.id, u.account, u.password, u.enabled, u.role, u.created_time, u.updated_time
+        SELECT u.user_id,
+               u.account,
+               u.password,
+               u.role,
+               u.created_time,
+               u.updated_time,
+               COALESCE(up.status, 0) AS status
         FROM user u
+                 LEFT JOIN user_profile up ON u.user_id = up.user_id
         WHERE u.account = #{account}
     </select>
 
 
-    <insert id="insertUser" parameterType="User"
-            useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (account, password, enabled, role)
-        VALUES (#{account}, #{password}, #{enabled}, #{role})
+    <insert id="insertUser" parameterType="User">
+        INSERT INTO user (user_id, account, password, role)
+        VALUES (#{userId}, #{account}, #{password}, #{role})
     </insert>
 
     <update id="updateUser" parameterType="User">
         UPDATE user
         SET password = #{password},
-            enabled  = #{enabled},
             role     = #{role}
         WHERE account = #{account}
     </update>
-
-    <delete id="deleteUser" parameterType="string">
-        DELETE
-        FROM user
-        WHERE account = #{account}
-    </delete>
-
-    <select id="countByAccount" parameterType="string" resultType="int">
-        SELECT COUNT(*)
-        FROM user
-        WHERE account = #{account}
-    </select>
-
+    
     <select id="findUserIdByAccount" parameterType="string" resultType="Long">
-        SELECT id
+        SELECT user_id
         FROM user
         WHERE account = #{account}
     </select>
@@ -59,5 +52,6 @@
         SET password = #{newPassword}
         WHERE account = #{account}
     </update>
+
 
 </mapper>

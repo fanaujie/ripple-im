@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.authorization.controller;
 
-import com.fanaujie.ripple.authorization.model.api.CommonResponse;
+import com.fanaujie.ripple.authorization.dto.CommonResponse;
 import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
 import com.fanaujie.ripple.authorization.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;

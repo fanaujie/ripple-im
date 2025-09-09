@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.snowflakeid.client;
 
-import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdRequest;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -22,12 +21,17 @@ public class ClientHandler extends SimpleChannelInboundHandler<GenerateIdRespons
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, GenerateIdResponse generateIdResponse) throws Exception {
-        CompletableFuture<GenerateIdResponse> v = this.responseFutures.get(generateIdResponse.getRequestId());
+    protected void channelRead0(
+            ChannelHandlerContext channelHandlerContext, GenerateIdResponse generateIdResponse)
+            throws Exception {
+        CompletableFuture<GenerateIdResponse> v =
+                this.responseFutures.get(generateIdResponse.getRequestId());
         if (v != null) {
             v.complete(generateIdResponse);
         } else {
-            logger.warn("Received response for unknown requestId: {}", generateIdResponse.getRequestId());
+            logger.warn(
+                    "Received response for unknown requestId: {}",
+                    generateIdResponse.getRequestId());
         }
     }
 }

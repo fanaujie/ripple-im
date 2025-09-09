@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.authorization.model.api;
+package com.fanaujie.ripple.authorization.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

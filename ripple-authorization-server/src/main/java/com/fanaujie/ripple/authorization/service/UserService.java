@@ -1,10 +1,10 @@
 package com.fanaujie.ripple.authorization.service;
 
-import com.fanaujie.ripple.authorization.model.api.CommonResponse;
+import com.fanaujie.ripple.authorization.dto.CommonResponse;
 import com.fanaujie.ripple.database.model.User;
 import com.fanaujie.ripple.database.model.UserProfile;
-import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -17,15 +17,15 @@ public class UserService {
 
     private final RippleUserManager userManager;
     private final PasswordEncoder passwordEncoder;
-    private final UserProfileMapper userProfileMapper;
+    private final IUserProfileStorage userProfileStorage;
 
     public UserService(
             RippleUserManager userManager,
             PasswordEncoder passwordEncoder,
-            UserProfileMapper userProfileMapper) {
+            IUserProfileStorage userProfileStorage) {
         this.userManager = userManager;
         this.passwordEncoder = passwordEncoder;
-        this.userProfileMapper = userProfileMapper;
+        this.userProfileStorage = userProfileStorage;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -35,16 +35,12 @@ public class UserService {
         User newUser = new User();
         newUser.setAccount(account);
         newUser.setPassword(this.passwordEncoder.encode(password));
-        newUser.setEnabled(true);
         newUser.setRole(User.DEFAULT_ROLE_USER);
         userManager.createUser(newUser);
 
         // Create corresponding user profile
-        UserProfile userProfile = new UserProfile();
-        userProfile.setUserId(newUser.getId());
-        userProfile.setUserType(0); // Default user type
-        userProfile.setNickName(account); // Default nickname is email
-        userProfileMapper.insertUserProfile(userProfile);
+        this.userProfileStorage.insertUserProfile(
+                newUser.getUserId(), 0, UserProfile.STATUS_NORMAL, account, null);
 
         return ResponseEntity.ok().body(new CommonResponse(200, "success"));
     }
@@ -65,17 +61,16 @@ public class UserService {
             User newUser = new User();
             newUser.setAccount(openId);
             newUser.setPassword(""); // No password for OAuth2 users
-            newUser.setEnabled(true);
             newUser.setRole(User.DEFAULT_ROLE_USER);
             userManager.createUser(newUser);
 
             // Create corresponding user profile
-            UserProfile userProfile = new UserProfile();
-            userProfile.setUserId(newUser.getId());
-            userProfile.setUserType(0); // Default user type
-            userProfile.setNickName(name != null ? name : email); // Use name or fallback to email
-            userProfile.setAvatar(picture); // Google profile picture URL
-            userProfileMapper.insertUserProfile(userProfile);
+            this.userProfileStorage.insertUserProfile(
+                    newUser.getUserId(),
+                    0, // Default user type
+                    UserProfile.STATUS_NORMAL,
+                    name != null ? name : email, // Use name or fallback to email
+                    picture); // Google profile picture URL
         }
     }
 }

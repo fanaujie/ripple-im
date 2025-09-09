@@ -10,7 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -22,13 +22,14 @@ import java.util.Objects;
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public class User implements UserDetails {
     public static final String DEFAULT_ROLE_USER = "ROLE_user";
-    private long id;
+    private long userId;
     private String account;
     private String password;
-    private boolean enabled;
     private String role;
-    private LocalDateTime createdTime;
-    private LocalDateTime updatedTime;
+    private Instant createdTime;
+    private Instant updatedTime;
+    // join from user_profile table
+    private int userProfileStatus;
 
     @Override
     @JsonIgnore
@@ -60,7 +61,7 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public boolean isEnabled() {
-        return enabled;
+        return userProfileStatus == 0;
     }
 
     @Override

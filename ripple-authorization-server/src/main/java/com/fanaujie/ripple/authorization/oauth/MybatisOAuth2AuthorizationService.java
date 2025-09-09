@@ -13,7 +13,6 @@ import com.fanaujie.ripple.database.mapper.AuthorizationMapper;
 import com.fanaujie.ripple.database.model.Authorization;
 
 import org.springframework.dao.DataRetrievalFailureException;
-import org.springframework.security.jackson2.CoreJackson2Module;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
@@ -41,7 +40,9 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
     private final RegisteredClientRepository registeredClientRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public MybatisOAuth2AuthorizationService(AuthorizationMapper authorizationMapper, RegisteredClientRepository registeredClientRepository) {
+    public MybatisOAuth2AuthorizationService(
+            AuthorizationMapper authorizationMapper,
+            RegisteredClientRepository registeredClientRepository) {
         Assert.notNull(authorizationMapper, "authorizationMapper cannot be null");
         Assert.notNull(registeredClientRepository, "registeredClientRepository cannot be null");
         this.authorizationMapper = authorizationMapper;
@@ -77,7 +78,10 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
 
         Optional<Authorization> result;
         if (tokenType == null) {
-            result = this.authorizationMapper.findByStateOrAuthorizationCodeValueOrAccessTokenValueOrRefreshTokenValueOrOidcIdTokenValueOrUserCodeValueOrDeviceCodeValue(token);
+            result =
+                    this.authorizationMapper
+                            .findByStateOrAuthorizationCodeValueOrAccessTokenValueOrRefreshTokenValueOrOidcIdTokenValueOrUserCodeValueOrDeviceCodeValue(
+                                    token);
         } else if (OAuth2ParameterNames.STATE.equals(tokenType.getValue())) {
             result = this.authorizationMapper.findByState(token);
         } else if (OAuth2ParameterNames.CODE.equals(tokenType.getValue())) {
@@ -100,71 +104,95 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
     }
 
     private OAuth2Authorization toObject(Authorization entity) {
-        RegisteredClient registeredClient = this.registeredClientRepository.findById(entity.getRegisteredClientId());
+        RegisteredClient registeredClient =
+                this.registeredClientRepository.findById(entity.getRegisteredClientId());
         if (registeredClient == null) {
             throw new DataRetrievalFailureException(
-                    "The RegisteredClient with id '" + entity.getRegisteredClientId() + "' was not found in the RegisteredClientRepository.");
+                    "The RegisteredClient with id '"
+                            + entity.getRegisteredClientId()
+                            + "' was not found in the RegisteredClientRepository.");
         }
 
-        OAuth2Authorization.Builder builder = OAuth2Authorization.withRegisteredClient(registeredClient)
-                .id(entity.getId())
-                .principalName(entity.getPrincipalName())
-                .authorizationGrantType(resolveAuthorizationGrantType(entity.getAuthorizationGrantType()))
-                .authorizedScopes(StringUtils.commaDelimitedListToSet(entity.getAuthorizedScopes()))
-                .attributes(attributes -> attributes.putAll(parseMap(entity.getAttributes())));
+        OAuth2Authorization.Builder builder =
+                OAuth2Authorization.withRegisteredClient(registeredClient)
+                        .id(entity.getId())
+                        .principalName(entity.getPrincipalName())
+                        .authorizationGrantType(
+                                resolveAuthorizationGrantType(entity.getAuthorizationGrantType()))
+                        .authorizedScopes(
+                                StringUtils.commaDelimitedListToSet(entity.getAuthorizedScopes()))
+                        .attributes(
+                                attributes -> attributes.putAll(parseMap(entity.getAttributes())));
         if (entity.getState() != null) {
             builder.attribute(OAuth2ParameterNames.STATE, entity.getState());
         }
 
         if (entity.getAuthorizationCodeValue() != null) {
-            OAuth2AuthorizationCode authorizationCode = new OAuth2AuthorizationCode(
-                    entity.getAuthorizationCodeValue(),
-                    entity.getAuthorizationCodeIssuedAt(),
-                    entity.getAuthorizationCodeExpiresAt());
-            builder.token(authorizationCode, metadata -> metadata.putAll(parseMap(entity.getAuthorizationCodeMetadata())));
+            OAuth2AuthorizationCode authorizationCode =
+                    new OAuth2AuthorizationCode(
+                            entity.getAuthorizationCodeValue(),
+                            entity.getAuthorizationCodeIssuedAt(),
+                            entity.getAuthorizationCodeExpiresAt());
+            builder.token(
+                    authorizationCode,
+                    metadata -> metadata.putAll(parseMap(entity.getAuthorizationCodeMetadata())));
         }
 
         if (entity.getAccessTokenValue() != null) {
-            OAuth2AccessToken accessToken = new OAuth2AccessToken(
-                    OAuth2AccessToken.TokenType.BEARER,
-                    entity.getAccessTokenValue(),
-                    entity.getAccessTokenIssuedAt(),
-                    entity.getAccessTokenExpiresAt(),
-                    StringUtils.commaDelimitedListToSet(entity.getAccessTokenScopes()));
-            builder.token(accessToken, metadata -> metadata.putAll(parseMap(entity.getAccessTokenMetadata())));
+            OAuth2AccessToken accessToken =
+                    new OAuth2AccessToken(
+                            OAuth2AccessToken.TokenType.BEARER,
+                            entity.getAccessTokenValue(),
+                            entity.getAccessTokenIssuedAt(),
+                            entity.getAccessTokenExpiresAt(),
+                            StringUtils.commaDelimitedListToSet(entity.getAccessTokenScopes()));
+            builder.token(
+                    accessToken,
+                    metadata -> metadata.putAll(parseMap(entity.getAccessTokenMetadata())));
         }
 
         if (entity.getRefreshTokenValue() != null) {
-            OAuth2RefreshToken refreshToken = new OAuth2RefreshToken(
-                    entity.getRefreshTokenValue(),
-                    entity.getRefreshTokenIssuedAt(),
-                    entity.getRefreshTokenExpiresAt());
-            builder.token(refreshToken, metadata -> metadata.putAll(parseMap(entity.getRefreshTokenMetadata())));
+            OAuth2RefreshToken refreshToken =
+                    new OAuth2RefreshToken(
+                            entity.getRefreshTokenValue(),
+                            entity.getRefreshTokenIssuedAt(),
+                            entity.getRefreshTokenExpiresAt());
+            builder.token(
+                    refreshToken,
+                    metadata -> metadata.putAll(parseMap(entity.getRefreshTokenMetadata())));
         }
 
         if (entity.getOidcIdTokenValue() != null) {
-            OidcIdToken idToken = new OidcIdToken(
-                    entity.getOidcIdTokenValue(),
-                    entity.getOidcIdTokenIssuedAt(),
-                    entity.getOidcIdTokenExpiresAt(),
-                    parseMap(entity.getOidcIdTokenClaims()));
-            builder.token(idToken, metadata -> metadata.putAll(parseMap(entity.getOidcIdTokenMetadata())));
+            OidcIdToken idToken =
+                    new OidcIdToken(
+                            entity.getOidcIdTokenValue(),
+                            entity.getOidcIdTokenIssuedAt(),
+                            entity.getOidcIdTokenExpiresAt(),
+                            parseMap(entity.getOidcIdTokenClaims()));
+            builder.token(
+                    idToken,
+                    metadata -> metadata.putAll(parseMap(entity.getOidcIdTokenMetadata())));
         }
 
         if (entity.getUserCodeValue() != null) {
-            OAuth2UserCode userCode = new OAuth2UserCode(
-                    entity.getUserCodeValue(),
-                    entity.getUserCodeIssuedAt(),
-                    entity.getUserCodeExpiresAt());
-            builder.token(userCode, metadata -> metadata.putAll(parseMap(entity.getUserCodeMetadata())));
+            OAuth2UserCode userCode =
+                    new OAuth2UserCode(
+                            entity.getUserCodeValue(),
+                            entity.getUserCodeIssuedAt(),
+                            entity.getUserCodeExpiresAt());
+            builder.token(
+                    userCode, metadata -> metadata.putAll(parseMap(entity.getUserCodeMetadata())));
         }
 
         if (entity.getDeviceCodeValue() != null) {
-            OAuth2DeviceCode deviceCode = new OAuth2DeviceCode(
-                    entity.getDeviceCodeValue(),
-                    entity.getDeviceCodeIssuedAt(),
-                    entity.getDeviceCodeExpiresAt());
-            builder.token(deviceCode, metadata -> metadata.putAll(parseMap(entity.getDeviceCodeMetadata())));
+            OAuth2DeviceCode deviceCode =
+                    new OAuth2DeviceCode(
+                            entity.getDeviceCodeValue(),
+                            entity.getDeviceCodeIssuedAt(),
+                            entity.getDeviceCodeExpiresAt());
+            builder.token(
+                    deviceCode,
+                    metadata -> metadata.putAll(parseMap(entity.getDeviceCodeMetadata())));
         }
 
         return builder.build();
@@ -176,7 +204,8 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
         entity.setRegisteredClientId(authorization.getRegisteredClientId());
         entity.setPrincipalName(authorization.getPrincipalName());
         entity.setAuthorizationGrantType(authorization.getAuthorizationGrantType().getValue());
-        entity.setAuthorizedScopes(StringUtils.collectionToDelimitedString(authorization.getAuthorizedScopes(), ","));
+        entity.setAuthorizedScopes(
+                StringUtils.collectionToDelimitedString(authorization.getAuthorizedScopes(), ","));
         entity.setAttributes(writeMap(authorization.getAttributes()));
         entity.setState(authorization.getAttribute(OAuth2ParameterNames.STATE));
 
@@ -187,8 +216,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setAuthorizationCodeValue,
                 entity::setAuthorizationCodeIssuedAt,
                 entity::setAuthorizationCodeExpiresAt,
-                entity::setAuthorizationCodeMetadata
-        );
+                entity::setAuthorizationCodeMetadata);
 
         OAuth2Authorization.Token<OAuth2AccessToken> accessToken =
                 authorization.getToken(OAuth2AccessToken.class);
@@ -197,10 +225,11 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setAccessTokenValue,
                 entity::setAccessTokenIssuedAt,
                 entity::setAccessTokenExpiresAt,
-                entity::setAccessTokenMetadata
-        );
+                entity::setAccessTokenMetadata);
         if (accessToken != null && accessToken.getToken().getScopes() != null) {
-            entity.setAccessTokenScopes(StringUtils.collectionToDelimitedString(accessToken.getToken().getScopes(), ","));
+            entity.setAccessTokenScopes(
+                    StringUtils.collectionToDelimitedString(
+                            accessToken.getToken().getScopes(), ","));
         }
 
         OAuth2Authorization.Token<OAuth2RefreshToken> refreshToken =
@@ -210,8 +239,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setRefreshTokenValue,
                 entity::setRefreshTokenIssuedAt,
                 entity::setRefreshTokenExpiresAt,
-                entity::setRefreshTokenMetadata
-        );
+                entity::setRefreshTokenMetadata);
 
         OAuth2Authorization.Token<OidcIdToken> oidcIdToken =
                 authorization.getToken(OidcIdToken.class);
@@ -220,8 +248,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setOidcIdTokenValue,
                 entity::setOidcIdTokenIssuedAt,
                 entity::setOidcIdTokenExpiresAt,
-                entity::setOidcIdTokenMetadata
-        );
+                entity::setOidcIdTokenMetadata);
         if (oidcIdToken != null) {
             entity.setOidcIdTokenClaims(writeMap(oidcIdToken.getClaims()));
         }
@@ -233,8 +260,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setUserCodeValue,
                 entity::setUserCodeIssuedAt,
                 entity::setUserCodeExpiresAt,
-                entity::setUserCodeMetadata
-        );
+                entity::setUserCodeMetadata);
 
         OAuth2Authorization.Token<OAuth2DeviceCode> deviceCode =
                 authorization.getToken(OAuth2DeviceCode.class);
@@ -243,8 +269,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
                 entity::setDeviceCodeValue,
                 entity::setDeviceCodeIssuedAt,
                 entity::setDeviceCodeExpiresAt,
-                entity::setDeviceCodeMetadata
-        );
+                entity::setDeviceCodeMetadata);
 
         return entity;
     }
@@ -266,8 +291,7 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
 
     private Map<String, Object> parseMap(String data) {
         try {
-            return this.objectMapper.readValue(data, new TypeReference<Map<String, Object>>() {
-            });
+            return this.objectMapper.readValue(data, new TypeReference<Map<String, Object>>() {});
         } catch (Exception ex) {
             throw new IllegalArgumentException(ex.getMessage(), ex);
         }
@@ -281,10 +305,13 @@ public class MybatisOAuth2AuthorizationService implements OAuth2AuthorizationSer
         }
     }
 
-    private static AuthorizationGrantType resolveAuthorizationGrantType(String authorizationGrantType) {
+    private static AuthorizationGrantType resolveAuthorizationGrantType(
+            String authorizationGrantType) {
         if (AuthorizationGrantType.AUTHORIZATION_CODE.getValue().equals(authorizationGrantType)) {
             return AuthorizationGrantType.AUTHORIZATION_CODE;
-        } else if (AuthorizationGrantType.CLIENT_CREDENTIALS.getValue().equals(authorizationGrantType)) {
+        } else if (AuthorizationGrantType.CLIENT_CREDENTIALS
+                .getValue()
+                .equals(authorizationGrantType)) {
             return AuthorizationGrantType.CLIENT_CREDENTIALS;
         } else if (AuthorizationGrantType.REFRESH_TOKEN.getValue().equals(authorizationGrantType)) {
             return AuthorizationGrantType.REFRESH_TOKEN;

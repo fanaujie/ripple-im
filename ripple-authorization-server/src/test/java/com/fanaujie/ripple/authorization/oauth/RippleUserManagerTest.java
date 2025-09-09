@@ -1,7 +1,9 @@
 package com.fanaujie.ripple.authorization.oauth;
 
-import com.fanaujie.ripple.database.mapper.UserMapper;
 import com.fanaujie.ripple.database.model.User;
+import com.fanaujie.ripple.database.model.UserProfile;
+import com.fanaujie.ripple.database.service.IUserStorage;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest()
 @Testcontainers
 class RippleUserManagerTest {
 
@@ -39,7 +41,9 @@ class RippleUserManagerTest {
 
     @Autowired private RippleUserManager rippleUserManager;
 
-    @Autowired private UserMapper userMapper;
+    @Autowired private IUserStorage userStorage;
+
+    @Autowired private IUserProfileStorage userProfileStorage;
 
     @BeforeEach
     void setUp() {
@@ -67,7 +71,7 @@ class RippleUserManagerTest {
         User testUser = new User();
         testUser.setAccount("testuser");
         testUser.setPassword("password123");
-        testUser.setEnabled(true);
+        testUser.setUserProfileStatus(0);
         testUser.setRole(User.DEFAULT_ROLE_USER);
 
         rippleUserManager.createUser(testUser);
@@ -82,16 +86,17 @@ class RippleUserManagerTest {
     @Test
     void testCreateUserWithDefaultRole() {
         User testUser = new User();
+        testUser.setUserId(1);
         testUser.setAccount("testuser");
         testUser.setPassword("password123");
-        testUser.setEnabled(true);
+        testUser.setUserProfileStatus(0);
         testUser.setRole(User.DEFAULT_ROLE_USER);
 
         rippleUserManager.createUser(testUser);
 
-        User createdUser = userMapper.findByAccount("testuser");
+        User createdUser = userStorage.findByAccount("testuser");
         assertNotNull(createdUser);
-        assertNotEquals(0, createdUser.getId());
+        assertNotEquals(0, createdUser.getUserId());
         assertEquals(User.DEFAULT_ROLE_USER, createdUser.getRole());
     }
 
@@ -100,17 +105,19 @@ class RippleUserManagerTest {
         User testUser = new User();
         testUser.setAccount("testuser");
         testUser.setPassword("password123");
-        testUser.setEnabled(true);
         testUser.setRole(User.DEFAULT_ROLE_USER);
-
+        userProfileStorage.insertUserProfile(
+                testUser.getUserId(), 0, UserProfile.STATUS_NORMAL, "Test User", null);
         rippleUserManager.createUser(testUser);
 
         User updatedUser = new User();
         updatedUser.setAccount("testuser");
         updatedUser.setPassword("newpassword");
-        updatedUser.setEnabled(false);
         updatedUser.setRole(User.DEFAULT_ROLE_USER);
-
+        assertDoesNotThrow(
+                () ->
+                        userProfileStorage.updateStatusByUserId(
+                                updatedUser.getUserId(), UserProfile.STATUS_FORBIDDEN));
         rippleUserManager.updateUser(updatedUser);
 
         UserDetails loadedUser = rippleUserManager.loadUserByUsername("testuser");
@@ -120,52 +127,13 @@ class RippleUserManagerTest {
     }
 
     @Test
-    void testDeleteUser() {
-        User testUser = new User();
-        testUser.setAccount("testuser");
-        testUser.setPassword("password123");
-        testUser.setEnabled(true);
-        testUser.setRole(User.DEFAULT_ROLE_USER);
-
-        rippleUserManager.createUser(testUser);
-        assertTrue(rippleUserManager.userExists("testuser"));
-
-        rippleUserManager.deleteUser("testuser");
-        assertFalse(rippleUserManager.userExists("testuser"));
-    }
-
-    @Test
-    void testDeleteUserWithRoles() {
-        User testUser = new User();
-        testUser.setAccount("testuser");
-        testUser.setPassword("password123");
-        testUser.setEnabled(true);
-        testUser.setRole(User.DEFAULT_ROLE_USER);
-
-        rippleUserManager.createUser(testUser);
-        assertTrue(rippleUserManager.userExists("testuser"));
-
-        rippleUserManager.deleteUser("testuser");
-        assertFalse(rippleUserManager.userExists("testuser"));
-
-        User deletedUser = userMapper.findByAccount("testuser");
-        assertNull(deletedUser);
-    }
-
-    @Test
-    void testDeleteNonExistentUser() {
-        assertFalse(rippleUserManager.userExists("nonexistent"));
-        assertDoesNotThrow(() -> rippleUserManager.deleteUser("nonexistent"));
-    }
-
-    @Test
     void testUserExists() {
         assertFalse(rippleUserManager.userExists("testuser"));
 
         User testUser = new User();
         testUser.setAccount("testuser");
         testUser.setPassword("password123");
-        testUser.setEnabled(true);
+        testUser.setUserProfileStatus(0);
         testUser.setRole(User.DEFAULT_ROLE_USER);
 
         rippleUserManager.createUser(testUser);
@@ -177,7 +145,7 @@ class RippleUserManagerTest {
         User testUser = new User();
         testUser.setAccount("testuser");
         testUser.setPassword("password123");
-        testUser.setEnabled(true);
+        testUser.setUserProfileStatus(0);
         testUser.setRole(User.DEFAULT_ROLE_USER);
 
         rippleUserManager.createUser(testUser);
@@ -203,15 +171,15 @@ class RippleUserManagerTest {
 
     @Test
     void testCreateUserWithDisabledStatus() {
+        String account = "disableduser";
         User testUser = new User();
-        testUser.setAccount("disableduser");
+        testUser.setAccount(account);
         testUser.setPassword("password123");
-        testUser.setEnabled(false);
         testUser.setRole(User.DEFAULT_ROLE_USER);
-
         rippleUserManager.createUser(testUser);
-
-        UserDetails loadedUser = rippleUserManager.loadUserByUsername("disableduser");
+        userProfileStorage.insertUserProfile(
+                testUser.getUserId(), 0, UserProfile.STATUS_FORBIDDEN, "Disabled User", null);
+        UserDetails loadedUser = rippleUserManager.loadUserByUsername(account);
         assertFalse(loadedUser.isEnabled());
     }
 
@@ -219,24 +187,22 @@ class RippleUserManagerTest {
     void testMultipleUsersOperations() {
         User user1 = new User();
         user1.setAccount("user1");
+        user1.setUserId(1);
         user1.setPassword("password1");
-        user1.setEnabled(true);
+        user1.setUserProfileStatus(0);
         user1.setRole(User.DEFAULT_ROLE_USER);
 
         User user2 = new User();
         user2.setAccount("user2");
+        user1.setUserId(2);
         user2.setPassword("password2");
-        user2.setEnabled(true);
+        user2.setUserProfileStatus(0);
         user2.setRole(User.DEFAULT_ROLE_USER);
 
         rippleUserManager.createUser(user1);
         rippleUserManager.createUser(user2);
 
         assertTrue(rippleUserManager.userExists("user1"));
-        assertTrue(rippleUserManager.userExists("user2"));
-
-        rippleUserManager.deleteUser("user1");
-        assertFalse(rippleUserManager.userExists("user1"));
         assertTrue(rippleUserManager.userExists("user2"));
     }
 
@@ -245,7 +211,7 @@ class RippleUserManagerTest {
         User user = new User();
         user.setAccount("testuser");
         user.setPassword("password123");
-        user.setEnabled(true);
+        user.setUserProfileStatus(0);
         user.setRole("ROLE_USER");
 
         rippleUserManager.createUser(user);
@@ -263,7 +229,7 @@ class RippleUserManagerTest {
         User user = new User();
         user.setAccount("adminuser");
         user.setPassword("password123");
-        user.setEnabled(true);
+        user.setUserProfileStatus(0);
         user.setRole("ROLE_ADMIN");
 
         rippleUserManager.createUser(user);
@@ -281,7 +247,7 @@ class RippleUserManagerTest {
         User user = new User();
         user.setAccount("nullroleuser");
         user.setPassword("password123");
-        user.setEnabled(true);
+        user.setUserProfileStatus(0);
         user.setRole(null);
 
         rippleUserManager.createUser(user);

@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileData {
-    private long userId;
-    private String nickName;
-    private String avatar;
+public class UsersResponse {
+    private int code;
+    private String message;
+    private UserData data;
 }

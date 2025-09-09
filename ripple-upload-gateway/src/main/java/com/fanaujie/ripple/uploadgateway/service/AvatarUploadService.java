@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.database.mapper.UserProfileMapper;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadData;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 public class AvatarUploadService {
 
     private final MinioStorageService minioStorageService;
-    private final UserProfileMapper userProfileMapper;
+    private final IUserProfileStorage userProfileStorage;
 
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
             long userId, byte[] fileData, String objectName, String contentType) {
@@ -35,7 +35,7 @@ public class AvatarUploadService {
             }
         }
         try {
-            userProfileMapper.updateAvatar(userId, avatarUrl);
+            userProfileStorage.updateAvatarByUserId(userId, avatarUrl);
         } catch (Exception e) {
             log.error("Failed to update user profile for userId {}: {}", userId, e.getMessage());
             return ResponseEntity.status(500)

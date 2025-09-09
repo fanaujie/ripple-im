@@ -153,7 +153,7 @@ public class SecurityConfig {
             if (context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) {
                 context.getJwsHeader().algorithm(MacAlgorithm.HS256);
                 User u = (User) userManager.loadUserByUsername(context.getPrincipal().getName());
-                context.getClaims().subject(String.valueOf(u.getId()));
+                context.getClaims().subject(String.valueOf(u.getUserId()));
             }
         };
     }

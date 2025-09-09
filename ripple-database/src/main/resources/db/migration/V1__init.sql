@@ -1,24 +1,26 @@
 
-CREATE TABLE user (
+CREATE TABLE IF NOT EXISTS user (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNIQUE NOT NULL,
     account VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(100) NOT NULL,
-    enabled BOOLEAN DEFAULT TRUE,
     role VARCHAR(20) DEFAULT 'USER',
     created_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 );
 
-CREATE TABLE user_profile (
-    user_id BIGINT PRIMARY KEY NOT NULL,
-    user_type tinyint DEFAULT '0',
+CREATE TABLE IF NOT EXISTS user_profile (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNIQUE NOT NULL,
+    user_type tinyint DEFAULT '0' COMMENT '0=normal, 1=robot',
+    status tinyint DEFAULT '0'COMMENT '0=normal, 1=forbidden, 2=deleted',
     nick_name varchar(50) DEFAULT NULL,
     avatar varchar(200) DEFAULT NULL,
     created_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_time datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 );
 
-CREATE TABLE authorization (
+CREATE TABLE IF NOT EXISTS authorization (
    id varchar(255) NOT NULL,
    registeredClientId varchar(255) NOT NULL,
    principalName varchar(255) NOT NULL,

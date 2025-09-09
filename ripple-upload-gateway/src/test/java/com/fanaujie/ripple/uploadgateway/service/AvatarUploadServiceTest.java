@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import com.fanaujie.ripple.database.model.UserProfile;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import io.minio.BucketExistsArgs;
@@ -58,7 +58,7 @@ class AvatarUploadServiceTest {
 
     @Autowired private AvatarUploadService avatarUploadService;
 
-    @Autowired private UserProfileMapper userProfileMapper;
+    @Autowired private IUserProfileStorage userProfileStorage;
 
     @Autowired private MinioClient minioClient;
 
@@ -79,12 +79,8 @@ class AvatarUploadServiceTest {
         flyway.migrate();
 
         // Create test user profile
-        UserProfile testUser = new UserProfile();
-        testUser.setUserId(testUserId);
-        testUser.setUserType(1);
-        testUser.setNickName("Test User");
-        testUser.setAvatar("default_avatar.jpg");
-        userProfileMapper.insertUserProfile(testUser);
+        userProfileStorage.insertUserProfile(
+                testUserId, 1, (byte) 0, "Test User", "default_avatar.jpg");
 
         // Ensure MinIO bucket exists
         if (!minioClient.bucketExists(
@@ -129,7 +125,7 @@ class AvatarUploadServiceTest {
         assertTrue(response.getBody().getData().getAvatarUrl().contains(objectName));
 
         // Verify database was updated
-        UserProfile updatedProfile = userProfileMapper.findById(testUserId);
+        UserProfile updatedProfile = userProfileStorage.getUserProfile(testUserId).orElse(null);
         assertNotNull(updatedProfile);
         assertEquals(response.getBody().getData().getAvatarUrl(), updatedProfile.getAvatar());
     }
@@ -265,7 +261,7 @@ class AvatarUploadServiceTest {
         String objectName = "full_workflow_test.jpg";
 
         // Verify user exists before upload
-        UserProfile beforeUpload = userProfileMapper.findById(testUserId);
+        UserProfile beforeUpload = userProfileStorage.getUserProfile(testUserId).orElse(null);
         assertNotNull(beforeUpload);
         String originalAvatar = beforeUpload.getAvatar();
 
@@ -289,7 +285,7 @@ class AvatarUploadServiceTest {
         assertNotEquals(originalAvatar, newAvatarUrl);
 
         // Verify database update
-        UserProfile afterUpload = userProfileMapper.findById(testUserId);
+        UserProfile afterUpload = userProfileStorage.getUserProfile(testUserId).orElse(null);
         assertEquals(newAvatarUrl, afterUpload.getAvatar());
 
         // Verify file exists in MinIO
@@ -312,7 +308,9 @@ class AvatarUploadServiceTest {
         testUser2.setUserType(1);
         testUser2.setNickName("Test User 2");
         testUser2.setAvatar("default_avatar.jpg");
-        userProfileMapper.insertUserProfile(testUser2);
+
+        userProfileStorage.insertUserProfile(
+                userId2, 1, (byte) 0, "Test User 2", "default_avatar.jpg");
 
         // When
         ResponseEntity<AvatarUploadResponse> response1 =
@@ -340,8 +338,8 @@ class AvatarUploadServiceTest {
         assertTrue(url2.contains("avatar2.jpg"));
 
         // Verify both users have different avatar URLs in database
-        UserProfile user1Profile = userProfileMapper.findById(testUserId);
-        UserProfile user2Profile = userProfileMapper.findById(userId2);
+        UserProfile user1Profile = userProfileStorage.getUserProfile(testUserId).orElse(null);
+        UserProfile user2Profile = userProfileStorage.getUserProfile(userId2).orElse(null);
 
         assertEquals(url1, user1Profile.getAvatar());
         assertEquals(url2, user2Profile.getAvatar());

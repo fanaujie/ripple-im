@@ -3,56 +3,52 @@ package com.fanaujie.ripple.apigateway.service;
 import com.fanaujie.ripple.apigateway.dto.CommonResponse;
 import com.fanaujie.ripple.apigateway.dto.UserProfileData;
 import com.fanaujie.ripple.apigateway.dto.UserProfileResponse;
-import com.fanaujie.ripple.database.mapper.UserProfileMapper;
+import com.fanaujie.ripple.database.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.database.model.UserProfile;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class UserProfileService {
 
-    private final UserProfileMapper userProfileMapper;
+    private final IUserProfileStorage userProfileStorage;
+
+    public UserProfileService(IUserProfileStorage userProfileStorage) {
+        this.userProfileStorage = userProfileStorage;
+    }
 
     public ResponseEntity<UserProfileResponse> getUserProfile(long userId) {
-        UserProfile userProfile = userProfileMapper.findById(userId);
-        if (userProfile == null) {
-            return ResponseEntity.status(401)
-                    .body(new UserProfileResponse(401, "User profile not found", null));
+        try {
+            UserProfile userProfile = this.userProfileStorage.getUserProfile(userId);
+            UserProfileData data = new UserProfileData();
+            data.setUserId(userProfile.getUserId());
+            data.setNickName(userProfile.getNickName());
+            data.setAvatar(userProfile.getAvatar());
+            return ResponseEntity.ok(new UserProfileResponse(200, "success", data));
+        } catch (NotFoundUserProfileException e) {
+            return ResponseEntity.status(404)
+                    .body(new UserProfileResponse(404, "User profile not found", null));
         }
-        UserProfileData userProfileData =
-                new UserProfileData(
-                        userProfile.getUserId(),
-                        userProfile.getNickName(),
-                        userProfile.getAvatar());
-        return ResponseEntity.ok(new UserProfileResponse(200, "success", userProfileData));
     }
 
-    @Transactional
     public ResponseEntity<CommonResponse> updateNickName(long userId, String nickName) {
-        if (!userProfileExists(userId)) {
-            return ResponseEntity.status(401)
-                    .body(new CommonResponse(401, "User profile not found"));
+        try {
+            this.userProfileStorage.updateNickNameByUserId(userId, nickName);
+            return ResponseEntity.ok(new CommonResponse(200, "success"));
+        } catch (NotFoundUserProfileException e) {
+            return ResponseEntity.status(404)
+                    .body(new CommonResponse(404, "User profile not found"));
         }
-        userProfileMapper.updateNickName(userId, nickName);
-        return ResponseEntity.ok(new CommonResponse(200, "success"));
     }
 
-    @Transactional
     public ResponseEntity<CommonResponse> deleteAvatar(long userId) {
-        if (!userProfileExists(userId)) {
-            return ResponseEntity.status(401)
-                    .body(new CommonResponse(401, "User profile not found"));
+        try {
+            this.userProfileStorage.updateAvatarByUserId(userId, null);
+            return ResponseEntity.ok(new CommonResponse(200, "success"));
+        } catch (NotFoundUserProfileException e) {
+            return ResponseEntity.status(404)
+                    .body(new CommonResponse(404, "User profile not found"));
         }
-        userProfileMapper.updateAvatar(userId, null);
-        return ResponseEntity.ok(new CommonResponse(200, "success"));
-    }
-
-    private boolean userProfileExists(long userId) {
-        return userProfileMapper.countById(userId) > 0;
     }
 }

@@ -2,6 +2,8 @@ package com.fanaujie.ripple.database.mapper;
 
 import com.fanaujie.ripple.database.config.MyBatisConfig;
 import com.fanaujie.ripple.database.model.User;
+import com.fanaujie.ripple.database.model.UserProfile;
+import com.fanaujie.ripple.database.mapper.UserProfileMapper;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +34,8 @@ class UserMapperTest {
             new MySQLContainer<>("mysql:8.4.5")
                     .withDatabaseName("test_ripple")
                     .withUsername("test")
-                    .withPassword("test");
+                    .withPassword("test")
+                    .withUrlParam("useAffectedRows", "true");
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -42,6 +45,7 @@ class UserMapperTest {
     }
 
     @Autowired private UserMapper userMapper;
+    @Autowired private UserProfileMapper userProfileMapper;
 
     @BeforeEach
     void setUp() {
@@ -67,20 +71,30 @@ class UserMapperTest {
     @Test
     void testInsertAndFindByAccount() {
         User user = new User();
+        user.setUserId(1000L);
         user.setAccount("testuser");
         user.setPassword("password123");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
+        user.setRole(User.DEFAULT_ROLE_USER);
 
         userMapper.insertUser(user);
-        assertTrue(user.getId() > 0);
+
+        // Create corresponding user profile
+        UserProfile userProfile = new UserProfile();
+        userProfile.setUserId(user.getUserId());
+        userProfile.setUserType(0);
+        userProfile.setStatus(UserProfile.STATUS_NORMAL);
+        userProfile.setNickName("Test User");
+        userProfile.setAvatar("avatar.jpg");
+        userProfile.setCreatedTime(java.time.Instant.now());
+        userProfile.setUpdatedTime(java.time.Instant.now());
+        userProfileMapper.insertUserProfile(userProfile);
 
         User foundUser = userMapper.findByAccount("testuser");
         assertNotNull(foundUser);
         assertEquals("testuser", foundUser.getAccount());
         assertEquals("password123", foundUser.getPassword());
         assertTrue(foundUser.isEnabled());
-        assertEquals("ROLE_USER", foundUser.getRole());
+        assertEquals(User.DEFAULT_ROLE_USER, foundUser.getRole());
         assertNotNull(foundUser.getCreatedTime());
         assertNotNull(foundUser.getUpdatedTime());
     }
@@ -94,20 +108,33 @@ class UserMapperTest {
     @Test
     void testUpdateUser() {
         User user = new User();
+        user.setUserId(1001L);
         user.setAccount("updatetest");
         user.setPassword("original");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
+        user.setRole(User.DEFAULT_ROLE_USER);
 
         userMapper.insertUser(user);
+
+        // Create corresponding user profile
+        UserProfile userProfile = new UserProfile();
+        userProfile.setUserId(user.getUserId());
+        userProfile.setUserType(0);
+        userProfile.setStatus(UserProfile.STATUS_NORMAL);
+        userProfile.setNickName("Test User");
+        userProfile.setAvatar("avatar.jpg");
+        userProfile.setCreatedTime(java.time.Instant.now());
+        userProfile.setUpdatedTime(java.time.Instant.now());
+        userProfileMapper.insertUserProfile(userProfile);
 
         User updateUser = new User();
         updateUser.setAccount("updatetest");
         updateUser.setPassword("updated");
-        updateUser.setEnabled(false);
         updateUser.setRole("ROLE_ADMIN");
 
         userMapper.updateUser(updateUser);
+
+        // Update user profile status to forbidden
+        userProfileMapper.updateStatus(user.getUserId(), UserProfile.STATUS_FORBIDDEN);
 
         User foundUser = userMapper.findByAccount("updatetest");
         assertNotNull(foundUser);
@@ -117,90 +144,65 @@ class UserMapperTest {
     }
 
     @Test
-    void testDeleteUser() {
-        User user = new User();
-        user.setAccount("deletetest");
-        user.setPassword("password");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
-
-        userMapper.insertUser(user);
-        assertEquals(1, userMapper.countByAccount("deletetest"));
-
-        userMapper.deleteUser("deletetest");
-        assertEquals(0, userMapper.countByAccount("deletetest"));
-        assertNull(userMapper.findByAccount("deletetest"));
-    }
-
-    @Test
-    void testCountByAccount() {
-        assertEquals(0, userMapper.countByAccount("counttest"));
-
-        User user = new User();
-        user.setAccount("counttest");
-        user.setPassword("password");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
-
-        userMapper.insertUser(user);
-        assertEquals(1, userMapper.countByAccount("counttest"));
-    }
-
-    @Test
-    void testFindUserIdByAccount() {
-        User user = new User();
-        user.setAccount("idtest");
-        user.setPassword("password");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
-
-        userMapper.insertUser(user);
-        long insertedId = user.getId();
-
-        Long foundId = userMapper.findUserIdByAccount("idtest");
-        assertNotNull(foundId);
-        assertEquals(insertedId, foundId.longValue());
-    }
-
-    @Test
-    void testFindUserIdByAccountNotFound() {
-        Long foundId = userMapper.findUserIdByAccount("nonexistent");
-        assertNull(foundId);
-    }
-
-    @Test
     void testChangePassword() {
+        String account = "passwordtest";
+        String oldPassword = "oldpassword";
+        String newPassword = "newpassword";
         User user = new User();
-        user.setAccount("passwordtest");
-        user.setPassword("oldpassword");
-        user.setEnabled(true);
-        user.setRole("ROLE_USER");
+        user.setUserId(1004L);
+        user.setAccount(account);
+        user.setPassword(oldPassword);
+        user.setRole(User.DEFAULT_ROLE_USER);
+        UserProfile userProfile = new UserProfile();
+        userProfile.setUserId(user.getUserId());
 
+        userProfileMapper.insertUserProfile(userProfile);
         userMapper.insertUser(user);
 
-        userMapper.changePassword("passwordtest", "newpassword");
+        userMapper.changePassword(account, newPassword);
 
-        User foundUser = userMapper.findByAccount("passwordtest");
+        User foundUser = userMapper.findByAccount(account);
         assertNotNull(foundUser);
-        assertEquals("newpassword", foundUser.getPassword());
+        assertEquals(newPassword, foundUser.getPassword());
     }
 
     @Test
     void testMultipleUsers() {
         User user1 = new User();
+        user1.setUserId(1005L);
         user1.setAccount("user1");
         user1.setPassword("pass1");
-        user1.setEnabled(true);
-        user1.setRole("ROLE_USER");
+        user1.setRole(User.DEFAULT_ROLE_USER);
 
         User user2 = new User();
+        user2.setUserId(1006L);
         user2.setAccount("user2");
         user2.setPassword("pass2");
-        user2.setEnabled(false);
         user2.setRole("ROLE_ADMIN");
 
         userMapper.insertUser(user1);
         userMapper.insertUser(user2);
+
+        // Create user profiles
+        UserProfile userProfile1 = new UserProfile();
+        userProfile1.setUserId(user1.getUserId());
+        userProfile1.setUserType(0);
+        userProfile1.setStatus(UserProfile.STATUS_NORMAL);
+        userProfile1.setNickName("User 1");
+        userProfile1.setAvatar("avatar1.jpg");
+        userProfile1.setCreatedTime(java.time.Instant.now());
+        userProfile1.setUpdatedTime(java.time.Instant.now());
+        userProfileMapper.insertUserProfile(userProfile1);
+
+        UserProfile userProfile2 = new UserProfile();
+        userProfile2.setUserId(user2.getUserId());
+        userProfile2.setUserType(0);
+        userProfile2.setStatus(UserProfile.STATUS_FORBIDDEN);
+        userProfile2.setNickName("User 2");
+        userProfile2.setAvatar("avatar2.jpg");
+        userProfile2.setCreatedTime(java.time.Instant.now());
+        userProfile2.setUpdatedTime(java.time.Instant.now());
+        userProfileMapper.insertUserProfile(userProfile2);
 
         User found1 = userMapper.findByAccount("user1");
         User found2 = userMapper.findByAccount("user2");
@@ -211,7 +213,11 @@ class UserMapperTest {
         assertEquals("user2", found2.getAccount());
         assertTrue(found1.isEnabled());
         assertFalse(found2.isEnabled());
-        assertEquals("ROLE_USER", found1.getRole());
+        assertEquals(User.DEFAULT_ROLE_USER, found1.getRole());
         assertEquals("ROLE_ADMIN", found2.getRole());
+        assertNotNull(found1.getCreatedTime());
+        assertNotNull(found1.getUpdatedTime());
+        assertNotNull(found2.getCreatedTime());
+        assertNotNull(found2.getUpdatedTime());
     }
 }

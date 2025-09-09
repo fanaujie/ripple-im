@@ -7,8 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileData {
-    private long userId;
-    private String nickName;
-    private String avatar;
+public class BlockUserRequest {
+    private long targetUserId;
 }

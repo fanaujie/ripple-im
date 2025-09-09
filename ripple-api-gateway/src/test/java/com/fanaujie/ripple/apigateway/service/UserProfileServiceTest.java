@@ -3,46 +3,53 @@ package com.fanaujie.ripple.apigateway.service;
 import com.fanaujie.ripple.apigateway.dto.CommonResponse;
 import com.fanaujie.ripple.apigateway.dto.UserProfileData;
 import com.fanaujie.ripple.apigateway.dto.UserProfileResponse;
-import com.fanaujie.ripple.database.mapper.UserProfileMapper;
+import com.fanaujie.ripple.database.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.database.model.UserProfile;
+import com.fanaujie.ripple.database.service.IUserProfileStorage;
+
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest(classes = {UserProfileService.class})
 class UserProfileServiceTest {
 
-    @Mock private UserProfileMapper userProfileMapper;
+    @MockitoBean private IUserProfileStorage userProfileStorage;
 
-    @InjectMocks private UserProfileService userProfileService;
+    @Autowired private UserProfileService userProfileService;
 
-    private static final long TEST_ID = 1L;
-    private static final String TEST_NICKNAME = "Test User";
-    private static final String TEST_PORTRAIT = "avatar.jpg";
+    private static final long USER_ID = 1L;
+    private static final String NICK_NAME = "testUser";
+    private static final String NEW_NICK_NAME = "newTestUser";
+    private static final String AVATAR = "avatar.jpg";
 
     @BeforeEach
     void setUp() {}
 
     @Test
-    void getUserProfile_Success() {
+    void getUserProfile_Success() throws NotFoundUserProfileException {
         // Given
         UserProfile mockProfile = new UserProfile();
-        mockProfile.setUserId(TEST_ID);
-        mockProfile.setNickName(TEST_NICKNAME);
-        mockProfile.setAvatar(TEST_PORTRAIT);
+        mockProfile.setUserId(USER_ID);
+        mockProfile.setNickName(NICK_NAME);
+        mockProfile.setAvatar(AVATAR);
+        mockProfile.setUserType(1);
+        mockProfile.setStatus(UserProfile.STATUS_NORMAL);
+        mockProfile.setCreatedTime(Instant.now());
+        mockProfile.setUpdatedTime(Instant.now());
 
-        when(userProfileMapper.findById(TEST_ID)).thenReturn(mockProfile);
+        when(userProfileStorage.getUserProfile(USER_ID)).thenReturn(mockProfile);
 
         // When
-        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
+        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(USER_ID);
 
         // Then
         assertNotNull(response);
@@ -53,41 +60,41 @@ class UserProfileServiceTest {
 
         UserProfileData data = response.getBody().getData();
         assertNotNull(data);
-        assertEquals(TEST_ID, data.getUserId());
-        assertEquals(TEST_NICKNAME, data.getNickName());
-        assertEquals(TEST_PORTRAIT, data.getAvatar());
+        assertEquals(USER_ID, data.getUserId());
+        assertEquals(NICK_NAME, data.getNickName());
+        assertEquals(AVATAR, data.getAvatar());
 
-        verify(userProfileMapper).findById(TEST_ID);
+        verify(userProfileStorage).getUserProfile(USER_ID);
     }
 
     @Test
-    void getUserProfile_UserNotFound() {
+    void getUserProfile_UserNotFound() throws NotFoundUserProfileException {
         // Given
-        when(userProfileMapper.findById(TEST_ID)).thenReturn(null);
+        when(userProfileStorage.getUserProfile(USER_ID))
+                .thenThrow(new NotFoundUserProfileException("User profile not found"));
 
         // When
-        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
+        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(USER_ID);
 
         // Then
         assertNotNull(response);
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(401, response.getBody().getCode());
+        assertEquals(404, response.getBody().getCode());
         assertEquals("User profile not found", response.getBody().getMessage());
         assertNull(response.getBody().getData());
 
-        verify(userProfileMapper).findById(TEST_ID);
+        verify(userProfileStorage).getUserProfile(USER_ID);
     }
 
     @Test
-    void updateNickName_Success() {
+    void updateNickName_Success() throws NotFoundUserProfileException {
         // Given
-        String newNickName = "New Nickname";
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
+        doNothing().when(userProfileStorage).updateNickNameByUserId(USER_ID, NEW_NICK_NAME);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, newNickName);
+        ResponseEntity<CommonResponse> response = 
+                userProfileService.updateNickName(USER_ID, NEW_NICK_NAME);
 
         // Then
         assertNotNull(response);
@@ -96,38 +103,36 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper).updateNickName(TEST_ID, newNickName);
+        verify(userProfileStorage).updateNickNameByUserId(USER_ID, NEW_NICK_NAME);
     }
 
     @Test
-    void updateNickName_UserNotFound() {
+    void updateNickName_UserNotFound() throws NotFoundUserProfileException {
         // Given
-        String newNickName = "New Nickname";
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
+        doThrow(new NotFoundUserProfileException("User profile not found"))
+                .when(userProfileStorage).updateNickNameByUserId(USER_ID, NEW_NICK_NAME);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, newNickName);
+        ResponseEntity<CommonResponse> response = 
+                userProfileService.updateNickName(USER_ID, NEW_NICK_NAME);
 
         // Then
         assertNotNull(response);
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(401, response.getBody().getCode());
+        assertEquals(404, response.getBody().getCode());
         assertEquals("User profile not found", response.getBody().getMessage());
 
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper, never()).updateNickName(anyLong(), anyString());
+        verify(userProfileStorage).updateNickNameByUserId(USER_ID, NEW_NICK_NAME);
     }
 
     @Test
-    void updateNickName_WithNullNickName() {
+    void deleteAvatar_Success() throws NotFoundUserProfileException {
         // Given
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
+        doNothing().when(userProfileStorage).updateAvatarByUserId(USER_ID, null);
 
         // When
-        ResponseEntity<CommonResponse> response = userProfileService.updateNickName(TEST_ID, null);
+        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(USER_ID);
 
         // Then
         assertNotNull(response);
@@ -136,144 +141,25 @@ class UserProfileServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper).updateNickName(TEST_ID, null);
+        verify(userProfileStorage).updateAvatarByUserId(USER_ID, null);
     }
 
     @Test
-    void updateNickName_WithEmptyNickName() {
+    void deleteAvatar_UserNotFound() throws NotFoundUserProfileException {
         // Given
-        String emptyNickName = "";
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
+        doThrow(new NotFoundUserProfileException("User profile not found"))
+                .when(userProfileStorage).updateAvatarByUserId(USER_ID, null);
 
         // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, emptyNickName);
+        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(USER_ID);
 
         // Then
         assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(200, response.getBody().getCode());
-        assertEquals("success", response.getBody().getMessage());
-
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper).updateNickName(TEST_ID, emptyNickName);
-    }
-
-    @Test
-    void deleteUserPortrait_Success() {
-        // Given
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
-
-        // When
-        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(TEST_ID);
-
-        // Then
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(200, response.getBody().getCode());
-        assertEquals("success", response.getBody().getMessage());
-
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper).updateAvatar(TEST_ID, null);
-    }
-
-    @Test
-    void deleteUserPortrait_UserNotFound() {
-        // Given
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
-
-        // When
-        ResponseEntity<CommonResponse> response = userProfileService.deleteAvatar(TEST_ID);
-
-        // Then
-        assertNotNull(response);
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(401, response.getBody().getCode());
+        assertEquals(404, response.getBody().getCode());
         assertEquals("User profile not found", response.getBody().getMessage());
 
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper, never()).updateAvatar(anyLong(), any());
-    }
-
-    @Test
-    void userProfileExists_ReturnsTrue_WhenUserExists() {
-        // Given
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
-
-        // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, "test");
-
-        // Then
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(userProfileMapper).countById(TEST_ID);
-    }
-
-    @Test
-    void userProfileExists_ReturnsFalse_WhenUserDoesNotExist() {
-        // Given
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(0);
-
-        // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, "test");
-
-        // Then
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        verify(userProfileMapper).countById(TEST_ID);
-    }
-
-    @Test
-    void updateNickName_WithLongNickName() {
-        // Given
-        String longNickName = "This is a very long nickname that might exceed normal limits";
-        when(userProfileMapper.countById(TEST_ID)).thenReturn(1);
-
-        // When
-        ResponseEntity<CommonResponse> response =
-                userProfileService.updateNickName(TEST_ID, longNickName);
-
-        // Then
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(200, response.getBody().getCode());
-        assertEquals("success", response.getBody().getMessage());
-
-        verify(userProfileMapper).countById(TEST_ID);
-        verify(userProfileMapper).updateNickName(TEST_ID, longNickName);
-    }
-
-    @Test
-    void getUserProfile_WithNullPortrait() {
-        // Given
-        UserProfile mockProfile = new UserProfile();
-        mockProfile.setUserId(TEST_ID);
-        mockProfile.setNickName(TEST_NICKNAME);
-        mockProfile.setAvatar(null);
-
-        when(userProfileMapper.findById(TEST_ID)).thenReturn(mockProfile);
-
-        // When
-        ResponseEntity<UserProfileResponse> response = userProfileService.getUserProfile(TEST_ID);
-
-        // Then
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(200, response.getBody().getCode());
-        assertEquals("success", response.getBody().getMessage());
-
-        UserProfileData data = response.getBody().getData();
-        assertNotNull(data);
-        assertEquals(TEST_ID, data.getUserId());
-        assertEquals(TEST_NICKNAME, data.getNickName());
-        assertNull(data.getAvatar());
-
-        verify(userProfileMapper).findById(TEST_ID);
+        verify(userProfileStorage).updateAvatarByUserId(USER_ID, null);
     }
 }

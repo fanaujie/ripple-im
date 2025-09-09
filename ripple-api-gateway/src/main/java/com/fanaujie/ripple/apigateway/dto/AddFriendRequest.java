@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.apigateway.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,8 +8,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileData {
-    private long userId;
-    private String nickName;
-    private String avatar;
+public class AddFriendRequest {
+    private long targetUserId;
 }
