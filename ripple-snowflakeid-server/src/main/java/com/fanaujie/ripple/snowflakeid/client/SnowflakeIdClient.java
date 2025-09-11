@@ -2,18 +2,18 @@ package com.fanaujie.ripple.snowflakeid.client;
 
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdRequest;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.pool.AbstractChannelPoolHandler;
-import io.netty.channel.pool.ChannelPool;
-import io.netty.channel.pool.SimpleChannelPool;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.protobuf.ProtobufDecoder;
-import io.netty.handler.codec.protobuf.ProtobufEncoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
-import io.netty.util.concurrent.Future;
+import com.fanaujie.ripple.shaded.netty.bootstrap.Bootstrap;
+import com.fanaujie.ripple.shaded.netty.channel.*;
+import com.fanaujie.ripple.shaded.netty.channel.nio.NioIoHandler;
+import com.fanaujie.ripple.shaded.netty.channel.pool.AbstractChannelPoolHandler;
+import com.fanaujie.ripple.shaded.netty.channel.pool.ChannelPool;
+import com.fanaujie.ripple.shaded.netty.channel.pool.SimpleChannelPool;
+import com.fanaujie.ripple.shaded.netty.channel.socket.nio.NioSocketChannel;
+import com.fanaujie.ripple.shaded.netty.handler.codec.protobuf.ProtobufDecoder;
+import com.fanaujie.ripple.shaded.netty.handler.codec.protobuf.ProtobufEncoder;
+import com.fanaujie.ripple.shaded.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import com.fanaujie.ripple.shaded.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender;
+import com.fanaujie.ripple.shaded.netty.util.concurrent.Future;
 
 
 import java.util.Map;

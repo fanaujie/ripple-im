@@ -15,7 +15,7 @@ public interface UserMapper {
 
     void updateUser(User user);
 
-    int countByAccount(String account);
+    Long findUserIdByAccount(String account);
 
     void changePassword(@Param("account") String account, @Param("newPassword") String newPassword);
 }

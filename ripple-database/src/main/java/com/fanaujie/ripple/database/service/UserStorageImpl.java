@@ -30,6 +30,6 @@ public class UserStorageImpl implements IUserStorage {
 
     @Override
     public boolean userExists(String account) {
-        return userMapper.countByAccount(account) > 0;
+        return userMapper.findUserIdByAccount(account) != null;
     }
 }

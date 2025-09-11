@@ -1,9 +1,9 @@
 package com.fanaujie.ripple.snowflakeid.client;
 
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import com.fanaujie.ripple.shaded.netty.channel.ChannelHandler;
+import com.fanaujie.ripple.shaded.netty.channel.ChannelHandlerContext;
+import com.fanaujie.ripple.shaded.netty.channel.SimpleChannelInboundHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -167,6 +167,37 @@ class UserMapperTest {
     }
 
     @Test
+    void testFindUserIdByAccount() {
+        User user = new User();
+        user.setUserId(1007L);
+        user.setAccount("useridtest");
+        user.setPassword("password123");
+        user.setRole(User.DEFAULT_ROLE_USER);
+
+        userMapper.insertUser(user);
+
+        // Create corresponding user profile
+        UserProfile userProfile = new UserProfile();
+        userProfile.setUserId(user.getUserId());
+        userProfile.setUserType(0);
+        userProfile.setStatus(UserProfile.STATUS_NORMAL);
+        userProfile.setNickName("User ID Test");
+        userProfile.setAvatar("avatar.jpg");
+        userProfile.setCreatedTime(java.time.Instant.now());
+        userProfile.setUpdatedTime(java.time.Instant.now());
+        userProfileMapper.insertUserProfile(userProfile);
+
+        Long userId = userMapper.findUserIdByAccount("useridtest");
+        assertEquals(1007L, userId.longValue());
+    }
+
+    @Test
+    void testFindUserIdByAccountNotFound() {
+        Long userId = userMapper.findUserIdByAccount("nonexistent");
+        assertNull(userId);
+    }
+
+    @Test
     void testMultipleUsers() {
         User user1 = new User();
         user1.setUserId(1005L);

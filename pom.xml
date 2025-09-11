@@ -17,6 +17,7 @@
         <module>ripple-protobuf</module>
         <module>ripple-upload-gateway</module>
         <module>ripple-api-gateway</module>
+        <module>ripple-common</module>
     </modules>
 
     <properties>

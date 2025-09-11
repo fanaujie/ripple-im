@@ -28,7 +28,7 @@ public class Application implements Runnable {
     @Option(
             names = {"-p", "--port"},
             description = "Server port (default: ${DEFAULT-VALUE})",
-            defaultValue = "8081")
+            defaultValue = "10004")
     public void setPort(int value) {
         if (value < 1 || value > 65535) {
             throw new CommandLine.ParameterException(
@@ -74,21 +74,31 @@ public class Application implements Runnable {
 
     @Override
     public void run() {
-        int workerId = acquiredWorkerId();
-        if (workerId == 0) {
-            logger.error("Failed to acquire a worker ID from Zookeeper.");
-        } else {
-            Config cfg = new Config(port, zookeeperAddr, workerId);
-            logger.info("Acquired worker ID: {}", workerId);
-            SnowflakeIdService snowflakeIdService = new SnowflakeIdService(cfg);
-            try {
-                snowflakeIdService.start();
-            } catch (Exception e) {
-                logger.error("Error starting Snowflake ID service", e);
-                throw new RuntimeException(e);
-            } finally {
-                snowflakeIdService.stop();
-                logger.info("Snowflake ID service stopped.");
+        ZookeeperService zk = null;
+        try {
+            zk = new ZookeeperService(zookeeperAddr, "/snowflakeid/lock", "/snowflakeid/workerIds");
+            int workerId = zk.acquiredWorkerId();
+            if (workerId == -1) {
+                logger.error("Failed to acquire a worker ID from Zookeeper.");
+            } else {
+                Config cfg = new Config(port, zookeeperAddr, workerId);
+                logger.info("Acquired worker ID: {}", workerId);
+                SnowflakeIdService snowflakeIdService = new SnowflakeIdService(cfg);
+                try {
+                    snowflakeIdService.start();
+                } catch (Exception e) {
+                    logger.error("Error starting Snowflake ID service", e);
+                    throw new RuntimeException(e);
+                } finally {
+                    snowflakeIdService.stop();
+                    logger.info("Snowflake ID service stopped.");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error with Zookeeper service", e);
+        } finally {
+            if (zk != null) {
+                zk.close();
             }
         }
     }
@@ -98,19 +108,4 @@ public class Application implements Runnable {
         System.exit(exitCode);
     }
 
-    private int acquiredWorkerId() {
-        int workerId = 0;
-        ZookeeperService zk = null;
-        try {
-            zk = new ZookeeperService(zookeeperAddr, "/snowflakeid/lock", "/snowflakeid/workerIds");
-            workerId = zk.acquiredWorkerId();
-        } catch (Exception e) {
-            logger.error("Error acquiring worker ID from Zookeeper", e);
-        } finally {
-            if (zk != null) {
-                zk.close();
-            }
-        }
-        return workerId;
-    }
 }

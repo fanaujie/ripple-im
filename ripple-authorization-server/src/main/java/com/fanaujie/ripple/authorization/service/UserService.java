@@ -1,47 +1,45 @@
 package com.fanaujie.ripple.authorization.service;
 
 import com.fanaujie.ripple.authorization.dto.CommonResponse;
+import com.fanaujie.ripple.authorization.repository.UserRepository;
 import com.fanaujie.ripple.database.model.User;
-import com.fanaujie.ripple.database.model.UserProfile;
-import com.fanaujie.ripple.authorization.oauth.RippleUserManager;
-import com.fanaujie.ripple.database.service.IUserProfileStorage;
+import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserService {
 
-    private final RippleUserManager userManager;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final IUserProfileStorage userProfileStorage;
+    private final SnowflakeIdClient snowflakeIdClient;
 
     public UserService(
-            RippleUserManager userManager,
+            UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            IUserProfileStorage userProfileStorage) {
-        this.userManager = userManager;
+            @Value("${snowflake.server.host}") String snowflakeServerHost,
+            @Value("${snowflake.server.port}") int snowflakeServerPort) {
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.userProfileStorage = userProfileStorage;
+        this.snowflakeIdClient = new SnowflakeIdClient(snowflakeServerHost, snowflakeServerPort);
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ResponseEntity<CommonResponse> signup(
             String account, String password, String confirmPassword) {
 
         User newUser = new User();
+        newUser.setUserId(this.getNextUserId());
         newUser.setAccount(account);
         newUser.setPassword(this.passwordEncoder.encode(password));
         newUser.setRole(User.DEFAULT_ROLE_USER);
-        userManager.createUser(newUser);
-
-        // Create corresponding user profile
-        this.userProfileStorage.insertUserProfile(
-                newUser.getUserId(), 0, UserProfile.STATUS_NORMAL, account, null);
-
+        this.userRepository.createUser(newUser, account, null);
         return ResponseEntity.ok().body(new CommonResponse(200, "success"));
     }
 
@@ -56,21 +54,24 @@ public class UserService {
         }
 
         // Check if user already exists
-        if (!userManager.userExists(openId)) {
+        if (!this.userRepository.userExists(openId)) {
             // Create new user account
             User newUser = new User();
+            newUser.setUserId(this.getNextUserId());
             newUser.setAccount(openId);
             newUser.setPassword(""); // No password for OAuth2 users
             newUser.setRole(User.DEFAULT_ROLE_USER);
-            userManager.createUser(newUser);
+            this.userRepository.createUser(newUser, name != null ? name : email, picture);
+        }
+    }
 
-            // Create corresponding user profile
-            this.userProfileStorage.insertUserProfile(
-                    newUser.getUserId(),
-                    0, // Default user type
-                    UserProfile.STATUS_NORMAL,
-                    name != null ? name : email, // Use name or fallback to email
-                    picture); // Google profile picture URL
+    private long getNextUserId() {
+        try {
+            CompletableFuture<GenerateIdResponse> future = snowflakeIdClient.requestSnowflakeId();
+            GenerateIdResponse response = future.get(2, TimeUnit.SECONDS);
+            return response.getId();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate user ID", e);
         }
     }
 }

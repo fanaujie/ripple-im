@@ -2,9 +2,9 @@ package com.fanaujie.ripple.snowflakeid.server.service.snowflakeid;
 
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdRequest;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import com.fanaujie.ripple.shaded.netty.channel.ChannelHandler;
+import com.fanaujie.ripple.shaded.netty.channel.ChannelHandlerContext;
+import com.fanaujie.ripple.shaded.netty.channel.SimpleChannelInboundHandler;
 
 @ChannelHandler.Sharable
 public class ServerHandler extends SimpleChannelInboundHandler<GenerateIdRequest> {

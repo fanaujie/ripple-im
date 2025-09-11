@@ -1,7 +1,6 @@
 package com.fanaujie.ripple.snowflakeid.client;
 
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class RequestIdGenerator {
     private static final int SEQUENCE_BITS = 12;
@@ -9,11 +8,13 @@ public class RequestIdGenerator {
     private long sequence = 0L;
     private long lastTimestamp = -1L;
 
-
     public synchronized String generateRequestId() {
         long currentTimestamp = timestamp();
         if (currentTimestamp < lastTimestamp) {
-            throw new IllegalStateException(String.format("Clock moved backwards. Refusing to generate id for %d milliseconds", lastTimestamp - currentTimestamp));
+            throw new IllegalStateException(
+                    String.format(
+                            "Clock moved backwards. Refusing to generate id for %d milliseconds",
+                            lastTimestamp - currentTimestamp));
         }
         if (currentTimestamp == lastTimestamp) {
             // Same millisecond, increment sequence
