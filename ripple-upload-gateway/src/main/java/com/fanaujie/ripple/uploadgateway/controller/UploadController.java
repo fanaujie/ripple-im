@@ -4,6 +4,14 @@ import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import com.fanaujie.ripple.uploadgateway.service.AvatarUploadService;
 import com.fanaujie.ripple.uploadgateway.service.AvatarFileValidationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,17 +27,57 @@ import java.util.Optional;
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "File Upload", description = "APIs for uploading avatars and multimedia files")
+@SecurityRequirement(name = "bearerAuth")
 public class UploadController {
 
     private final AvatarUploadService avatarUploadService;
     private final AvatarFileValidationService fileValidationService;
     private final AvatarProperties avatarProperties;
 
-    @PutMapping(value = "/avatar", consumes = "multipart/form-data")
+    @PutMapping(value = "/avatar", consumes = "multipart/form-data", produces = "application/json")
+    @Operation(
+        summary = "Upload user avatar",
+        description = "Upload and set user avatar, supports JPEG and PNG formats, file size limit 5MB, maximum resolution 460x460"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully uploaded avatar",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = AvatarUploadResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400", 
+            description = "Unsupported file format, file size exceeds limit, file hash validation failed, or file resolution exceeds limit",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = AvatarUploadResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized access",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = AvatarUploadResponse.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = AvatarUploadResponse.class)
+            )
+        )
+    })
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
-            @RequestPart("hash") String hash,
-            @RequestPart("avatar") MultipartFile avatarFile,
-            @AuthenticationPrincipal Jwt jwt) {
+            @Parameter(description = "File SHA-256 hash value for file integrity verification") @RequestPart("hash") String hash,
+            @Parameter(description = "Avatar file (JPEG/PNG, max 5MB, max resolution 460x460)") @RequestPart("avatar") MultipartFile avatarFile,
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
 
         // Validate file type３
         AvatarUploadResponse fileTypeError = fileValidationService.validateFileType(avatarFile);

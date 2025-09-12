@@ -33,8 +33,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
-                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("user"));
+                .oauth2ResourceServer(
+                        oauth2 ->
+                                oauth2.jwt(
+                                        jwt ->
+                                                jwt.jwtAuthenticationConverter(
+                                                        jwtAuthenticationConverter())))
+                .authorizeHttpRequests(
+                        auth ->
+                                auth.requestMatchers(
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**",
+                                                "/swagger-ui.html")
+                                        .permitAll()
+                                        .anyRequest()
+                                        .hasRole("user"));
         return http.build();
     }
 
@@ -43,7 +56,7 @@ public class SecurityConfig {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
         authoritiesConverter.setAuthorityPrefix("ROLE_");
         authoritiesConverter.setAuthoritiesClaimName("scope");
-        
+
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
         return converter;
