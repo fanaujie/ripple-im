@@ -1,8 +1,8 @@
 package com.fanaujie.ripple.apigateway.service;
 
 import com.fanaujie.ripple.apigateway.dto.CommonResponse;
-import com.fanaujie.ripple.apigateway.dto.UserData;
-import com.fanaujie.ripple.apigateway.dto.UsersResponse;
+import com.fanaujie.ripple.apigateway.dto.UserRelationsData;
+import com.fanaujie.ripple.apigateway.dto.UserRelationsResponse;
 import com.fanaujie.ripple.database.exception.NotFoundRelationException;
 import com.fanaujie.ripple.database.model.RelationWithProfile;
 import com.fanaujie.ripple.database.model.UserRelation;
@@ -264,7 +264,7 @@ class RelationServiceTest {
         when(relationStorage.getFriendsWithBlockedUsers(CURRENT_USER_ID)).thenReturn(mockRelations);
 
         // When
-        ResponseEntity<UsersResponse> response =
+        ResponseEntity<UserRelationsResponse> response =
                 relationService.getFriendsWithBlockedLists(CURRENT_USER_ID);
 
         // Then
@@ -274,7 +274,7 @@ class RelationServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        UserData data = response.getBody().getData();
+        UserRelationsData data = response.getBody().getData();
         assertNotNull(data);
         assertEquals(1, data.getFriends().size());
         assertEquals(1, data.getBlockedUsers().size());

@@ -4,12 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserData {
-    private List<User> friends;
-    private List<User> blockedUsers;
+public class UserRelationsResponse {
+    private int code;
+    private String message;
+    private UserRelationsData data;
 }

@@ -53,9 +53,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> addFriend(
             @Parameter(description = "Add friend request") @Valid @RequestBody
@@ -74,23 +75,31 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "200",
                         description = "Successfully retrieved friends list",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = UsersResponse.class))),
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                UserRelationsResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<UsersResponse> getFriends(
+    public ResponseEntity<UserRelationsResponse> getFriends(
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         long currentUserId = Long.parseLong(jwt.getSubject());
         return relationService.getFriendsWithBlockedLists(currentUserId);
     }
 
-    @PutMapping(value = "/friends/{friendId}/display-name", consumes = "application/json", produces = "application/json")
+    @PutMapping(
+            value = "/friends/{friendId}/display-name",
+            consumes = "application/json",
+            produces = "application/json")
     @Operation(
             summary = "Update friend display name",
             description = "Update the display name of the specified friend in the friends list")
@@ -114,9 +123,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> updateFriendDisplayName(
             @Parameter(description = "Friend ID") @PathVariable("friendId") long friendId,
@@ -151,9 +161,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> removeFriend(
             @Parameter(description = "Friend ID") @PathVariable("friendId") long friendId,
@@ -162,7 +173,10 @@ public class RelationsController {
         return relationService.removeFriend(currentUserId, friendId);
     }
 
-    @PostMapping(value = "/blocked-users", consumes = "application/json", produces = "application/json")
+    @PostMapping(
+            value = "/blocked-users",
+            consumes = "application/json",
+            produces = "application/json")
     @Operation(
             summary = "Block user",
             description = "Add the specified user to the blocked users list")
@@ -185,9 +199,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> blockUser(
             @Parameter(description = "Block user request") @Valid @RequestBody
@@ -220,9 +235,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> unblockUser(
             @Parameter(description = "Target user ID") @PathVariable("targetUserId")
@@ -255,9 +271,10 @@ public class RelationsController {
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
-                        content = @Content(
-                                mediaType = "application/json",
-                                schema = @Schema(implementation = CommonResponse.class)))
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> hideBlockedUser(
             @Parameter(description = "Target user ID") @PathVariable("targetUserId")

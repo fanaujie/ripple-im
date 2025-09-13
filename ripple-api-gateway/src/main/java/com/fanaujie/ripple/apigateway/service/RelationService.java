@@ -73,7 +73,7 @@ public class RelationService {
         }
     }
 
-    public ResponseEntity<UsersResponse> getFriendsWithBlockedLists(long currentUserId) {
+    public ResponseEntity<UserRelationsResponse> getFriendsWithBlockedLists(long currentUserId) {
         List<User> friends = new ArrayList<>();
         List<User> blockedUsers = new ArrayList<>();
 
@@ -104,8 +104,10 @@ public class RelationService {
                             }
                         });
         return ResponseEntity.ok(
-                new UsersResponse(
-                        HttpStatus.OK.value(), "success", new UserData(friends, blockedUsers)));
+                new UserRelationsResponse(
+                        HttpStatus.OK.value(),
+                        "success",
+                        new UserRelationsData(friends, blockedUsers)));
     }
 
     public ResponseEntity<CommonResponse> updateFriendDisplayName(

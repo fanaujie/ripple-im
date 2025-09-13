@@ -114,8 +114,8 @@ class RelationsControllerTest {
 
     @Test
     void getFriends_Success() throws Exception {
-        UserData userData = new UserData();
-        UsersResponse response = new UsersResponse(200, "success", userData);
+        UserRelationsData userData = new UserRelationsData();
+        UserRelationsResponse response = new UserRelationsResponse(200, "success", userData);
 
         when(relationService.getFriendsWithBlockedLists(TEST_USER_ID))
                 .thenReturn(ResponseEntity.ok(response));
