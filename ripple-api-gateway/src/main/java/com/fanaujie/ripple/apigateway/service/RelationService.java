@@ -3,6 +3,8 @@ package com.fanaujie.ripple.apigateway.service;
 import com.fanaujie.ripple.apigateway.dto.*;
 
 import com.fanaujie.ripple.database.exception.NotFoundRelationException;
+import com.fanaujie.ripple.database.exception.NotFoundUserProfileException;
+import com.fanaujie.ripple.database.model.UserProfile;
 import com.fanaujie.ripple.database.service.IRelationStorage;
 import com.fanaujie.ripple.database.service.IUserProfileStorage;
 import com.fanaujie.ripple.database.model.UserRelation;
@@ -25,51 +27,81 @@ public class RelationService {
         this.userProfileStorage = userProfileStorage;
     }
 
-    public ResponseEntity<CommonResponse> addFriend(long currentUserId, long targetUserId) {
+    public ResponseEntity<RelationResponse> addFriend(long currentUserId, long targetUserId) {
         if (currentUserId == targetUserId) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Cannot add yourself as friend"));
+                    .body(new RelationResponse(400, "Cannot add yourself as friend", null));
         }
-        if (!this.userProfileStorage.userProfileExists(targetUserId)) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
-        }
+        UserProfile userProfile = null;
+        boolean insertRelation = false;
         try {
-            byte status = this.relationStorage.getRelationStatus(targetUserId, currentUserId);
+            userProfile = this.userProfileStorage.getUserProfile(targetUserId);
+            int status = this.relationStorage.getRelationStatus(currentUserId, targetUserId);
             if ((status & UserRelation.FRIEND_FLAG) == UserRelation.FRIEND_FLAG) {
                 return ResponseEntity.badRequest()
-                        .body(new CommonResponse(400, "Target user is already your friend"));
+                        .body(
+                                new RelationResponse(
+                                        400, "Target user is already your friend", null));
             }
         } catch (NotFoundRelationException ignored) {
             // no existing relation, proceed to add friend
+            insertRelation = true;
+        } catch (NotFoundUserProfileException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Target user does not exist", null));
         }
-        this.relationStorage.upsertRelationStatus(
-                currentUserId, targetUserId, UserRelation.FRIEND_FLAG);
-        return ResponseEntity.ok(new CommonResponse(200, "success"));
+        if (insertRelation) {
+            this.relationStorage.insertRelationStatus(
+                    currentUserId,
+                    targetUserId,
+                    userProfile.getNickName(),
+                    (byte) UserRelation.FRIEND_FLAG);
+        } else {
+            // reset hidden and blocked flags if any
+            this.relationStorage.updateRelationStatus(
+                    currentUserId, targetUserId, (byte) UserRelation.FRIEND_FLAG);
+        }
+
+        // The updated relation flags is always FRIEND_FLAG (reset hidden and blocked)
+        return ResponseEntity.ok(
+                new RelationResponse(
+                        200,
+                        "success",
+                        new RelationData(
+                                String.valueOf(currentUserId),
+                                String.valueOf(targetUserId),
+                                UserRelation.FRIEND_FLAG)));
     }
 
-    public ResponseEntity<CommonResponse> removeFriend(long currentUserId, long targetUserId) {
+    public ResponseEntity<RelationResponse> removeFriend(long currentUserId, long targetUserId) {
         if (currentUserId == targetUserId) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Cannot remove yourself as friend"));
+                    .body(new RelationResponse(400, "Cannot remove yourself as friend", null));
         }
         if (!this.userProfileStorage.userProfileExists(targetUserId)) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new RelationResponse(400, "Target user does not exist", null));
         }
         try {
-            byte status = this.relationStorage.getRelationStatus(targetUserId, currentUserId);
+            int status = this.relationStorage.getRelationStatus(currentUserId, targetUserId);
             if ((status & UserRelation.FRIEND_FLAG) != UserRelation.FRIEND_FLAG) {
                 return ResponseEntity.badRequest()
-                        .body(new CommonResponse(400, "Target user is not your friend"));
+                        .body(new RelationResponse(400, "Target user is not your friend", null));
             } else {
                 status &= ~UserRelation.FRIEND_FLAG;
-                this.relationStorage.upsertRelationStatus(currentUserId, targetUserId, status);
+                this.relationStorage.updateRelationStatus(currentUserId, targetUserId, status);
+                return ResponseEntity.ok(
+                        new RelationResponse(
+                                200,
+                                "success",
+                                new RelationData(
+                                        String.valueOf(currentUserId),
+                                        String.valueOf(targetUserId),
+                                        status)));
             }
-            return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundRelationException e) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "No existing relation with target user"));
+                    .body(new RelationResponse(400, "No existing relation with target user", null));
         }
     }
 
@@ -81,7 +113,7 @@ public class RelationService {
                 .getFriendsWithBlockedUsers(currentUserId)
                 .forEach(
                         u -> {
-                            byte flags = u.getRelationFlags();
+                            int flags = u.getRelationFlags();
                             boolean isFriend =
                                     (flags & UserRelation.FRIEND_FLAG) == UserRelation.FRIEND_FLAG;
                             boolean isBlocked =
@@ -92,7 +124,7 @@ public class RelationService {
 
                             User user =
                                     new User(
-                                            u.getTargetUserId(),
+                                            String.valueOf(u.getTargetUserId()),
                                             u.getTargetNickName(),
                                             u.getTargetAvatar(),
                                             u.getTargetUserDisplayName());
@@ -121,7 +153,7 @@ public class RelationService {
                     .body(new CommonResponse(400, "Target user does not exist"));
         }
         try {
-            byte status = this.relationStorage.getRelationStatus(targetUserId, currentUserId);
+            int status = this.relationStorage.getRelationStatus(currentUserId, targetUserId);
             // only friends can set display name
             if ((status & UserRelation.FRIEND_FLAG) == UserRelation.FRIEND_FLAG) {
                 this.relationStorage.updateFriendDisplayName(
@@ -137,53 +169,67 @@ public class RelationService {
         }
     }
 
-    public ResponseEntity<CommonResponse> updateBlockedStatus(
+    public ResponseEntity<RelationResponse> updateBlockedStatus(
             long currentUserId, long targetUserId, boolean block) {
         if (currentUserId == targetUserId) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Cannot block/unblock yourself"));
+                    .body(new RelationResponse(400, "Cannot block/unblock yourself", null));
         }
         if (!this.userProfileStorage.userProfileExists(targetUserId)) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new RelationResponse(400, "Target user does not exist", null));
         }
         try {
-            byte status = this.relationStorage.getRelationStatus(targetUserId, currentUserId);
+            int status = this.relationStorage.getRelationStatus(currentUserId, targetUserId);
             if (block) {
                 status |= UserRelation.BLOCKED_FLAG;
             } else {
                 status &= ~UserRelation.BLOCKED_FLAG;
             }
-            this.relationStorage.upsertRelationStatus(currentUserId, targetUserId, status);
-            return ResponseEntity.ok(new CommonResponse(200, "success"));
+            this.relationStorage.updateRelationStatus(currentUserId, targetUserId, status);
+            return ResponseEntity.ok(
+                    new RelationResponse(
+                            200,
+                            "success",
+                            new RelationData(
+                                    String.valueOf(currentUserId),
+                                    String.valueOf(targetUserId),
+                                    status)));
         } catch (NotFoundRelationException e) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "No existing relation with target user"));
+                    .body(new RelationResponse(400, "No existing relation with target user", null));
         }
     }
 
-    public ResponseEntity<CommonResponse> hideBlockedUser(long currentUserId, long targetUserId) {
+    public ResponseEntity<RelationResponse> hideBlockedUser(long currentUserId, long targetUserId) {
         if (currentUserId == targetUserId) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Cannot hide yourself"));
+                    .body(new RelationResponse(400, "Cannot hide yourself", null));
         }
         if (!this.userProfileStorage.userProfileExists(targetUserId)) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new RelationResponse(400, "Target user does not exist", null));
         }
         try {
-            byte status = this.relationStorage.getRelationStatus(targetUserId, currentUserId);
+            int status = this.relationStorage.getRelationStatus(currentUserId, targetUserId);
             // only blocked users can be hidden
             if ((status & UserRelation.BLOCKED_FLAG) != UserRelation.BLOCKED_FLAG) {
                 return ResponseEntity.badRequest()
-                        .body(new CommonResponse(400, "Target user is not blocked"));
+                        .body(new RelationResponse(400, "Target user is not blocked", null));
             }
             status |= UserRelation.HIDDEN_FLAG;
-            this.relationStorage.upsertRelationStatus(currentUserId, targetUserId, status);
-            return ResponseEntity.ok(new CommonResponse(200, "success"));
+            this.relationStorage.updateRelationStatus(currentUserId, targetUserId, status);
+            return ResponseEntity.ok(
+                    new RelationResponse(
+                            200,
+                            "success",
+                            new RelationData(
+                                    String.valueOf(currentUserId),
+                                    String.valueOf(targetUserId),
+                                    status)));
         } catch (NotFoundRelationException e) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "No existing relation with target user"));
+                    .body(new RelationResponse(400, "No existing relation with target user", null));
         }
     }
 }

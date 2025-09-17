@@ -22,7 +22,7 @@ public class UserProfileService {
         try {
             UserProfile userProfile = this.userProfileStorage.getUserProfile(userId);
             UserProfileData data = new UserProfileData();
-            data.setUserId(userProfile.getUserId());
+            data.setUserId(String.valueOf(userProfile.getUserId()));
             data.setNickName(userProfile.getNickName());
             data.setAvatar(userProfile.getAvatar());
             return ResponseEntity.ok(new UserProfileResponse(200, "success", data));

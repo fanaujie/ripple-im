@@ -60,7 +60,7 @@ class UserProfileServiceTest {
 
         UserProfileData data = response.getBody().getData();
         assertNotNull(data);
-        assertEquals(USER_ID, data.getUserId());
+        assertEquals(String.valueOf(USER_ID), data.getUserId());
         assertEquals(NICK_NAME, data.getNickName());
         assertEquals(AVATAR, data.getAvatar());
 

@@ -10,9 +10,9 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserRelation {
-    public static final byte FRIEND_FLAG = 0x01;
-    public static final byte BLOCKED_FLAG = 0x02;
-    public static final byte HIDDEN_FLAG = 0x04;
+    public static final int FRIEND_FLAG = 0x01;
+    public static final int BLOCKED_FLAG = 0x02;
+    public static final int HIDDEN_FLAG = 0x04;
     
     private long id;
     private long sourceUserId;

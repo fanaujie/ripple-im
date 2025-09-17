@@ -73,10 +73,15 @@ public class UserProfileController {
                             description =
                                     "User ID to retrieve profile for. If not provided, returns profile of authenticated user")
                     @RequestParam(name = "userId", required = false)
-                    Long userId,
+                    String userId,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long targetUserId = userId != null ? userId : Long.parseLong(jwt.getSubject());
-        return userProfileService.getUserProfile(targetUserId);
+        try {
+            long targetUserId = userId != null ? Long.parseLong(userId) : Long.parseLong(jwt.getSubject());
+            return userProfileService.getUserProfile(targetUserId);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new UserProfileResponse(400, "Invalid user ID format", null));
+        }
     }
 
     @PutMapping(value = "/nickname", consumes = "application/json", produces = "application/json")

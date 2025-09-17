@@ -27,7 +27,7 @@ public class RelationStorageImpl implements IRelationStorage {
     }
 
     @Override
-    public byte getRelationStatus(long sourceUserId, long targetUserId)
+    public int getRelationStatus(long sourceUserId, long targetUserId)
             throws NotFoundRelationException {
         UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
@@ -39,8 +39,15 @@ public class RelationStorageImpl implements IRelationStorage {
     }
 
     @Override
-    public void upsertRelationStatus(long sourceUserId, long targetUserId, byte relationFlags) {
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, relationFlags);
+    public void insertRelationStatus(
+            long sourceUserId, long targetUserId, String targetUserDisplayName, int relationFlags) {
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, targetUserDisplayName, relationFlags);
+    }
+
+    @Override
+    public void updateRelationStatus(long sourceUserId, long targetUserId, int relationFlags) {
+        relationMapper.updateRelationFlags(sourceUserId, targetUserId, relationFlags);
     }
 
     @Override

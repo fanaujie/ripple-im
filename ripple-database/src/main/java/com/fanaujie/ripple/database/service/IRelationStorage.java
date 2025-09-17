@@ -10,9 +10,12 @@ public interface IRelationStorage {
     void updateFriendDisplayName(long sourceUserId, long targetUserId, String displayName)
             throws NotFoundRelationException;
 
-    byte getRelationStatus(long sourceUserId, long targetUserId) throws NotFoundRelationException;
+    int getRelationStatus(long sourceUserId, long targetUserId) throws NotFoundRelationException;
 
-    void upsertRelationStatus(long sourceUserId, long targetUserId, byte relationFlags);
+    void insertRelationStatus(
+            long sourceUserId, long targetUserId, String targetUserDisplayName, int relationFlags);
+
+    void updateRelationStatus(long sourceUserId, long targetUserId, int relationFlags);
 
     List<RelationWithProfile> getFriendsWithBlockedUsers(long sourceUserId);
 }

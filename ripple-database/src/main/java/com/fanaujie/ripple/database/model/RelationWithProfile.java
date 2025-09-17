@@ -10,14 +10,10 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RelationWithProfile {
-    private long id;
     private long sourceUserId;
     private long targetUserId;
     private String targetUserDisplayName;
-    private byte relationFlags;
-    private Instant createdTime;
-    private Instant updatedTime;
-
+    private int relationFlags;
     // UserProfile fields
     private String targetNickName;
     private String targetAvatar;

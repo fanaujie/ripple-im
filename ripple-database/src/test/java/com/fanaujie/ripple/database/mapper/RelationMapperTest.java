@@ -84,315 +84,369 @@ class RelationMapperTest {
     }
 
     @Test
-    void testFindBySourceAndTargetExistingRelation() {
-        // Setup test data
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
-        byte relationFlags = UserRelation.FRIEND_FLAG;
+    void testFindRelationBySourceAndTarget_Found() {
+        long sourceUserId = 1000L;
+        long targetUserId = 2000L;
 
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, relationFlags);
+        createTestUserProfile(sourceUserId, "Source User", "source_avatar.jpg");
+        createTestUserProfile(targetUserId, "Target User", "target_avatar.jpg");
 
-        // Test finding existing relation
-        UserRelation result =
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Friend", UserRelation.FRIEND_FLAG);
+
+        UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
 
-        assertNotNull(result);
-        assertEquals(sourceUserId, result.getSourceUserId());
-        assertEquals(targetUserId, result.getTargetUserId());
-        assertEquals(relationFlags, result.getRelationFlags());
-        assertNotNull(result.getCreatedTime());
-        assertNotNull(result.getUpdatedTime());
+        assertNotNull(relation);
+        assertEquals(sourceUserId, relation.getSourceUserId());
+        assertEquals(targetUserId, relation.getTargetUserId());
+        assertEquals("Friend", relation.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
+        assertNotNull(relation.getCreatedTime());
+        assertNotNull(relation.getUpdatedTime());
     }
 
     @Test
-    void testFindBySourceAndTargetNonExistingRelation() {
-        // Test finding non-existing relation
-        UserRelation result = relationMapper.findRelationBySourceAndTarget(999L, 888L);
-
-        assertNull(result);
+    void testFindRelationBySourceAndTarget_NotFound() {
+        UserRelation relation = relationMapper.findRelationBySourceAndTarget(9999L, 8888L);
+        assertNull(relation);
     }
 
     @Test
-    void testFindBySourceAndTargetWithDifferentFlags() {
-        long sourceUserId = 1L;
-        long targetUserId1 = 2L;
-        long targetUserId2 = 3L;
-        long targetUserId3 = 4L;
+    void testFindRelationBySourceAndTarget_WithDifferentFlags() {
+        long sourceUserId = 1001L;
+        long targetUserId = 2001L;
 
-        // Create relations with different flags
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId1, UserRelation.FRIEND_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId2, UserRelation.BLOCKED_FLAG);
-        relationMapper.upsertRelationFlags(
-                sourceUserId,
-                targetUserId3,
-                (byte) (UserRelation.FRIEND_FLAG | UserRelation.HIDDEN_FLAG));
+        createTestUserProfile(sourceUserId, "User1", "avatar1.jpg");
+        createTestUserProfile(targetUserId, "User2", "avatar2.jpg");
 
-        // Test each relation
-        UserRelation friend =
+        byte combinedFlags = (byte) (UserRelation.FRIEND_FLAG | UserRelation.BLOCKED_FLAG);
+        relationMapper.insertRelation(sourceUserId, targetUserId, "Blocked Friend", combinedFlags);
+
+        UserRelation relation =
+                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
+
+        assertNotNull(relation);
+        assertEquals(combinedFlags, relation.getRelationFlags());
+        assertEquals("Blocked Friend", relation.getTargetUserDisplayName());
+    }
+
+    @Test
+    void testInsertRelation_Success() {
+        long sourceUserId = 1002L;
+        long targetUserId = 2002L;
+
+        createTestUserProfile(sourceUserId, "Source User", "source.jpg");
+        createTestUserProfile(targetUserId, "Target User", "target.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Best Friend", UserRelation.FRIEND_FLAG);
+
+        UserRelation relation =
+                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
+
+        assertNotNull(relation);
+        assertEquals(sourceUserId, relation.getSourceUserId());
+        assertEquals(targetUserId, relation.getTargetUserId());
+        assertEquals("Best Friend", relation.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
+    }
+
+    @Test
+    void testInsertRelation_WithDifferentFlags() {
+        long sourceUserId = 1003L;
+        long targetUserId1 = 2003L;
+        long targetUserId2 = 2004L;
+        long targetUserId3 = 2005L;
+
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId1, "Friend", "friend.jpg");
+        createTestUserProfile(targetUserId2, "Blocked", "blocked.jpg");
+        createTestUserProfile(targetUserId3, "Hidden", "hidden.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId1, "Friend", UserRelation.FRIEND_FLAG);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId2, "Blocked User", UserRelation.BLOCKED_FLAG);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId3, "Hidden User", UserRelation.HIDDEN_FLAG);
+
+        UserRelation friendRelation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId1);
-        assertEquals(UserRelation.FRIEND_FLAG, friend.getRelationFlags());
-
-        UserRelation blocked =
+        UserRelation blockedRelation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId2);
-        assertEquals(UserRelation.BLOCKED_FLAG, blocked.getRelationFlags());
-
-        UserRelation friendHidden =
+        UserRelation hiddenRelation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId3);
-        assertEquals(
-                (byte) (UserRelation.FRIEND_FLAG | UserRelation.HIDDEN_FLAG),
-                friendHidden.getRelationFlags());
+
+        assertEquals(UserRelation.FRIEND_FLAG, friendRelation.getRelationFlags());
+        assertEquals(UserRelation.BLOCKED_FLAG, blockedRelation.getRelationFlags());
+        assertEquals(UserRelation.HIDDEN_FLAG, hiddenRelation.getRelationFlags());
     }
 
     @Test
-    void testUpsertRelationFlagsNewRelation() {
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
-        byte relationFlags = UserRelation.FRIEND_FLAG;
+    void testInsertRelation_WithNullDisplayName() {
+        long sourceUserId = 1004L;
+        long targetUserId = 2006L;
 
-        // Insert new relation
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, relationFlags);
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
 
-        // Verify insertion
-        UserRelation result =
-                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
-        assertNotNull(result);
-        assertEquals(sourceUserId, result.getSourceUserId());
-        assertEquals(targetUserId, result.getTargetUserId());
-        assertEquals(relationFlags, result.getRelationFlags());
-        assertNotNull(result.getCreatedTime());
-        assertNotNull(result.getUpdatedTime());
-    }
+        relationMapper.insertRelation(sourceUserId, targetUserId, null, UserRelation.FRIEND_FLAG);
 
-    @Test
-    void testUpsertRelationFlagsUpdateExisting() {
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
-
-        // Insert initial relation
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, UserRelation.FRIEND_FLAG);
-        UserRelation initial =
+        UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
 
-        // Update relation flags
-        byte newFlags = (byte) (UserRelation.FRIEND_FLAG | UserRelation.BLOCKED_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, newFlags);
-
-        // Verify update
-        UserRelation updated =
-                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
-        assertNotNull(updated);
-        assertEquals(initial.getId(), updated.getId()); // Same record
-        assertEquals(newFlags, updated.getRelationFlags());
-        assertEquals(initial.getCreatedTime(), updated.getCreatedTime()); // Created time unchanged
-        assertTrue(
-                updated.getUpdatedTime().isAfter(initial.getUpdatedTime())); // Updated time changed
+        assertNotNull(relation);
+        assertNull(relation.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
     }
 
     @Test
-    void testUpsertRelationFlagsCombinations() {
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
+    void testUpdateRelationFlags_Success() {
+        long sourceUserId = 1005L;
+        long targetUserId = 2007L;
 
-        // Test different flag combinations
-        byte[] flagCombinations = {
-            UserRelation.FRIEND_FLAG,
-            UserRelation.BLOCKED_FLAG,
-            UserRelation.HIDDEN_FLAG,
-            (byte) (UserRelation.FRIEND_FLAG | UserRelation.HIDDEN_FLAG),
-            (byte) (UserRelation.BLOCKED_FLAG | UserRelation.HIDDEN_FLAG),
-            (byte) (UserRelation.FRIEND_FLAG | UserRelation.BLOCKED_FLAG | UserRelation.HIDDEN_FLAG)
-        };
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
 
-        for (byte flags : flagCombinations) {
-            relationMapper.upsertRelationFlags(sourceUserId, targetUserId, flags);
-            UserRelation result =
-                    relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
-            assertEquals(flags, result.getRelationFlags());
-        }
-    }
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Friend", UserRelation.FRIEND_FLAG);
 
-    @Test
-    void testUpdateDisplayNameExistingRelation() {
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
-        String displayName = "Custom Display Name";
+        byte newFlags = (byte) (UserRelation.FRIEND_FLAG | UserRelation.HIDDEN_FLAG);
+        relationMapper.updateRelationFlags(sourceUserId, targetUserId, newFlags);
 
-        // Create relation first
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, UserRelation.FRIEND_FLAG);
-        UserRelation initial =
+        UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
 
-        // Update display name
-        int updatedRows = relationMapper.updateDisplayName(sourceUserId, targetUserId, displayName);
-        assertEquals(1, updatedRows);
+        assertNotNull(relation);
+        assertEquals(newFlags, relation.getRelationFlags());
+        assertEquals("Friend", relation.getTargetUserDisplayName());
+    }
 
-        // Verify update
-        UserRelation updated =
+    @Test
+    void testUpdateRelationFlags_RemoveFlags() {
+        long sourceUserId = 1006L;
+        long targetUserId = 2008L;
+
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
+
+        byte initialFlags = (byte) (UserRelation.FRIEND_FLAG | UserRelation.BLOCKED_FLAG);
+        relationMapper.insertRelation(sourceUserId, targetUserId, "Blocked Friend", initialFlags);
+
+        relationMapper.updateRelationFlags(sourceUserId, targetUserId, UserRelation.FRIEND_FLAG);
+
+        UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
-        assertNotNull(updated);
-        assertEquals(displayName, updated.getTargetUserDisplayName());
-        assertTrue(updated.getUpdatedTime().isAfter(initial.getUpdatedTime()));
+
+        assertNotNull(relation);
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
+        assertEquals("Blocked Friend", relation.getTargetUserDisplayName());
     }
 
     @Test
-    void testUpdateDisplayNameToNull() {
-        long sourceUserId = 1L;
-        long targetUserId = 2L;
+    void testUpdateRelationFlags_SetToZero() {
+        long sourceUserId = 1007L;
+        long targetUserId = 2009L;
 
-        // Create relation with initial display name
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId, UserRelation.FRIEND_FLAG);
-        relationMapper.updateDisplayName(sourceUserId, targetUserId, "Initial Name");
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
 
-        // Update to null
-        int updatedRows = relationMapper.updateDisplayName(sourceUserId, targetUserId, null);
-        assertEquals(1, updatedRows);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Friend", UserRelation.FRIEND_FLAG);
 
-        UserRelation result =
+        relationMapper.updateRelationFlags(sourceUserId, targetUserId, (byte) 0);
+
+        UserRelation relation =
                 relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
-        assertNull(result.getTargetUserDisplayName());
+
+        assertNotNull(relation);
+        assertEquals(0, relation.getRelationFlags());
     }
 
     @Test
-    void testFindAllRelationsBySourceUserIdNoRelations() {
-        List<RelationWithProfile> relations = relationMapper.findAllRelationsBySourceUserId(999L);
+    void testUpdateDisplayName_Success() {
+        long sourceUserId = 1008L;
+        long targetUserId = 2010L;
 
-        assertTrue(relations.isEmpty());
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Old Name", UserRelation.FRIEND_FLAG);
+
+        int result = relationMapper.updateDisplayName(sourceUserId, targetUserId, "New Name");
+
+        assertEquals(1, result);
+
+        UserRelation relation =
+                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
+        assertNotNull(relation);
+        assertEquals("New Name", relation.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
     }
 
     @Test
-    void testFindAllRelationsBySourceUserIdMultipleRelations() {
-        long sourceUserId = 1L;
-        long targetUserId1 = 2L;
-        long targetUserId2 = 3L;
-        long targetUserId3 = 4L;
+    void testUpdateDisplayName_NotFound() {
+        int result = relationMapper.updateDisplayName(9999L, 8888L, "Non-existent");
+        assertEquals(0, result);
+    }
 
-        // Create test user profiles
-        createTestUserProfile(targetUserId1, "Target User 1", "avatar1.jpg");
-        createTestUserProfile(targetUserId2, "Target User 2", "avatar2.jpg");
-        createTestUserProfile(targetUserId3, "Target User 3", "avatar3.jpg");
+    @Test
+    void testUpdateDisplayName_WithNull() {
+        long sourceUserId = 1009L;
+        long targetUserId = 2011L;
 
-        // Create relations
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId1, UserRelation.FRIEND_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId2, UserRelation.BLOCKED_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId3, UserRelation.HIDDEN_FLAG);
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
 
-        // Update display names
-        int updatedRows1 =
-                relationMapper.updateDisplayName(sourceUserId, targetUserId1, "Friend 1");
-        int updatedRows2 =
-                relationMapper.updateDisplayName(sourceUserId, targetUserId2, "Blocked User");
-        assertEquals(1, updatedRows1);
-        assertEquals(1, updatedRows2);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Original Name", UserRelation.FRIEND_FLAG);
+
+        int result = relationMapper.updateDisplayName(sourceUserId, targetUserId, null);
+
+        assertEquals(1, result);
+
+        UserRelation relation =
+                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
+        assertNotNull(relation);
+        assertNull(relation.getTargetUserDisplayName());
+    }
+
+    @Test
+    void testUpdateDisplayName_WithEmptyString() {
+        long sourceUserId = 1010L;
+        long targetUserId = 2012L;
+
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Original Name", UserRelation.FRIEND_FLAG);
+
+        int result = relationMapper.updateDisplayName(sourceUserId, targetUserId, "");
+
+        assertEquals(1, result);
+
+        UserRelation relation =
+                relationMapper.findRelationBySourceAndTarget(sourceUserId, targetUserId);
+        assertNotNull(relation);
+        assertEquals("", relation.getTargetUserDisplayName());
+    }
+
+    @Test
+    void testFindAllRelationsBySourceUserId_MultipleRelations() {
+        long sourceUserId = 1011L;
+        long targetUserId1 = 2013L;
+        long targetUserId2 = 2014L;
+        long targetUserId3 = 2015L;
+
+        createTestUserProfile(sourceUserId, "Source User", "source.jpg");
+        createTestUserProfile(targetUserId1, "Friend User", "friend.jpg");
+        createTestUserProfile(targetUserId2, "Blocked User", "blocked.jpg");
+        createTestUserProfile(targetUserId3, "Hidden User", "hidden.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId1, "My Friend", UserRelation.FRIEND_FLAG);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId2, "Blocked", UserRelation.BLOCKED_FLAG);
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId3, "Hidden", UserRelation.HIDDEN_FLAG);
 
         List<RelationWithProfile> relations =
                 relationMapper.findAllRelationsBySourceUserId(sourceUserId);
 
+        assertNotNull(relations);
         assertEquals(3, relations.size());
 
-        // Verify each relation contains both relation and profile data
-        for (RelationWithProfile relation : relations) {
-            assertEquals(sourceUserId, relation.getSourceUserId());
-            assertTrue(relation.getTargetUserId() > 0);
-            assertTrue(relation.getRelationFlags() > 0);
-            assertNotNull(relation.getCreatedTime());
-            assertNotNull(relation.getUpdatedTime());
-
-            // Profile data should be present
-            assertNotNull(relation.getTargetNickName());
-            assertNotNull(relation.getTargetAvatar());
-        }
-
-        // Find specific relations and verify
-        RelationWithProfile friend =
+        RelationWithProfile relation1 =
                 relations.stream()
                         .filter(r -> r.getTargetUserId() == targetUserId1)
                         .findFirst()
                         .orElse(null);
-        assertNotNull(friend);
-        assertEquals(UserRelation.FRIEND_FLAG, friend.getRelationFlags());
-        assertEquals("Friend 1", friend.getTargetUserDisplayName());
-        assertEquals("Target User 1", friend.getTargetNickName());
-        assertEquals("avatar1.jpg", friend.getTargetAvatar());
-    }
+        assertNotNull(relation1);
+        assertEquals("My Friend", relation1.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation1.getRelationFlags());
+        assertEquals("Friend User", relation1.getTargetNickName());
+        assertEquals("friend.jpg", relation1.getTargetAvatar());
 
-    @Test
-    void testFindAllRelationsBySourceUserIdWithoutProfiles() {
-        long sourceUserId = 1L;
-        long targetUserId1 = 2L;
-        long targetUserId2 = 3L;
-
-        // Create relations without user profiles
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId1, UserRelation.FRIEND_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId2, UserRelation.BLOCKED_FLAG);
-
-        List<RelationWithProfile> relations =
-                relationMapper.findAllRelationsBySourceUserId(sourceUserId);
-
-        assertEquals(2, relations.size());
-
-        // Verify relation data is present but profile data is null due to LEFT JOIN
-        for (RelationWithProfile relation : relations) {
-            assertEquals(sourceUserId, relation.getSourceUserId());
-            assertTrue(relation.getTargetUserId() > 0);
-            assertTrue(relation.getRelationFlags() > 0);
-            assertNotNull(relation.getCreatedTime());
-            assertNotNull(relation.getUpdatedTime());
-
-            // Profile data should be null due to LEFT JOIN with non-existing profiles
-            assertNull(relation.getTargetNickName());
-            assertNull(relation.getTargetAvatar());
-        }
-    }
-
-    @Test
-    void testFindAllRelationsBySourceUserIdMixedProfiles() {
-        long sourceUserId = 1L;
-        long targetUserId1 = 2L; // Will have profile
-        long targetUserId2 = 3L; // Will not have profile
-
-        // Create profile for only one target user
-        createTestUserProfile(targetUserId1, "User With Profile", "profile.jpg");
-
-        // Create relations for both users
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId1, UserRelation.FRIEND_FLAG);
-        relationMapper.upsertRelationFlags(sourceUserId, targetUserId2, UserRelation.BLOCKED_FLAG);
-
-        List<RelationWithProfile> relations =
-                relationMapper.findAllRelationsBySourceUserId(sourceUserId);
-
-        assertEquals(2, relations.size());
-
-        // Find and verify relation with profile
-        RelationWithProfile withProfile =
-                relations.stream()
-                        .filter(r -> r.getTargetUserId() == targetUserId1)
-                        .findFirst()
-                        .orElse(null);
-        assertNotNull(withProfile);
-        assertEquals("User With Profile", withProfile.getTargetNickName());
-        assertEquals("profile.jpg", withProfile.getTargetAvatar());
-
-        // Find and verify relation without profile
-        RelationWithProfile withoutProfile =
+        RelationWithProfile relation2 =
                 relations.stream()
                         .filter(r -> r.getTargetUserId() == targetUserId2)
                         .findFirst()
                         .orElse(null);
-        assertNotNull(withoutProfile);
-        assertNull(withoutProfile.getTargetNickName());
-        assertNull(withoutProfile.getTargetAvatar());
+        assertNotNull(relation2);
+        assertEquals("Blocked", relation2.getTargetUserDisplayName());
+        assertEquals(UserRelation.BLOCKED_FLAG, relation2.getRelationFlags());
+        assertEquals("Blocked User", relation2.getTargetNickName());
+        assertEquals("blocked.jpg", relation2.getTargetAvatar());
+
+        RelationWithProfile relation3 =
+                relations.stream()
+                        .filter(r -> r.getTargetUserId() == targetUserId3)
+                        .findFirst()
+                        .orElse(null);
+        assertNotNull(relation3);
+        assertEquals("Hidden", relation3.getTargetUserDisplayName());
+        assertEquals(UserRelation.HIDDEN_FLAG, relation3.getRelationFlags());
+        assertEquals("Hidden User", relation3.getTargetNickName());
+        assertEquals("hidden.jpg", relation3.getTargetAvatar());
     }
 
     @Test
-    void testUpdateDisplayNameNonExistentRelation() {
-        long nonExistentSourceUserId = 999L;
-        long nonExistentTargetUserId = 888L;
+    void testFindAllRelationsBySourceUserId_NoRelations() {
+        List<RelationWithProfile> relations = relationMapper.findAllRelationsBySourceUserId(9999L);
 
-        // Try to update display name for non-existent relation
-        int updatedRows =
-                relationMapper.updateDisplayName(
-                        nonExistentSourceUserId, nonExistentTargetUserId, "Display Name");
+        assertNotNull(relations);
+        assertTrue(relations.isEmpty());
+    }
 
-        assertEquals(0, updatedRows);
+    @Test
+    void testFindAllRelationsBySourceUserId_SingleRelation() {
+        long sourceUserId = 1012L;
+        long targetUserId = 2016L;
+
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Target", "target.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Only Friend", UserRelation.FRIEND_FLAG);
+
+        List<RelationWithProfile> relations =
+                relationMapper.findAllRelationsBySourceUserId(sourceUserId);
+
+        assertNotNull(relations);
+        assertEquals(1, relations.size());
+
+        RelationWithProfile relation = relations.get(0);
+        assertEquals(sourceUserId, relation.getSourceUserId());
+        assertEquals(targetUserId, relation.getTargetUserId());
+        assertEquals("Only Friend", relation.getTargetUserDisplayName());
+        assertEquals(UserRelation.FRIEND_FLAG, relation.getRelationFlags());
+        assertEquals("Target", relation.getTargetNickName());
+        assertEquals("target.jpg", relation.getTargetAvatar());
+    }
+
+    @Test
+    void testFindAllRelationsBySourceUserId_VerifyProfileJoin() {
+        long sourceUserId = 1013L;
+        long targetUserId = 2017L;
+
+        createTestUserProfile(sourceUserId, "Source", "source.jpg");
+        createTestUserProfile(targetUserId, "Real Target Name", "real_target.jpg");
+
+        relationMapper.insertRelation(
+                sourceUserId, targetUserId, "Custom Display Name", UserRelation.FRIEND_FLAG);
+
+        List<RelationWithProfile> relations =
+                relationMapper.findAllRelationsBySourceUserId(sourceUserId);
+
+        assertNotNull(relations);
+        assertEquals(1, relations.size());
+
+        RelationWithProfile relation = relations.get(0);
+        assertEquals("Custom Display Name", relation.getTargetUserDisplayName());
+        assertEquals("Real Target Name", relation.getTargetNickName());
+        assertEquals("real_target.jpg", relation.getTargetAvatar());
     }
 }

@@ -66,7 +66,7 @@ class UserProfileControllerTest {
     @Test
     void getUserProfile_Success() throws Exception {
         // Given
-        UserProfileData profileData = new UserProfileData(TEST_ID, TEST_NICKNAME, TEST_PORTRAIT);
+        UserProfileData profileData = new UserProfileData(String.valueOf(TEST_ID), TEST_NICKNAME, TEST_PORTRAIT);
         UserProfileResponse response = new UserProfileResponse(200, "success", profileData);
 
         when(userProfileService.getUserProfile(TEST_ID)).thenReturn(ResponseEntity.ok(response));
@@ -118,7 +118,7 @@ class UserProfileControllerTest {
     void getUserProfile_WithUserId_Success() throws Exception {
         // Given
         Long targetUserId = 2L;
-        UserProfileData profileData = new UserProfileData(targetUserId, "Target User", "target.jpg");
+        UserProfileData profileData = new UserProfileData(String.valueOf(targetUserId), "Target User", "target.jpg");
         UserProfileResponse response = new UserProfileResponse(200, "success", profileData);
 
         when(userProfileService.getUserProfile(targetUserId)).thenReturn(ResponseEntity.ok(response));

@@ -4,6 +4,7 @@ import com.fanaujie.ripple.database.model.RelationWithProfile;
 import com.fanaujie.ripple.database.model.UserRelation;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,10 +16,16 @@ public interface RelationMapper {
     UserRelation findRelationBySourceAndTarget(
             @Param("sourceUserId") long sourceUserId, @Param("targetUserId") long targetUserId);
 
-    void upsertRelationFlags(
+    void insertRelation(
             @Param("sourceUserId") long sourceUserId,
             @Param("targetUserId") long targetUserId,
-            @Param("relationFlags") byte relationFlags);
+            @Param("displayName") String displayName,
+            @Param("relationFlags") int relationFlags);
+
+    void updateRelationFlags(
+            @Param("sourceUserId") long sourceUserId,
+            @Param("targetUserId") long targetUserId,
+            @Param("relationFlags") int relationFlags);
 
     int updateDisplayName(
             @Param("sourceUserId") long sourceUserId,

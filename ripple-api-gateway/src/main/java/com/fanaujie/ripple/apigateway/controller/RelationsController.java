@@ -41,7 +41,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description =
@@ -49,7 +49,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -58,12 +58,17 @@ public class RelationsController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<CommonResponse> addFriend(
+    public ResponseEntity<RelationResponse> addFriend(
             @Parameter(description = "Add friend request") @Valid @RequestBody
                     AddFriendRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.addFriend(currentUserId, request.getTargetUserId());
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.addFriend(currentUserId, Long.parseLong(request.getTargetUserId()));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Invalid user ID format", null));
+        }
     }
 
     @GetMapping(value = "/friends-with-blocked", produces = "application/json")
@@ -111,7 +116,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description =
@@ -119,7 +124,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -129,13 +134,18 @@ public class RelationsController {
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
     public ResponseEntity<CommonResponse> updateFriendDisplayName(
-            @Parameter(description = "Friend ID") @PathVariable("friendId") long friendId,
+            @Parameter(description = "Friend ID") @PathVariable("friendId") String friendId,
             @Parameter(description = "Display name update request") @Valid @RequestBody
                     UpdateFriendDisplayNameRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.updateFriendDisplayName(
-                currentUserId, friendId, request.getDisplayName());
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.updateFriendDisplayName(
+                    currentUserId, Long.parseLong(friendId), request.getDisplayName());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse(400, "Invalid user ID format"));
+        }
     }
 
     @DeleteMapping(value = "/friends/{friendId}", produces = "application/json")
@@ -150,14 +160,14 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description = "Friend relationship does not exist",
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -166,11 +176,16 @@ public class RelationsController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<CommonResponse> removeFriend(
-            @Parameter(description = "Friend ID") @PathVariable("friendId") long friendId,
+    public ResponseEntity<RelationResponse> removeFriend(
+            @Parameter(description = "Friend ID") @PathVariable("friendId") String friendId,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.removeFriend(currentUserId, friendId);
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.removeFriend(currentUserId, Long.parseLong(friendId));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Invalid user ID format", null));
+        }
     }
 
     @PostMapping(
@@ -188,14 +203,14 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description = "Invalid request parameters or user already blocked",
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -204,12 +219,17 @@ public class RelationsController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<CommonResponse> blockUser(
+    public ResponseEntity<RelationResponse> blockUser(
             @Parameter(description = "Block user request") @Valid @RequestBody
                     BlockUserRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.updateBlockedStatus(currentUserId, request.getTargetUserId(), true);
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.updateBlockedStatus(currentUserId, Long.parseLong(request.getTargetUserId()), true);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Invalid user ID format", null));
+        }
     }
 
     @DeleteMapping(value = "/blocked-users/{targetUserId}", produces = "application/json")
@@ -224,14 +244,14 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description = "User is not blocked",
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -240,12 +260,17 @@ public class RelationsController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<CommonResponse> unblockUser(
+    public ResponseEntity<RelationResponse> unblockUser(
             @Parameter(description = "Target user ID") @PathVariable("targetUserId")
-                    long targetUserId,
+                    String targetUserId,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.updateBlockedStatus(currentUserId, targetUserId, false);
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.updateBlockedStatus(currentUserId, Long.parseLong(targetUserId), false);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Invalid user ID format", null));
+        }
     }
 
     @PatchMapping(value = "/blocked-users/{targetUserId}/hide", produces = "application/json")
@@ -260,14 +285,14 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description = "User is not blocked or already hidden",
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = CommonResponse.class))),
+                                        schema = @Schema(implementation = RelationResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -276,11 +301,16 @@ public class RelationsController {
                                         mediaType = "application/json",
                                         schema = @Schema(implementation = CommonResponse.class)))
             })
-    public ResponseEntity<CommonResponse> hideBlockedUser(
+    public ResponseEntity<RelationResponse> hideBlockedUser(
             @Parameter(description = "Target user ID") @PathVariable("targetUserId")
-                    long targetUserId,
+                    String targetUserId,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-        long currentUserId = Long.parseLong(jwt.getSubject());
-        return relationService.hideBlockedUser(currentUserId, targetUserId);
+        try {
+            long currentUserId = Long.parseLong(jwt.getSubject());
+            return relationService.hideBlockedUser(currentUserId, Long.parseLong(targetUserId));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new RelationResponse(400, "Invalid user ID format", null));
+        }
     }
 }

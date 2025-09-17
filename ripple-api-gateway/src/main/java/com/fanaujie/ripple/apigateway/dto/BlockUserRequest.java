@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BlockUserRequest {
-    private long targetUserId;
+    private String targetUserId;
 }

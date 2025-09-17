@@ -2,6 +2,7 @@ package com.fanaujie.ripple.apigateway.controller;
 
 import com.fanaujie.ripple.apigateway.config.SecurityConfig;
 import com.fanaujie.ripple.apigateway.dto.*;
+import com.fanaujie.ripple.database.model.UserRelation;
 import com.fanaujie.ripple.apigateway.service.RelationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,8 +61,9 @@ class RelationsControllerTest {
 
     @Test
     void addFriend_Success() throws Exception {
-        AddFriendRequest request = new AddFriendRequest(TARGET_USER_ID);
-        CommonResponse response = new CommonResponse(200, "Friend request sent successfully");
+        AddFriendRequest request = new AddFriendRequest(String.valueOf(TARGET_USER_ID));
+        RelationData data = new RelationData(String.valueOf(TEST_USER_ID), String.valueOf(TARGET_USER_ID), UserRelation.FRIEND_FLAG);
+        RelationResponse response = new RelationResponse(200, "Friend request sent successfully", data);
 
         when(relationService.addFriend(TEST_USER_ID, TARGET_USER_ID))
                 .thenReturn(ResponseEntity.ok(response));
@@ -74,15 +76,18 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("Friend request sent successfully"));
+                .andExpect(jsonPath("$.message").value("Friend request sent successfully"))
+                .andExpect(jsonPath("$.data.relationFlags").value((int) UserRelation.FRIEND_FLAG))
+                .andExpect(jsonPath("$.data.sourceUserId").value(String.valueOf(TEST_USER_ID)))
+                .andExpect(jsonPath("$.data.targetUserId").value(String.valueOf(TARGET_USER_ID)));
 
         verify(relationService).addFriend(TEST_USER_ID, TARGET_USER_ID);
     }
 
     @Test
     void addFriend_UserNotFound() throws Exception {
-        AddFriendRequest request = new AddFriendRequest(TARGET_USER_ID);
-        CommonResponse response = new CommonResponse(404, "User not found");
+        AddFriendRequest request = new AddFriendRequest(String.valueOf(TARGET_USER_ID));
+        RelationResponse response = new RelationResponse(404, "User not found", null);
 
         when(relationService.addFriend(TEST_USER_ID, TARGET_USER_ID))
                 .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
@@ -95,14 +100,15 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("User not found"));
+                .andExpect(jsonPath("$.message").value("User not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(relationService).addFriend(TEST_USER_ID, TARGET_USER_ID);
     }
 
     @Test
     void addFriend_Unauthorized() throws Exception {
-        AddFriendRequest request = new AddFriendRequest(TARGET_USER_ID);
+        AddFriendRequest request = new AddFriendRequest(String.valueOf(TARGET_USER_ID));
 
         mockMvc.perform(
                         post("/api/relations/friends")
@@ -204,7 +210,8 @@ class RelationsControllerTest {
 
     @Test
     void removeFriend_Success() throws Exception {
-        CommonResponse response = new CommonResponse(200, "Friend removed successfully");
+        RelationData data = new RelationData(String.valueOf(TEST_USER_ID), String.valueOf(FRIEND_ID), 0);
+        RelationResponse response = new RelationResponse(200, "Friend removed successfully", data);
 
         when(relationService.removeFriend(TEST_USER_ID, FRIEND_ID))
                 .thenReturn(ResponseEntity.ok(response));
@@ -215,14 +222,17 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("Friend removed successfully"));
+                .andExpect(jsonPath("$.message").value("Friend removed successfully"))
+                .andExpect(jsonPath("$.data.relationFlags").value(0))
+                .andExpect(jsonPath("$.data.sourceUserId").value(String.valueOf(TEST_USER_ID)))
+                .andExpect(jsonPath("$.data.targetUserId").value(String.valueOf(FRIEND_ID)));
 
         verify(relationService).removeFriend(TEST_USER_ID, FRIEND_ID);
     }
 
     @Test
     void removeFriend_FriendNotFound() throws Exception {
-        CommonResponse response = new CommonResponse(404, "Friend not found");
+        RelationResponse response = new RelationResponse(404, "Friend not found", null);
 
         when(relationService.removeFriend(TEST_USER_ID, FRIEND_ID))
                 .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
@@ -233,7 +243,8 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("Friend not found"));
+                .andExpect(jsonPath("$.message").value("Friend not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(relationService).removeFriend(TEST_USER_ID, FRIEND_ID);
     }
@@ -248,8 +259,9 @@ class RelationsControllerTest {
 
     @Test
     void blockUser_Success() throws Exception {
-        BlockUserRequest request = new BlockUserRequest(TARGET_USER_ID);
-        CommonResponse response = new CommonResponse(200, "User blocked successfully");
+        BlockUserRequest request = new BlockUserRequest(String.valueOf(TARGET_USER_ID));
+        RelationData data = new RelationData(String.valueOf(TEST_USER_ID), String.valueOf(TARGET_USER_ID), UserRelation.BLOCKED_FLAG);
+        RelationResponse response = new RelationResponse(200, "User blocked successfully", data);
 
         when(relationService.updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, true))
                 .thenReturn(ResponseEntity.ok(response));
@@ -262,15 +274,18 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("User blocked successfully"));
+                .andExpect(jsonPath("$.message").value("User blocked successfully"))
+                .andExpect(jsonPath("$.data.relationFlags").value((int) UserRelation.BLOCKED_FLAG))
+                .andExpect(jsonPath("$.data.sourceUserId").value(String.valueOf(TEST_USER_ID)))
+                .andExpect(jsonPath("$.data.targetUserId").value(String.valueOf(TARGET_USER_ID)));
 
         verify(relationService).updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, true);
     }
 
     @Test
     void blockUser_UserNotFound() throws Exception {
-        BlockUserRequest request = new BlockUserRequest(TARGET_USER_ID);
-        CommonResponse response = new CommonResponse(404, "User not found");
+        BlockUserRequest request = new BlockUserRequest(String.valueOf(TARGET_USER_ID));
+        RelationResponse response = new RelationResponse(404, "User not found", null);
 
         when(relationService.updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, true))
                 .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
@@ -283,14 +298,15 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("User not found"));
+                .andExpect(jsonPath("$.message").value("User not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(relationService).updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, true);
     }
 
     @Test
     void blockUser_Unauthorized() throws Exception {
-        BlockUserRequest request = new BlockUserRequest(TARGET_USER_ID);
+        BlockUserRequest request = new BlockUserRequest(String.valueOf(TARGET_USER_ID));
 
         mockMvc.perform(
                         post("/api/relations/blocked-users")
@@ -302,7 +318,8 @@ class RelationsControllerTest {
 
     @Test
     void unblockUser_Success() throws Exception {
-        CommonResponse response = new CommonResponse(200, "User unblocked successfully");
+        RelationData data = new RelationData(String.valueOf(TEST_USER_ID), String.valueOf(FRIEND_ID), 0);
+        RelationResponse response = new RelationResponse(200, "User unblocked successfully", data);
 
         when(relationService.updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, false))
                 .thenReturn(ResponseEntity.ok(response));
@@ -313,14 +330,17 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("User unblocked successfully"));
+                .andExpect(jsonPath("$.message").value("User unblocked successfully"))
+                .andExpect(jsonPath("$.data.relationFlags").value(0))
+                .andExpect(jsonPath("$.data.sourceUserId").value(String.valueOf(TEST_USER_ID)))
+                .andExpect(jsonPath("$.data.targetUserId").value(String.valueOf(FRIEND_ID)));
 
         verify(relationService).updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, false);
     }
 
     @Test
     void unblockUser_UserNotFound() throws Exception {
-        CommonResponse response = new CommonResponse(404, "User not found");
+        RelationResponse response = new RelationResponse(404, "User not found", null);
 
         when(relationService.updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, false))
                 .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
@@ -331,7 +351,8 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("User not found"));
+                .andExpect(jsonPath("$.message").value("User not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(relationService).updateBlockedStatus(TEST_USER_ID, TARGET_USER_ID, false);
     }
@@ -346,7 +367,8 @@ class RelationsControllerTest {
 
     @Test
     void hideBlockedUser_Success() throws Exception {
-        CommonResponse response = new CommonResponse(200, "Blocked user hidden successfully");
+        RelationData data = new RelationData(String.valueOf(TEST_USER_ID), String.valueOf(TARGET_USER_ID), UserRelation.BLOCKED_FLAG | UserRelation.HIDDEN_FLAG);
+        RelationResponse response = new RelationResponse(200, "Blocked user hidden successfully", data);
 
         when(relationService.hideBlockedUser(TEST_USER_ID, TARGET_USER_ID))
                 .thenReturn(ResponseEntity.ok(response));
@@ -357,14 +379,17 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("Blocked user hidden successfully"));
+                .andExpect(jsonPath("$.message").value("Blocked user hidden successfully"))
+                .andExpect(jsonPath("$.data.relationFlags").value((int) (UserRelation.BLOCKED_FLAG | UserRelation.HIDDEN_FLAG)))
+                .andExpect(jsonPath("$.data.sourceUserId").value(String.valueOf(TEST_USER_ID)))
+                .andExpect(jsonPath("$.data.targetUserId").value(String.valueOf(TARGET_USER_ID)));
 
         verify(relationService).hideBlockedUser(TEST_USER_ID, TARGET_USER_ID);
     }
 
     @Test
     void hideBlockedUser_UserNotFound() throws Exception {
-        CommonResponse response = new CommonResponse(404, "User not found");
+        RelationResponse response = new RelationResponse(404, "User not found", null);
 
         when(relationService.hideBlockedUser(TEST_USER_ID, TARGET_USER_ID))
                 .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
@@ -375,7 +400,8 @@ class RelationsControllerTest {
                                 .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("User not found"));
+                .andExpect(jsonPath("$.message").value("User not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(relationService).hideBlockedUser(TEST_USER_ID, TARGET_USER_ID);
     }
