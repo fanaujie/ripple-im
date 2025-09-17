@@ -1,7 +1,6 @@
 package com.fanaujie.ripple.snowflakeid.server.service.snowflakeid;
 
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdRequest;
-import com.fanaujie.ripple.snowflakeid.server.config.Config;
 import com.fanaujie.ripple.shaded.netty.bootstrap.ServerBootstrap;
 import com.fanaujie.ripple.shaded.netty.channel.*;
 import com.fanaujie.ripple.shaded.netty.channel.nio.NioIoHandler;
@@ -18,10 +17,12 @@ public class SnowflakeIdService {
 
     Logger logger = LoggerFactory.getLogger(SnowflakeIdService.class);
 
-    private final Config config;
+    private final long workerId;
+    private final int serverPort;
 
-    public SnowflakeIdService(Config config) {
-        this.config = config;
+    public SnowflakeIdService(long workerId, int serverPort) {
+        this.workerId = workerId;
+        this.serverPort = serverPort;
     }
 
     private EventLoopGroup bossGroup;
@@ -31,8 +32,7 @@ public class SnowflakeIdService {
         bossGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         ServerBootstrap serverBootstrap = new ServerBootstrap();
-        SnowflakeIdGenerator snowflakeIdGenerator =
-                new SnowflakeIdGenerator(this.config.getWorkerId());
+        SnowflakeIdGenerator snowflakeIdGenerator = new SnowflakeIdGenerator(this.workerId);
         serverBootstrap
                 .group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -55,8 +55,8 @@ public class SnowflakeIdService {
                             }
                         });
         try {
-            ChannelFuture serverChannelFuture = serverBootstrap.bind(this.config.getPort()).sync();
-            logger.info("Server started on port: {}", this.config.getPort());
+            ChannelFuture serverChannelFuture = serverBootstrap.bind(this.serverPort).sync();
+            logger.info("Server started on port: {}", this.serverPort);
             serverChannelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
             e.printStackTrace();
