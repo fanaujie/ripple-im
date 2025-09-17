@@ -115,6 +115,87 @@ class UserProfileControllerTest {
     }
 
     @Test
+    void getUserProfile_WithUserId_Success() throws Exception {
+        // Given
+        Long targetUserId = 2L;
+        UserProfileData profileData = new UserProfileData(targetUserId, "Target User", "target.jpg");
+        UserProfileResponse response = new UserProfileResponse(200, "success", profileData);
+
+        when(userProfileService.getUserProfile(targetUserId)).thenReturn(ResponseEntity.ok(response));
+
+        // When & Then
+        mockMvc.perform(
+                        get("/api/profile")
+                                .param("userId", targetUserId.toString())
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("success"))
+                .andExpect(jsonPath("$.data.userId").value(targetUserId))
+                .andExpect(jsonPath("$.data.nickName").value("Target User"))
+                .andExpect(jsonPath("$.data.avatar").value("target.jpg"));
+
+        verify(userProfileService).getUserProfile(targetUserId);
+    }
+
+    @Test
+    void getUserProfile_WithUserId_UserNotFound() throws Exception {
+        // Given
+        Long targetUserId = 999L;
+        UserProfileResponse response = new UserProfileResponse(404, "User profile not found", null);
+
+        when(userProfileService.getUserProfile(targetUserId))
+                .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
+
+        // When & Then
+        mockMvc.perform(
+                        get("/api/profile")
+                                .param("userId", targetUserId.toString())
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("User profile not found"))
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(userProfileService).getUserProfile(targetUserId);
+    }
+
+    @Test
+    void getUserProfile_WithInvalidUserId() throws Exception {
+        // When & Then - Invalid userId parameter
+        mockMvc.perform(
+                        get("/api/profile")
+                                .param("userId", "invalid")
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getUserProfile_WithNegativeUserId() throws Exception {
+        // Given
+        Long negativeUserId = -1L;
+        UserProfileResponse response = new UserProfileResponse(404, "User profile not found", null);
+
+        when(userProfileService.getUserProfile(negativeUserId))
+                .thenReturn(ResponseEntity.status(HttpStatus.NOT_FOUND).body(response));
+
+        // When & Then
+        mockMvc.perform(
+                        get("/api/profile")
+                                .param("userId", negativeUserId.toString())
+                                .with(authenticatedUser())
+                                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("User profile not found"));
+
+        verify(userProfileService).getUserProfile(negativeUserId);
+    }
+
+    @Test
     void updateNickName_Success() throws Exception {
         // Given
         String newNickName = "New Nickname";
