@@ -3,13 +3,12 @@ package com.fanaujie.ripple.msggateway.server.ws;
 import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatRequest;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
-import io.netty.buffer.ByteBufUtil;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import com.fanaujie.ripple.shaded.netty.buffer.ByteBufUtil;
+import com.fanaujie.ripple.shaded.netty.channel.ChannelHandlerContext;
+import com.fanaujie.ripple.shaded.netty.channel.SimpleChannelInboundHandler;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.WebSocketFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,20 +46,23 @@ public class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocket
 
     private void handleHeartbeatRequest(ChannelHandlerContext ctx, HeartbeatRequest request) {
         try {
-            logger.info("Processing heartbeat request from user: {}, timestamp: {}",
-                    request.getUserId(), request.getTimestamp());
+            logger.info(
+                    "Processing heartbeat request from user: {}, timestamp: {}",
+                    request.getUserId(),
+                    request.getTimestamp());
 
-            HeartbeatResponse heartbeatResponse = HeartbeatResponse.newBuilder()
-                    .setUserId(request.getUserId())
-                    .setClientTimestamp(request.getTimestamp())
-                    .setServerTimestamp(System.currentTimeMillis())
-                    .build();
+            HeartbeatResponse heartbeatResponse =
+                    HeartbeatResponse.newBuilder()
+                            .setUserId(request.getUserId())
+                            .setClientTimestamp(request.getTimestamp())
+                            .setServerTimestamp(System.currentTimeMillis())
+                            .build();
 
-            RippleMessage response = RippleMessage.newBuilder()
-                    .setHeartbeatResponse(heartbeatResponse)
-                    .build();
+            RippleMessage response =
+                    RippleMessage.newBuilder().setHeartbeatResponse(heartbeatResponse).build();
             BinaryWebSocketFrame resFrame =
-                    new BinaryWebSocketFrame(ctx.alloc().buffer().writeBytes(response.toByteArray()));
+                    new BinaryWebSocketFrame(
+                            ctx.alloc().buffer().writeBytes(response.toByteArray()));
             ctx.writeAndFlush(resFrame);
 
             logger.info("Sent heartbeat response to user: {}", request.getUserId());

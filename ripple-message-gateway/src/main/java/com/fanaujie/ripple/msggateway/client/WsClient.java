@@ -3,16 +3,16 @@ package com.fanaujie.ripple.msggateway.client;
 import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatRequest;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioIoHandler;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.DefaultHttpHeaders;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.websocketx.*;
-import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
+import com.fanaujie.ripple.shaded.netty.bootstrap.Bootstrap;
+import com.fanaujie.ripple.shaded.netty.channel.*;
+import com.fanaujie.ripple.shaded.netty.channel.nio.NioIoHandler;
+import com.fanaujie.ripple.shaded.netty.channel.socket.SocketChannel;
+import com.fanaujie.ripple.shaded.netty.channel.socket.nio.NioSocketChannel;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.DefaultHttpHeaders;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.HttpClientCodec;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.HttpObjectAggregator;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.*;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,27 +74,23 @@ public class WsClient {
         }
     }
 
-
     public CompletableFuture<HeartbeatResponse> sendHeartbeat(String userId) {
         CompletableFuture<HeartbeatResponse> future = new CompletableFuture<>();
         if (channel == null || !channel.isActive()) {
             future.completeExceptionally(new IllegalStateException("Client not connected"));
             return future;
         }
-        
+
         long timestamp = System.currentTimeMillis();
         responseFutures.put(userId, future);
-        
+
         try {
-            HeartbeatRequest heartbeatRequest = HeartbeatRequest.newBuilder()
-                    .setUserId(userId)
-                    .setTimestamp(timestamp)
-                    .build();
-                    
-            RippleMessage request = RippleMessage.newBuilder()
-                    .setHeartbeatRequest(heartbeatRequest)
-                    .build();
-                    
+            HeartbeatRequest heartbeatRequest =
+                    HeartbeatRequest.newBuilder().setUserId(userId).setTimestamp(timestamp).build();
+
+            RippleMessage request =
+                    RippleMessage.newBuilder().setHeartbeatRequest(heartbeatRequest).build();
+
             byte[] data = request.toByteArray();
             BinaryWebSocketFrame frame =
                     new BinaryWebSocketFrame(channel.alloc().buffer(data.length).writeBytes(data));

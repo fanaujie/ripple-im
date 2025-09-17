@@ -2,11 +2,11 @@ package com.fanaujie.ripple.msggateway.client;
 
 import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
-import io.netty.channel.*;
-import io.netty.buffer.*;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.websocketx.*;
-import io.netty.util.CharsetUtil;
+import com.fanaujie.ripple.shaded.netty.channel.*;
+import com.fanaujie.ripple.shaded.netty.buffer.*;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.FullHttpResponse;
+import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.*;
+import com.fanaujie.ripple.shaded.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,15 +106,19 @@ public class WsClientHandler extends SimpleChannelInboundHandler<Object> {
 
     private void handleHeartbeatResponse(HeartbeatResponse response) {
         try {
-            logger.debug("Received heartbeat response for user: {}, client_timestamp: {}, server_timestamp: {}",
-                    response.getUserId(), response.getClientTimestamp(), response.getServerTimestamp());
+            logger.debug(
+                    "Received heartbeat response for user: {}, client_timestamp: {}, server_timestamp: {}",
+                    response.getUserId(),
+                    response.getClientTimestamp(),
+                    response.getServerTimestamp());
 
             CompletableFuture<HeartbeatResponse> future =
                     responseFutures.remove(response.getUserId());
             if (future != null) {
                 future.complete(response);
             } else {
-                logger.warn("No pending heartbeat request found for userId: {}", response.getUserId());
+                logger.warn(
+                        "No pending heartbeat request found for userId: {}", response.getUserId());
             }
 
         } catch (Exception e) {
