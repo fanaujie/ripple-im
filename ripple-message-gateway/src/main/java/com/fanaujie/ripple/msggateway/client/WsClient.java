@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.msggateway.client;
 
+import com.fanaujie.ripple.msggateway.server.uitls.HttpHeader;
 import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatRequest;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
@@ -33,18 +34,17 @@ public class WsClient {
     private final Channel channel;
     private WebSocketClientHandshaker handshaker;
 
-    public WsClient(String host, int port, String path) {
+    public WsClient(String host, int port, String path, String token, String deviceId) {
         group = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         try {
             URI uri = new URI("ws://" + host + ":" + port + path);
+            DefaultHttpHeaders headers = new DefaultHttpHeaders();
+            headers.add(HttpHeader.HEADER_AUTHORIZATION, "Bearer " + token);
+            headers.add(HttpHeader.HEADER_RIPPLE_DEVICE_ID, deviceId);
             final WsClientHandler handler =
                     new WsClientHandler(
                             WebSocketClientHandshakerFactory.newHandshaker(
-                                    uri,
-                                    WebSocketVersion.V13,
-                                    null,
-                                    true,
-                                    new DefaultHttpHeaders()),
+                                    uri, WebSocketVersion.V13, null, true, headers),
                             responseFutures);
             Bootstrap bootstrap = new Bootstrap();
             bootstrap
@@ -67,9 +67,7 @@ public class WsClient {
             channel = bootstrap.connect(host, port).sync().channel();
             handler.getHandshakeFuture().sync();
         } catch (Exception e) {
-            if (group != null) {
-                group.shutdownGracefully();
-            }
+            group.shutdownGracefully();
             throw new RuntimeException("Failed to connect to WebSocket server", e);
         }
     }

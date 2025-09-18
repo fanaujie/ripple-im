@@ -1,6 +1,10 @@
 package com.fanaujie.ripple.msggateway.server.ws;
 
-import com.fanaujie.ripple.msggateway.server.config.WsConfig;
+import com.fanaujie.ripple.msggateway.server.jwt.JwtDecoder;
+import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
+import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
+import com.fanaujie.ripple.msggateway.server.ws.handler.HeartbeatHandler;
+import com.fanaujie.ripple.msggateway.server.ws.handler.WebSocketRouterHandler;
 import com.fanaujie.ripple.shaded.netty.bootstrap.ServerBootstrap;
 import com.fanaujie.ripple.shaded.netty.channel.*;
 import com.fanaujie.ripple.shaded.netty.channel.nio.NioIoHandler;
@@ -11,6 +15,7 @@ import com.fanaujie.ripple.shaded.netty.handler.codec.http.HttpServerCodec;
 import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import com.fanaujie.ripple.shaded.netty.handler.codec.http.websocketx.extensions.compression.WebSocketServerCompressionHandler;
 import com.fanaujie.ripple.shaded.netty.handler.stream.ChunkedWriteHandler;
+import com.fanaujie.ripple.shaded.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,10 +25,14 @@ public class WsService {
 
     Logger logger = LoggerFactory.getLogger(WsService.class);
 
-    private final WsConfig config;
+    private final WsConfig wsConfig;
+    private final JwtDecoder jwtDecoder;
+    private final OnlineUser onlineUser;
 
-    public WsService(WsConfig config) {
-        this.config = config;
+    public WsService(WsConfig config, JwtDecoder jwtDecoder, OnlineUser onlineUser) {
+        this.wsConfig = config;
+        this.jwtDecoder = jwtDecoder;
+        this.onlineUser = onlineUser;
     }
 
     private EventLoopGroup bossGroup;
@@ -32,6 +41,9 @@ public class WsService {
     public void start() {
         bossGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+        WebSocketRouterHandler webSocketRouterHandler =
+                new WebSocketRouterHandler(jwtDecoder, onlineUser);
+        HeartbeatHandler heartbeatHandler = new HeartbeatHandler();
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap
                 .group(bossGroup, workerGroup)
@@ -48,13 +60,16 @@ public class WsService {
                                         new WebSocketServerCompressionHandler(MAX_CONTENT_LENGTH));
                                 pipeline.addLast(
                                         new WebSocketServerProtocolHandler(
-                                                config.getWsPath(), null, true));
-                                pipeline.addLast(new WebSocketFrameHandler());
+                                                wsConfig.getWsPath(), null, true));
+                                pipeline.addLast(webSocketRouterHandler);
+                                pipeline.addLast(heartbeatHandler);
+                                pipeline.addLast(
+                                        new IdleStateHandler(0, 0, wsConfig.getIdleSeconds()));
                             }
                         });
         try {
-            ChannelFuture serverChannelFuture = serverBootstrap.bind(this.config.getPort()).sync();
-            logger.info("WsServer started on port: {}", this.config.getPort());
+            ChannelFuture serverChannelFuture = serverBootstrap.bind(wsConfig.getPort()).sync();
+            logger.info("WsServer started on port: {}", wsConfig.getPort());
             serverChannelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
             e.printStackTrace();
