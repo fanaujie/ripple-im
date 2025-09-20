@@ -15,6 +15,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <grpc.version>1.60.0</grpc.version>
     </properties>
 
     <dependencies>
@@ -28,7 +29,17 @@
             <artifactId>ripple-common</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-services</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
             <artifactId>ripple-protobuf</artifactId>
@@ -50,7 +61,7 @@
             <artifactId>lombok</artifactId>
             <version>1.18.38</version>
         </dependency>
-
+        
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>

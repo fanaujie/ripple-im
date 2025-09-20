@@ -19,6 +19,8 @@ import com.fanaujie.ripple.shaded.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
+
 public class WsService {
 
     private static final int MAX_CONTENT_LENGTH = 65536;
@@ -38,6 +40,17 @@ public class WsService {
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
 
+    public CompletableFuture<Void> startAsync() {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                start();
+            } catch (Exception e) {
+                logger.error("Failed to start WebSocket server", e);
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     public void start() {
         bossGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
@@ -53,6 +66,8 @@ public class WsService {
                             @Override
                             protected void initChannel(NioSocketChannel ch) {
                                 ChannelPipeline pipeline = ch.pipeline();
+                                pipeline.addLast(
+                                        new IdleStateHandler(0, 0, wsConfig.getIdleSeconds()));
                                 pipeline.addLast(new HttpServerCodec());
                                 pipeline.addLast(new HttpObjectAggregator(MAX_CONTENT_LENGTH));
                                 pipeline.addLast(new ChunkedWriteHandler());
@@ -63,8 +78,6 @@ public class WsService {
                                                 wsConfig.getWsPath(), null, true));
                                 pipeline.addLast(webSocketRouterHandler);
                                 pipeline.addLast(heartbeatHandler);
-                                pipeline.addLast(
-                                        new IdleStateHandler(0, 0, wsConfig.getIdleSeconds()));
                             }
                         });
         try {
