@@ -1,85 +1,51 @@
 package com.fanaujie.ripple.msggateway;
 
+import com.fanaujie.ripple.msggateway.server.grpc.GrpcServer;
+import com.fanaujie.ripple.msggateway.server.jwt.DefaultJwtDecoder;
+import com.fanaujie.ripple.msggateway.server.users.DefaultOnlineUser;
+import com.fanaujie.ripple.msggateway.server.ws.WsService;
+import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
+import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 
-@Command(
-        name = "message-gateway",
-        mixinStandardHelpOptions = true,
-        version = "1.0",
-        description = "Message Gateway server with WebSocket and gRPC support")
-public class Application implements Runnable {
+import java.util.concurrent.CompletableFuture;
 
-    Logger logger = LoggerFactory.getLogger(Application.class);
+public class Application {
 
-    private int websocketPort;
-    private int grpcPort;
-    private String serverName;
+    private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
-    @Spec CommandSpec spec;
-
-    @Option(
-            names = {"-w", "--websocket-port"},
-            description = "WebSocket server port (default: ${DEFAULT-VALUE})",
-            defaultValue = "10004")
-    public void setWebsocketPort(int value) {
-        if (value < 1 || value > 65535) {
-            throw new CommandLine.ParameterException(
-                    spec.commandLine(),
-                    "Invalid WebSocket port number: "
-                            + value
-                            + ". Port must be between 1 and 65535.");
-        }
-        this.websocketPort = value;
-    }
-
-    @Option(
-            names = {"-g", "--grpc-port"},
-            description = "gRPC server port (default: ${DEFAULT-VALUE})",
-            defaultValue = "10100")
-    public void setGrpcPort(int value) {
-        if (value < 1 || value > 65535) {
-            throw new CommandLine.ParameterException(
-                    spec.commandLine(),
-                    "Invalid gRPC port number: " + value + ". Port must be between 1 and 65535.");
-        }
-        this.grpcPort = value;
-    }
-
-    @Option(
-            names = {"-n", "--server-name"},
-            description = "Server name identifier (default: ${DEFAULT-VALUE})",
-            defaultValue = "message-gateway-01")
-    public void setServerName(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new CommandLine.ParameterException(
-                    spec.commandLine(), "Server name cannot be null or empty.");
-        }
-        if (!value.matches("^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$|^[a-zA-Z0-9]$")) {
-            throw new CommandLine.ParameterException(
-                    spec.commandLine(),
-                    "Invalid server name: '"
-                            + value
-                            + "'. Server name must contain only alphanumeric characters, hyphens, and underscores, and cannot start or end with special characters.");
-        }
-        this.serverName = value.trim();
-    }
-
-    @Override
     public void run() {
-        logger.info("Starting Message Gateway server...");
-        logger.info("Server name: {}", serverName);
-        logger.info("WebSocket port: {}", websocketPort);
-        logger.info("gRPC port: {}", grpcPort);
+        Config config = ConfigFactory.load();
+        int wsPort = config.getInt("server.websocket.port");
+        String wsPath = config.getString("server.websocket.path");
+        int idleSeconds = config.getInt("ripple.heartbeat.idleSeconds");
+        int grpcPort = config.getInt("server.grpc.port");
+        String jwtSecret = config.getString("oauth2.jwk.secret");
+
+        logger.info("Starting Message Gateway server and gRPC service...");
+        logger.info("WebSocket Port: {}", wsPort);
+        logger.info("WebSocket Path: {}", wsPath);
+        logger.info("WebSocket Idle Seconds: {}", idleSeconds);
+        logger.info("gRPC Port: {}", grpcPort);
+
+        DefaultOnlineUser onlineUser = new DefaultOnlineUser();
+
+        GrpcServer grpcServer = new GrpcServer(grpcPort, onlineUser);
+        WsService wsService =
+                new WsService(
+                        new WsConfig(wsPort, wsPath, idleSeconds),
+                        new DefaultJwtDecoder(jwtSecret),
+                        onlineUser);
+
+        CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
+        CompletableFuture<Void> wsFuture = wsService.startAsync();
+        CompletableFuture.allOf(grpcFuture, wsFuture).join();
     }
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new Application()).execute(args);
-        System.exit(exitCode);
+        Application app = new Application();
+        app.run();
     }
 }

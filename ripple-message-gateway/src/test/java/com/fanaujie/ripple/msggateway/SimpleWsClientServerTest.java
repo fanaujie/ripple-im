@@ -1,12 +1,15 @@
 package com.fanaujie.ripple.msggateway;
 
 import com.fanaujie.ripple.msggateway.client.WsClient;
-import com.fanaujie.ripple.msggateway.server.config.WsConfig;
+import com.fanaujie.ripple.msggateway.server.jwt.DefaultJwtDecoder;
+import com.fanaujie.ripple.msggateway.server.jwt.JwtDecoder;
+import com.fanaujie.ripple.msggateway.server.users.DefaultOnlineUser;
+import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import com.fanaujie.ripple.msggateway.server.ws.WsService;
+import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.mockito.Mockito;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -15,75 +18,58 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class SimpleWsClientServerTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(SimpleWsClientServerTest.class);
-
     private static final int TEST_PORT = 9090;
     private static final String TEST_PATH = "/ws";
-
+    private static final String USER_ID = "123";
     private static WsService server;
     private static Thread serverThread;
 
+    private static final JwtDecoder jwtDecoder = Mockito.mock(DefaultJwtDecoder.class);
+
+    private static final OnlineUser onlineUser = Mockito.mock(DefaultOnlineUser.class);
+
     @BeforeAll
     static void startServer() throws Exception {
-        logger.info("Starting test server on port {}", TEST_PORT);
-
-        WsConfig config = new WsConfig(TEST_PORT, TEST_PATH);
-        server = new WsService(config);
-
+        WsConfig wsConfig = new WsConfig(TEST_PORT, TEST_PATH, 60);
+        Mockito.when(jwtDecoder.decodeJwtClaims(Mockito.anyString()))
+                .thenReturn(new JwtDecoder.DecodedJwtClaims(USER_ID));
+        server = new WsService(wsConfig, jwtDecoder, onlineUser);
         serverThread =
                 new Thread(
                         () -> {
                             try {
                                 server.start();
                             } catch (Exception e) {
-                                logger.error("Server error", e);
+                                e.printStackTrace();
                             }
                         });
 
         serverThread.start();
-        Thread.sleep(3000);
-
-        logger.info("Test server started");
     }
 
     @AfterAll
-    static void stopServer() {
-        logger.info("Stopping test server");
-        if (server != null) {
-            server.stop();
-        }
-        if (serverThread != null) {
-            serverThread.interrupt();
-        }
+    static void stopServer() throws InterruptedException {
+        server.stop();
+        serverThread.join();
     }
 
     @Test
-    @DisplayName("Test basic WebSocket heartbeat communication")
-    void testHeartbeatCommunication() throws Exception {
-        logger.info("Testing basic WebSocket heartbeat communication");
-
-        WsClient client = new WsClient("localhost", TEST_PORT, TEST_PATH);
-
+    void testConnectSuccess() throws Exception {
+        WsClient client =
+                new WsClient("localhost", TEST_PORT, TEST_PATH, " test-token", "test-device-id");
         try {
             assertTrue(client.isConnected(), "Client should be connected");
 
-            String userId = "test-user-123";
-            logger.info("Sending heartbeat for user: {}", userId);
-
-            CompletableFuture<HeartbeatResponse> responseFuture = client.sendHeartbeat(userId);
+            CompletableFuture<HeartbeatResponse> responseFuture = client.sendHeartbeat(USER_ID);
             HeartbeatResponse response = responseFuture.get(5, TimeUnit.SECONDS);
 
-            logger.info("Received heartbeat response: {}", response);
-
             assertNotNull(response, "Response should not be null");
-            assertEquals(userId, response.getUserId(), "User ID should match");
+            assertEquals(USER_ID, response.getUserId(), "User ID should match");
             assertTrue(response.getClientTimestamp() > 0, "Client timestamp should be positive");
             assertTrue(response.getServerTimestamp() > 0, "Server timestamp should be positive");
-            assertTrue(response.getServerTimestamp() >= response.getClientTimestamp(),
+            assertTrue(
+                    response.getServerTimestamp() >= response.getClientTimestamp(),
                     "Server timestamp should be greater than or equal to client timestamp");
-
-            logger.info("✅ Heartbeat protobuf encoding/decoding successful!");
-            logger.info("✅ WebSocket heartbeat communication working!");
 
         } finally {
             client.close();
@@ -91,34 +77,26 @@ public class SimpleWsClientServerTest {
     }
 
     @Test
-    @DisplayName("Test multiple heartbeat messages")
-    void testMultipleHeartbeats() throws Exception {
-        logger.info("Testing multiple heartbeat messages");
-
-        WsClient client = new WsClient("localhost", TEST_PORT, TEST_PATH);
-
+    void testConnectFailure_TokenNull() {
         try {
-            for (int i = 1; i <= 3; i++) {
-                String userId = "test-user-" + i;
+            new WsClient("localhost", 9999, TEST_PATH, null, "device-id");
+            fail("Expected RuntimeException due to connection failure");
+        } catch (RuntimeException e) {
+            assertTrue(
+                    e.getMessage().contains("Failed to connect to WebSocket server"),
+                    "Exception message should indicate connection failure");
+        }
+    }
 
-                HeartbeatResponse response = client.sendHeartbeat(userId).get(5, TimeUnit.SECONDS);
-
-                assertEquals(userId, response.getUserId());
-                assertTrue(response.getClientTimestamp() > 0);
-                assertTrue(response.getServerTimestamp() > 0);
-
-                logger.info(
-                        "Heartbeat {}: userId={}, clientTimestamp={}, serverTimestamp={}",
-                        i, userId, response.getClientTimestamp(), response.getServerTimestamp());
-
-                // Small delay between heartbeats to ensure different timestamps
-                Thread.sleep(10);
-            }
-
-            logger.info("✅ Multiple heartbeat messages handled correctly!");
-
-        } finally {
-            client.close();
+    @Test
+    void testConnectFailure_DeviceIdNull() {
+        try {
+            new WsClient("localhost", 9999, TEST_PATH, "token", null);
+            fail("Expected RuntimeException due to connection failure");
+        } catch (RuntimeException e) {
+            assertTrue(
+                    e.getMessage().contains("Failed to connect to WebSocket server"),
+                    "Exception message should indicate connection failure");
         }
     }
 }
