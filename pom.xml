@@ -18,6 +18,8 @@
         <module>ripple-upload-gateway</module>
         <module>ripple-api-gateway</module>
         <module>ripple-common</module>
+        <module>ripple-user-presence-server</module>
+        <module>ripple-user-presence-server</module>
     </modules>
 
     <properties>

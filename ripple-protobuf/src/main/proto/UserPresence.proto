@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.userpresence";
+
+message UserOnlineReq {
+  int64 user_id = 1;
+  string device_id = 2;
+  bool is_online = 3;
+  string server_location = 4;
+}
+
+message UserOnlineResp {
+}
+
+
+service UserPresence {
+  rpc SetUserOnline(UserOnlineReq) returns (UserOnlineResp);
+}
