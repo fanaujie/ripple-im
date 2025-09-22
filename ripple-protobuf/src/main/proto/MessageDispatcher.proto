@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.msgdispatcher";
+
+message DispatchMessageReq {
+  int64 user_id = 1;
+  string message_content = 2;
+  string message_type = 3;
+  int64 timestamp = 4;
+  map<string, string> metadata = 5;
+}
+
+message DispatchMessageResp {
+  bool success = 1;
+  string message = 2;
+  string dispatch_id = 3;
+}
+
+service MessageDispatcher {
+  rpc DispatchMessage(DispatchMessageReq) returns (DispatchMessageResp);
+}
