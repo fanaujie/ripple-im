@@ -1,0 +1,87 @@
+services:
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    restart: always
+    volumes:
+      - minio_data:/data
+
+  mysql:
+    container_name: mysql
+    image: mysql:8.4.5
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT: root
+      MYSQL_ROOT_PASSWORD: ripple
+    restart: always
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  zookeeper:
+    container_name: zookeeper
+    image: zookeeper:3.9.3-jre-17
+    ports:
+      - "2181:2181"
+    restart: always
+    volumes:
+      - zookeeper_data:/data
+      - zookeeper_data_log:/datalog
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  cassandra:
+    container_name: cassandra
+    image: cassandra:5.0.5
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: ripple_cluster
+      CASSANDRA_USER: root
+      CASSANDRA_PASSWORD: ripple
+    restart: always
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: [ "CMD-SHELL", "cqlsh -e 'DESCRIBE CLUSTER'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  cassandra-init:
+    container_name: cassandra-init
+    image: cassandra:5.0.5
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ./cassandra-ddl/ripple.cql:/ripple.cql
+    command: /bin/bash -c "
+      echo 'Cassandra is healthy, starting initialization...' &&
+      echo 'Loading cassandra keyspace...' &&
+      cqlsh cassandra -f /ripple.cql &&
+      echo 'Cassandra initialization completed successfully!'"
+    restart: "no"
+
+volumes:
+  minio_data:
+  mysql_data:
+  zookeeper_data:
+  zookeeper_data_log:
+  redis_data:
+  cassandra_data:
