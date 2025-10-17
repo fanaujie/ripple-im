@@ -1,9 +1,9 @@
 package com.fanaujie.ripple.msggateway.client;
 
 import com.fanaujie.ripple.msggateway.server.uitls.HttpHeader;
-import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatRequest;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
+import com.fanaujie.ripple.protobuf.messaging.WsMessage;
 import com.fanaujie.ripple.shaded.netty.bootstrap.Bootstrap;
 import com.fanaujie.ripple.shaded.netty.channel.*;
 import com.fanaujie.ripple.shaded.netty.channel.nio.NioIoHandler;
@@ -86,8 +86,8 @@ public class WsClient {
             HeartbeatRequest heartbeatRequest =
                     HeartbeatRequest.newBuilder().setUserId(userId).setTimestamp(timestamp).build();
 
-            RippleMessage request =
-                    RippleMessage.newBuilder().setHeartbeatRequest(heartbeatRequest).build();
+            WsMessage request =
+                    WsMessage.newBuilder().setHeartbeatRequest(heartbeatRequest).build();
 
             byte[] data = request.toByteArray();
             BinaryWebSocketFrame frame =

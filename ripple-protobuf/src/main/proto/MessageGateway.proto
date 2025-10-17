@@ -4,30 +4,30 @@ package com.fanaujie.ripple.protobuf;
 
 option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.msggateway";
-import "ChatMessage.proto";
 
 
-message OnlineBatchPushChatMessageReq {
-  ChatMessage chat_message = 1;
-  repeated int64 push_to_user_ids = 2;
+enum PushMessageType {
+  PUSH_MESSAGE_TYPE_UNSPECIFIED = 0;
+  PUSH_MESSAGE_TYPE_SELF_INFO_UPDATE = 1;
+  PUSH_MESSAGE_TYPE_FRIEND_INFO_UPDATE = 2;
+  PUSH_MESSAGE_TYPE_RELATION_INFO_UPDATE = 3;
 }
 
-message PushChatDeviceResult {
-  string device_id = 1;
-  int64  result_code = 2;
+message PushMessageRequest {
+  PushMessageType push_message_type = 1;
+  int64 send_user_id = 2;
+  int64 receive_user_id = 3;
+  string request_device_id = 4;
+  bytes content = 5;
 }
 
-message SinglePushChatMessageResp {
-  int64  push_to_user_id = 1;
-  repeated PushChatDeviceResult device_results = 2;
+message PushMessageResponse {
+  int64 send_user_id = 1;
+  int64 receive_user_id = 2 ;
+  bool  is_success = 3;
+  string error_msg = 4;
 }
-
-
-message OnlineBatchPushChatMessageRsp {
-  repeated SinglePushChatMessageResp results = 1;
-}
-
 
 service MessageGateway {
-  rpc OnlineBatchPushChatMsg(OnlineBatchPushChatMessageReq) returns (OnlineBatchPushChatMessageRsp);
+  rpc PushMessageToUser(stream PushMessageRequest) returns (stream PushMessageResponse);
 }

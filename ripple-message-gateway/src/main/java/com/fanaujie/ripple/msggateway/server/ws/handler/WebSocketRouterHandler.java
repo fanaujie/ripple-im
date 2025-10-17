@@ -5,7 +5,7 @@ import com.fanaujie.ripple.msggateway.exception.WsUnauthorizedException;
 import com.fanaujie.ripple.msggateway.server.jwt.JwtDecoder;
 import com.fanaujie.ripple.msggateway.server.uitls.HttpHeader;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
-import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
+import com.fanaujie.ripple.protobuf.messaging.WsMessage;
 import com.fanaujie.ripple.shaded.netty.buffer.ByteBufUtil;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelFutureListener;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelHandler;
@@ -35,7 +35,7 @@ public class WebSocketRouterHandler extends SimpleChannelInboundHandler<WebSocke
             throws Exception {
         if (webSocketFrame instanceof BinaryWebSocketFrame frame) {
             byte[] data = ByteBufUtil.getBytes(frame.content());
-            RippleMessage message = RippleMessage.parseFrom(data);
+            WsMessage message = WsMessage.parseFrom(data);
             ctx.fireChannelRead(message);
         } else if (webSocketFrame instanceof PingWebSocketFrame frame) {
             ctx.writeAndFlush(new PongWebSocketFrame(frame.content().copy()));

@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.snowflakeid.server;
 
 import com.fanaujie.ripple.snowflakeid.server.service.snowflakeid.SnowflakeIdService;
-import com.fanaujie.ripple.snowflakeid.server.service.zookeeper.ZookeeperService;
+import com.fanaujie.ripple.communication.zookeeper.ZookeeperWorkerIdService;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
@@ -13,13 +13,17 @@ public class Application {
 
     public void run() {
         Config config = ConfigFactory.load();
-        int port = config.getInt("server.port");
+        int port = config.getInt("server.grpc.port");
         String zookeeperAddr = config.getString("zookeeper.address");
         String zookeeperLockPath = config.getString("zookeeper.lockPath");
         String zookeeperIdsPath = config.getString("zookeeper.idsPath");
-        ZookeeperService zk = null;
+        logger.info("GRPC server starting on port: {}", port);
+        logger.info("zookeeper.address = {}", zookeeperAddr);
+        logger.info("zookeeper.lockPath = {}", zookeeperLockPath);
+        logger.info("zookeeper.idsPath = {}", zookeeperIdsPath);
+        ZookeeperWorkerIdService zk = null;
         try {
-            zk = new ZookeeperService(zookeeperAddr, zookeeperLockPath, zookeeperIdsPath);
+            zk = new ZookeeperWorkerIdService(zookeeperAddr, zookeeperLockPath, zookeeperIdsPath);
             int workerId = zk.acquiredWorkerId();
             if (workerId == -1) {
                 logger.error("Failed to acquire a worker ID from Zookeeper.");

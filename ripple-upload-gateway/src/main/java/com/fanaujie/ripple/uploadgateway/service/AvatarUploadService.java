@@ -1,20 +1,25 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.database.service.IUserProfileStorage;
+import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
+import com.fanaujie.ripple.storage.repository.UserRepository;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadData;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AvatarUploadService {
 
     private final MinioStorageService minioStorageService;
-    private final IUserProfileStorage userProfileStorage;
+    private final UserRepository userRepository;
+
+    public AvatarUploadService(
+            MinioStorageService minioStorageService, UserRepository userRepository) {
+        this.minioStorageService = minioStorageService;
+        this.userRepository = userRepository;
+    }
 
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
             long userId, byte[] fileData, String objectName, String contentType) {
@@ -35,8 +40,8 @@ public class AvatarUploadService {
             }
         }
         try {
-            userProfileStorage.updateAvatarByUserId(userId, avatarUrl);
-        } catch (Exception e) {
+            userRepository.updateAvatarByUserId(userId, avatarUrl);
+        } catch (NotFoundUserProfileException e) {
             log.error("Failed to update user profile for userId {}: {}", userId, e.getMessage());
             return ResponseEntity.status(500)
                     .body(new AvatarUploadResponse(500, "Failed to update user profile", null));

@@ -1,14 +1,16 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.database.model.UserProfile;
-import com.fanaujie.ripple.database.service.IUserProfileStorage;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
+import com.fanaujie.ripple.storage.model.User;
+import com.fanaujie.ripple.storage.model.UserProfile;
+import com.fanaujie.ripple.storage.repository.UserRepository;
 import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.StatObjectArgs;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +19,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -31,11 +35,8 @@ class AvatarUploadServiceTest {
     private static final String MINIO_BUCKET_NAME = "ripple-avatars";
 
     @Container
-    static MySQLContainer<?> mysql =
-            new MySQLContainer<>("mysql:8.4.5")
-                    .withDatabaseName("test_ripple")
-                    .withUsername("test")
-                    .withPassword("test");
+    static CassandraContainer<?> cassandra =
+            new CassandraContainer<>("cassandra:5.0.5").withInitScript("ripple.cql");
 
     @Container
     static MinIOContainer minio =
@@ -45,24 +46,32 @@ class AvatarUploadServiceTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        // MySQL properties
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-
         // MinIO properties
         registry.add("minio.endpoint", minio::getS3URL);
         registry.add("minio.access-key", minio::getUserName);
         registry.add("minio.secret-key", minio::getPassword);
+
+        // Cassandra properties
+        String contactPoint =
+                String.format(
+                        "%s:%d",
+                        cassandra.getContactPoint().getHostName(),
+                        cassandra.getContactPoint().getPort());
+        System.out.println(contactPoint);
+        registry.add("cassandra.contact-points", () -> List.of(contactPoint));
+        registry.add("cassandra.keyspace-name", () -> "ripple");
+        registry.add("cassandra.local-datacenter", cassandra::getLocalDatacenter);
     }
 
     @Autowired private AvatarUploadService avatarUploadService;
 
-    @Autowired private IUserProfileStorage userProfileStorage;
+    @Autowired private UserRepository userRepository;
 
     @Autowired private MinioClient minioClient;
 
     @Autowired private AvatarProperties avatarProperties;
+
+    private CqlSession session;
 
     private final long testUserId = 100;
     private final String testObjectName = "avatar_" + testUserId + ".jpg";
@@ -70,17 +79,22 @@ class AvatarUploadServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // Setup database schema
-        Flyway flyway =
-                Flyway.configure()
-                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                        .locations("classpath:db/migration")
-                        .load();
-        flyway.migrate();
+        // Setup Cassandra session
+        session =
+                CqlSession.builder()
+                        .addContactPoint(cassandra.getContactPoint())
+                        .withLocalDatacenter(cassandra.getLocalDatacenter())
+                        .build();
 
         // Create test user profile
-        userProfileStorage.insertUserProfile(
-                testUserId, 1, (byte) 0, "Test User", "default_avatar.jpg");
+        User testUser =
+                new User(
+                        testUserId,
+                        "test_account_" + testUserId,
+                        "password",
+                        User.DEFAULT_ROLE_USER,
+                        (byte) 0);
+        userRepository.insertUser(testUser, "Test User", "default_avatar.jpg");
 
         // Ensure MinIO bucket exists
         if (!minioClient.bucketExists(
@@ -91,18 +105,16 @@ class AvatarUploadServiceTest {
 
     @AfterEach
     void tearDown() {
-        // Clean database
-        Flyway flyway =
-                Flyway.configure()
-                        .dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                        .locations("classpath:db/migration")
-                        .cleanDisabled(false)
-                        .load();
-        flyway.clean();
+        // Clean Cassandra tables
+        if (session != null) {
+            session.execute("TRUNCATE ripple.user");
+            session.execute("TRUNCATE ripple.user_profile");
+            session.close();
+        }
     }
 
     @Test
-    void testUploadAvatar_Success_NewFile() {
+    void testUploadAvatar_Success_NewFile() throws NotFoundUserProfileException {
         // Given
         String objectName = testObjectName;
 
@@ -125,7 +137,7 @@ class AvatarUploadServiceTest {
         assertTrue(response.getBody().getData().getAvatarUrl().contains(objectName));
 
         // Verify database was updated
-        UserProfile updatedProfile = userProfileStorage.getUserProfile(testUserId).orElse(null);
+        UserProfile updatedProfile = userRepository.getUserProfile(testUserId);
         assertNotNull(updatedProfile);
         assertEquals(response.getBody().getData().getAvatarUrl(), updatedProfile.getAvatar());
     }
@@ -162,8 +174,8 @@ class AvatarUploadServiceTest {
 
     @Test
     void testUploadAvatar_DatabaseUpdateFails() {
-        // Given - The MyBatis UPDATE won't fail for non-existent users, it just updates 0 rows
-        // So this test actually demonstrates successful upload even for non-existent users
+        // Given - Cassandra repository will throw exception for non-existent users
+        // This test verifies that the service properly handles the exception
         long invalidAccount = 123;
         String objectName = "avatar_invalid.jpg";
 
@@ -175,16 +187,13 @@ class AvatarUploadServiceTest {
                         objectName,
                         avatarProperties.getAllowedContentTypes()[0]);
 
-        // Then - Since MyBatis UPDATE doesn't throw exception for 0 affected rows, this succeeds
+        // Then - Cassandra repository throws exception for non-existent users, so this should fail
         assertNotNull(response);
-        assertEquals(200, response.getStatusCode().value());
+        assertEquals(500, response.getStatusCode().value());
         assertNotNull(response.getBody());
-        assertEquals(200, response.getBody().getCode());
-        assertEquals("success", response.getBody().getMessage());
-        assertNotNull(response.getBody().getData());
-
-        // Verify file was uploaded even though user doesn't exist in database
-        assertTrue(response.getBody().getData().getAvatarUrl().contains(objectName));
+        assertEquals(500, response.getBody().getCode());
+        assertEquals("Failed to update user profile", response.getBody().getMessage());
+        assertNull(response.getBody().getData());
     }
 
     @Test
@@ -256,12 +265,12 @@ class AvatarUploadServiceTest {
     }
 
     @Test
-    void testUploadAvatar_FullWorkflow() {
+    void testUploadAvatar_FullWorkflow() throws NotFoundUserProfileException {
         // Given
         String objectName = "full_workflow_test.jpg";
 
         // Verify user exists before upload
-        UserProfile beforeUpload = userProfileStorage.getUserProfile(testUserId).orElse(null);
+        UserProfile beforeUpload = userRepository.getUserProfile(testUserId);
         assertNotNull(beforeUpload);
         String originalAvatar = beforeUpload.getAvatar();
 
@@ -285,7 +294,7 @@ class AvatarUploadServiceTest {
         assertNotEquals(originalAvatar, newAvatarUrl);
 
         // Verify database update
-        UserProfile afterUpload = userProfileStorage.getUserProfile(testUserId).orElse(null);
+        UserProfile afterUpload = userRepository.getUserProfile(testUserId);
         assertEquals(newAvatarUrl, afterUpload.getAvatar());
 
         // Verify file exists in MinIO
@@ -300,17 +309,18 @@ class AvatarUploadServiceTest {
     }
 
     @Test
-    void testUploadAvatar_MultipleUsers() {
+    void testUploadAvatar_MultipleUsers() throws NotFoundUserProfileException {
         // Given
         long userId2 = 200;
-        UserProfile testUser2 = new UserProfile();
-        testUser2.setUserId(userId2);
-        testUser2.setUserType(1);
-        testUser2.setNickName("Test User 2");
-        testUser2.setAvatar("default_avatar.jpg");
+        User testUser2 =
+                new User(
+                        userId2,
+                        "test_account_" + userId2,
+                        "password",
+                        User.DEFAULT_ROLE_USER,
+                        (byte) 0);
 
-        userProfileStorage.insertUserProfile(
-                userId2, 1, (byte) 0, "Test User 2", "default_avatar.jpg");
+        userRepository.insertUser(testUser2, "Test User 2", "default_avatar.jpg");
 
         // When
         ResponseEntity<AvatarUploadResponse> response1 =
@@ -338,8 +348,8 @@ class AvatarUploadServiceTest {
         assertTrue(url2.contains("avatar2.jpg"));
 
         // Verify both users have different avatar URLs in database
-        UserProfile user1Profile = userProfileStorage.getUserProfile(testUserId).orElse(null);
-        UserProfile user2Profile = userProfileStorage.getUserProfile(userId2).orElse(null);
+        UserProfile user1Profile = userRepository.getUserProfile(testUserId);
+        UserProfile user2Profile = userRepository.getUserProfile(userId2);
 
         assertEquals(url1, user1Profile.getAvatar());
         assertEquals(url2, user2Profile.getAvatar());

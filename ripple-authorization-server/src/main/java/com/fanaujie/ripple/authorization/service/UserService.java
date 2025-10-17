@@ -1,10 +1,10 @@
 package com.fanaujie.ripple.authorization.service;
 
 import com.fanaujie.ripple.authorization.dto.CommonResponse;
-import com.fanaujie.ripple.authorization.repository.UserRepository;
-import com.fanaujie.ripple.database.model.User;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import com.fanaujie.ripple.storage.model.User;
+import com.fanaujie.ripple.storage.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,16 +17,16 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class UserService {
 
-    private final UserRepository userRepository;
+    private final UserRepository userStorage;
     private final PasswordEncoder passwordEncoder;
     private final SnowflakeIdClient snowflakeIdClient;
 
     public UserService(
-            UserRepository userRepository,
+            UserRepository userStorage,
             PasswordEncoder passwordEncoder,
             @Value("${snowflake.server.host}") String snowflakeServerHost,
             @Value("${snowflake.server.port}") int snowflakeServerPort) {
-        this.userRepository = userRepository;
+        this.userStorage = userStorage;
         this.passwordEncoder = passwordEncoder;
         this.snowflakeIdClient = new SnowflakeIdClient(snowflakeServerHost, snowflakeServerPort);
     }
@@ -39,7 +39,7 @@ public class UserService {
         newUser.setAccount(account);
         newUser.setPassword(this.passwordEncoder.encode(password));
         newUser.setRole(User.DEFAULT_ROLE_USER);
-        this.userRepository.createUser(newUser, account, null);
+        this.userStorage.insertUser(newUser, account, "");
         return ResponseEntity.ok().body(new CommonResponse(200, "success"));
     }
 
@@ -54,14 +54,14 @@ public class UserService {
         }
 
         // Check if user already exists
-        if (!this.userRepository.userExists(openId)) {
+        if (!this.userStorage.userExists(openId)) {
             // Create new user account
             User newUser = new User();
             newUser.setUserId(this.getNextUserId());
             newUser.setAccount(openId);
             newUser.setPassword(""); // No password for OAuth2 users
             newUser.setRole(User.DEFAULT_ROLE_USER);
-            this.userRepository.createUser(newUser, name != null ? name : email, picture);
+            this.userStorage.insertUser(newUser, name != null ? name : email, picture);
         }
     }
 

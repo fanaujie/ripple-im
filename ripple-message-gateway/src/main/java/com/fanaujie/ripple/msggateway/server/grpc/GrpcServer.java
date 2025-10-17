@@ -3,6 +3,7 @@ package com.fanaujie.ripple.msggateway.server.grpc;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,7 @@ public class GrpcServer {
                         server =
                                 ServerBuilder.forPort(port)
                                         .addService(messageGatewayService)
+                                        .addService(ProtoReflectionService.newInstance())
                                         .build()
                                         .start();
 

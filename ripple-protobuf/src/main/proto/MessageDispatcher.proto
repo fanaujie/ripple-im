@@ -5,20 +5,29 @@ package com.fanaujie.ripple.protobuf;
 option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.msgdispatcher";
 
-message DispatchMessageReq {
-  int64 user_id = 1;
-  string message_content = 2;
-  string message_type = 3;
-  int64 timestamp = 4;
-  map<string, string> metadata = 5;
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_SELF_INFO_UPDATE = 1;
+  EVENT_TYPE_RELATION_UPDATE = 2;
 }
 
-message DispatchMessageResp {
-  bool success = 1;
-  string message = 2;
-  string dispatch_id = 3;
+
+message EventData {
+  EventType event_type = 1;
+  int64 send_user_id = 2;
+  repeated int64 receive_user_ids = 3;
+  bytes content = 4;
 }
 
-service MessageDispatcher {
-  rpc DispatchMessage(DispatchMessageReq) returns (DispatchMessageResp);
+message MessageData {
+  int64 send_user_id = 1;
+  int64 receive_user_id = 2;
+}
+
+message MessagePayload {
+  oneof payload {
+    EventData event_data = 1;
+    MessageData message_data = 2;
+  }
 }

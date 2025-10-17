@@ -15,7 +15,22 @@ message UserOnlineReq {
 message UserOnlineResp {
 }
 
+message QueryUserOnlineReq {
+  repeated int64 user_ids = 1;
+}
+
+message UserOnlineInfo {
+  int64 user_id = 1;
+  string device_id = 2;
+  string server_location = 3;
+}
+
+message QueryUserOnlineResp {
+  repeated UserOnlineInfo user_online_infos = 1;
+}
+
 
 service UserPresence {
   rpc SetUserOnline(UserOnlineReq) returns (UserOnlineResp);
+  rpc QueryUserOnline(QueryUserOnlineReq) returns (QueryUserOnlineResp);
 }

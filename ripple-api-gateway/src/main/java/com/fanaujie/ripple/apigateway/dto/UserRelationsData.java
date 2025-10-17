@@ -10,6 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserRelationsData {
-    private List<User> friends;
-    private List<User> blockedUsers;
+    private List<User> users;
+    private String nextPageToken;
+    private boolean hasMore;
 }

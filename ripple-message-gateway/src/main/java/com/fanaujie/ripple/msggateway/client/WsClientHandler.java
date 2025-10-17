@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.msggateway.client;
 
-import com.fanaujie.ripple.protobuf.messaging.RippleMessage;
 import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
+import com.fanaujie.ripple.protobuf.messaging.WsMessage;
 import com.fanaujie.ripple.shaded.netty.channel.*;
 import com.fanaujie.ripple.shaded.netty.buffer.*;
 import com.fanaujie.ripple.shaded.netty.handler.codec.http.FullHttpResponse;
@@ -89,7 +89,7 @@ public class WsClientHandler extends SimpleChannelInboundHandler<Object> {
     private void handleBinaryFrame(BinaryWebSocketFrame frame) {
         try {
             byte[] data = ByteBufUtil.getBytes(frame.content());
-            RippleMessage message = RippleMessage.parseFrom(data);
+            WsMessage message = WsMessage.parseFrom(data);
             logger.debug("Received RippleMessage: {}", message);
 
             // Handle one of message types

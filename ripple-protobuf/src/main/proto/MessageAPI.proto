@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.msgapiserver";
+
+
+
+message SendMessageReq {
+  int64 user_id = 1;
+  string message_content = 2;
+  string message_type = 3;
+  int64 timestamp = 4;
+  map<string, string> metadata = 5;
+}
+
+message SendMessageResp {
+  bool success = 1;
+  string message = 2;
+  string dispatch_id = 3;
+}
+
+
+message SelfInfoUpdateEvent {
+  int64 user_id = 1;
+}
+
+
+message RelationEvent {
+  enum EventType {
+    ADD_FRIEND = 0;
+    REMOVE_FRIEND = 1;
+    UPDATE_FRIEND = 2;
+    BLOCK_USER = 3;
+    UNBLOCK_USER = 4;
+    HIDE_BLOCKED_USER = 5;
+  }
+  EventType event_type = 1;
+  int64 user_id = 2;
+  int64 target_user_id = 3;
+}
+
+
+
+message SendEventReq {
+  oneof event {
+    SelfInfoUpdateEvent self_info_update_event = 1;
+    RelationEvent relation_event = 2;
+  }
+}
+
+message SendEventResp {
+}
+
+service MessageAPI {
+  rpc SendMessage(SendMessageReq) returns (SendMessageResp);
+  rpc SendEvent(SendEventReq) returns (SendEventResp);
+}

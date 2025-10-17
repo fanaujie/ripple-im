@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.authorization.oauth;
 
-import com.fanaujie.ripple.database.model.User;
-import com.fanaujie.ripple.database.service.IUserStorage;
+import com.fanaujie.ripple.storage.model.User;
+import com.fanaujie.ripple.storage.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.provisioning.UserDetailsManager;
@@ -10,16 +10,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class RippleUserManager implements UserDetailsManager {
 
-    private final IUserStorage userStorage;
+    private final UserRepository userStorage;
 
-    public RippleUserManager(IUserStorage userStorage) {
+    public RippleUserManager(UserRepository userStorage) {
         this.userStorage = userStorage;
     }
 
     @Override
     public void createUser(UserDetails userDetails) {
-        if (userDetails instanceof User) {
-            userStorage.insertUser((User) userDetails);
+        if (userDetails instanceof User user) {
+            userStorage.insertUser(user, user.getAccount(), "");
             return;
         }
         throw new IllegalArgumentException("UserDetails must be an instance of User");
@@ -27,11 +27,7 @@ public class RippleUserManager implements UserDetailsManager {
 
     @Override
     public void updateUser(UserDetails userDetails) {
-        User user = new User();
-        user.setAccount(userDetails.getUsername());
-        user.setPassword(userDetails.getPassword());
-        user.setRole(userDetails.getAuthorities().toString());
-        userStorage.updateUser(user);
+        // not implemented in this context
     }
 
     @Override

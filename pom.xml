@@ -10,16 +10,18 @@
     <packaging>pom</packaging>
     <modules>
         <module>ripple-database</module>
+        <module>ripple-storage</module>
         <module>ripple-authorization-server</module>
-        <module>ripple-transfer-server</module>
+        <module>ripple-message-dispatcher</module>
         <module>ripple-message-gateway</module>
         <module>ripple-snowflakeid-server</module>
         <module>ripple-protobuf</module>
         <module>ripple-upload-gateway</module>
         <module>ripple-api-gateway</module>
-        <module>ripple-common</module>
+        <module>ripple-communication</module>
         <module>ripple-user-presence-server</module>
-        <module>ripple-message-dispatcher</module>
+        <module>ripple-message-api-server</module>
+        <module>ripple-push-server</module>
     </modules>
 
     <properties>
@@ -27,5 +29,17 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.17</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.18</version>
+        </dependency>
+    </dependencies>
 
 </project>

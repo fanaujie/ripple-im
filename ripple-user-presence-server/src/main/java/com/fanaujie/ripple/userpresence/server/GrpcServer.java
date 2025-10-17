@@ -1,8 +1,9 @@
 package com.fanaujie.ripple.userpresence.server;
 
-import com.fanaujie.ripple.userpresence.storage.UserPresenceStorage;
+import com.fanaujie.ripple.storage.service.UserPresenceStorage;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,7 @@ public class GrpcServer {
                         server =
                                 ServerBuilder.forPort(port)
                                         .addService(userPresenceService)
+                                        .addService(ProtoReflectionService.newInstance())
                                         .build()
                                         .start();
 

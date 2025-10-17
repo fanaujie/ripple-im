@@ -24,29 +24,14 @@
             <version>1.4.3</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.curator</groupId>
-            <artifactId>curator-recipes</artifactId>
-            <version>5.8.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-common</artifactId>
+            <artifactId>ripple-communication</artifactId>
             <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.4.14</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.38</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-protobuf</artifactId>
-            <version>1.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Test dependencies -->

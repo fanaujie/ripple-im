@@ -1,7 +1,6 @@
 package com.fanaujie.ripple.msggateway.server.grpc;
 
 import com.fanaujie.ripple.protobuf.msggateway.*;
-import com.fanaujie.ripple.protobuf.msggateway.OnlineBatchPushChatMessageRsp;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -18,42 +17,50 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
     }
 
     @Override
-    public void onlineBatchPushChatMsg(
-            OnlineBatchPushChatMessageReq request,
-            StreamObserver<OnlineBatchPushChatMessageRsp> responseObserver) {
-        try {
-            logger.info(
-                    "Received batch push request for message: {}, targeting {} users",
-                    request.getChatMessage().getMessageId(),
-                    request.getPushToUserIdsList().size());
+    public StreamObserver<PushMessageRequest> pushMessageToUser(
+            final StreamObserver<PushMessageResponse> responseObserver) {
+        return new StreamObserver<PushMessageRequest>() {
+            @Override
+            public void onNext(PushMessageRequest request) {
+                onlineUser
+                        .get(request.getReceiveUserId(), request.getRequestDeviceId())
+                        .ifPresentOrElse(
+                                userSession -> {
 
-            OnlineBatchPushChatMessageRsp.Builder responseBuilder =
-                    OnlineBatchPushChatMessageRsp.newBuilder();
-
-            for (long userId : request.getPushToUserIdsList()) {
-                SinglePushChatMessageResp.Builder singleResponse =
-                        SinglePushChatMessageResp.newBuilder().setPushToUserId(userId);
-
-                PushChatDeviceResult.Builder deviceResult =
-                        PushChatDeviceResult.newBuilder().setDeviceId("default").setResultCode(0);
-
-                singleResponse.addDeviceResults(deviceResult.build());
-                responseBuilder.addResults(singleResponse.build());
-
-                logger.debug("Processed push for user: {}", userId);
+                                    // Respond with success
+                                    PushMessageResponse response =
+                                            PushMessageResponse.newBuilder()
+                                                    .setSendUserId(request.getSendUserId())
+                                                    .setReceiveUserId(request.getReceiveUserId())
+                                                    .setIsSuccess(true)
+                                                    .build();
+                                    responseObserver.onNext(response);
+                                },
+                                () -> {
+                                    logger.warn(
+                                            "User {} is offline. Cannot push message.",
+                                            request.getReceiveUserId());
+                                    PushMessageResponse response =
+                                            PushMessageResponse.newBuilder()
+                                                    .setSendUserId(request.getSendUserId())
+                                                    .setReceiveUserId(request.getReceiveUserId())
+                                                    .setIsSuccess(false)
+                                                    .setErrorMsg("User is offline")
+                                                    .build();
+                                    responseObserver.onNext(response);
+                                });
             }
 
-            OnlineBatchPushChatMessageRsp response = responseBuilder.build();
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
+            @Override
+            public void onError(Throwable t) {
+                logger.error("Error in pushMessageToUser stream", t);
+                responseObserver.onCompleted();
+            }
 
-            logger.info(
-                    "Successfully completed batch push for {} users",
-                    request.getPushToUserIdsList().size());
-
-        } catch (Exception e) {
-            logger.error("Error processing batch push request", e);
-            responseObserver.onError(e);
-        }
+            @Override
+            public void onCompleted() {
+                responseObserver.onCompleted();
+            }
+        };
     }
 }
