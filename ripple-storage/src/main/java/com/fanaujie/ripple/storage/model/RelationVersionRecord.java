@@ -16,5 +16,5 @@ public class RelationVersionRecord {
     private String avatar;
     private String remarkName;
     private Byte relationFlags;
-    private UUID version;
+    private String version;
 }

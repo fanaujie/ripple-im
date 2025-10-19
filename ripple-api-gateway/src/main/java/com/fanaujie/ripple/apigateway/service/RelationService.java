@@ -211,6 +211,7 @@ public class RelationService {
                                                 RelationOperation.fromValue(record.getOperation())
                                                         .name();
                                         return new RelationChange(
+                                                record.getVersion(),
                                                 operation,
                                                 String.valueOf(record.getRelationUserId()),
                                                 record.getNickName(),
@@ -218,15 +219,13 @@ public class RelationService {
                                                 record.getRemarkName(),
                                                 record.getRelationFlags() != null
                                                         ? record.getRelationFlags() & 0xFF
-                                                        : null);
+                                                        : 0);
                                     })
                             .collect(Collectors.toList());
 
             // Get latest version (from last record) for next batch sync
             String latestVersion =
-                    records.isEmpty()
-                            ? version
-                            : records.get(records.size() - 1).getVersion().toString();
+                    records.isEmpty() ? version : records.get(records.size() - 1).getVersion();
 
             RelationSyncData data = new RelationSyncData(false, latestVersion, changes);
             return ResponseEntity.ok(new RelationSyncResponse(200, "success", data));

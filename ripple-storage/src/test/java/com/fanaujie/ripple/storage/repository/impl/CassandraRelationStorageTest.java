@@ -639,33 +639,51 @@ class CassandraRelationStorageTest {
         UserProfile friend1 = new UserProfile(4000L, "friend100", "Friend 100", "avatar100.jpg");
         UserProfile friend2 = new UserProfile(4001L, "friend101", "Friend 101", "avatar101.jpg");
 
-        // Add first friend and capture version
+        // Capture version before adding any friends
+        UUID versionBeforeFriend1 = UUIDs.timeBased();
+        Thread.sleep(10);
+
+        // Add first friend
         relationRepository.addFriend(userId, friend1);
-        Thread.sleep(10); // Ensure different timestamps
+        Thread.sleep(10);
 
-        // Get the first version
-
+        // Get changes after versionBeforeFriend1
         List<RelationVersionRecord> changes1 =
-                relationRepository.getRelationChanges(userId, UUIDs.startOf(0).toString(), 10);
+                relationRepository.getRelationChanges(userId, versionBeforeFriend1.toString(), 10);
         assertEquals(1, changes1.size());
-        UUID firstVersion = changes1.get(0).getVersion();
+        assertEquals(4000L, changes1.get(0).getRelationUserId());
+        String firstVersionTimestamp = changes1.get(0).getVersion();
+
+        // Capture version before adding second friend
+        UUID versionBeforeFriend2 = UUIDs.timeBased();
+        Thread.sleep(10);
 
         // Add second friend
         relationRepository.addFriend(userId, friend2);
+        Thread.sleep(10);
 
-        // Query changes after first version
+        // Query changes after versionBeforeFriend1 (should get both friends)
         List<RelationVersionRecord> changes2 =
-                relationRepository.getRelationChanges(userId, firstVersion.toString(), 10);
-        assertEquals(1, changes2.size());
-        assertEquals(4001L, changes2.get(0).getRelationUserId());
+                relationRepository.getRelationChanges(userId, versionBeforeFriend1.toString(), 10);
+        assertEquals(2, changes2.size());
+        assertEquals(4000L, changes2.get(0).getRelationUserId());
+        assertEquals(4001L, changes2.get(1).getRelationUserId());
+
+        // Verify versions are in ascending order (timestamp comparison)
+        long timestamp1 = Long.parseLong(changes2.get(0).getVersion());
+        long timestamp2 = Long.parseLong(changes2.get(1).getVersion());
+        assertTrue(timestamp1 < timestamp2, "Versions should be in ascending order");
+
+        // Capture version before update
+        UUID versionBeforeUpdate = UUIDs.timeBased();
+        Thread.sleep(10);
 
         // Update remark name
         relationRepository.updateRelationRemarkName(userId, 4001L, "Best Friend");
 
-        // Query changes after second friend was added
-        UUID secondVersion = changes2.get(0).getVersion();
+        // Query changes after versionBeforeUpdate
         List<RelationVersionRecord> changes3 =
-                relationRepository.getRelationChanges(userId, secondVersion.toString(), 10);
+                relationRepository.getRelationChanges(userId, versionBeforeUpdate.toString(), 10);
         assertEquals(1, changes3.size());
         assertEquals(4001L, changes3.get(0).getRelationUserId());
         assertEquals("Best Friend", changes3.get(0).getRemarkName());
@@ -698,6 +716,15 @@ class CassandraRelationStorageTest {
         List<RelationVersionRecord> changes =
                 relationRepository.getRelationChanges(userId, UUIDs.startOf(0).toString(), 3);
         assertEquals(3, changes.size());
+
+        // Verify versions (timestamps) are in ascending order
+        for (int i = 0; i < changes.size() - 1; i++) {
+            long currentTimestamp = Long.parseLong(changes.get(i).getVersion());
+            long nextTimestamp = Long.parseLong(changes.get(i + 1).getVersion());
+            assertTrue(
+                    currentTimestamp < nextTimestamp,
+                    "Version at index " + i + " should be less than version at index " + (i + 1));
+        }
     }
 
     @Test
@@ -770,11 +797,17 @@ class CassandraRelationStorageTest {
         assertEquals(2, changes.get(1).getOperation()); // UPDATE
         assertEquals(3, changes.get(2).getOperation()); // DELETE
 
-        // Verify versions are in ascending order
-        UUID version1 = changes.get(0).getVersion();
-        UUID version2 = changes.get(1).getVersion();
-        UUID version3 = changes.get(2).getVersion();
-        assertTrue(version1.compareTo(version2) < 0);
-        assertTrue(version2.compareTo(version3) < 0);
+        // Verify versions (timestamps) are in ascending order
+        String version1 = changes.get(0).getVersion();
+        String version2 = changes.get(1).getVersion();
+        String version3 = changes.get(2).getVersion();
+
+        long timestamp1 = Long.parseLong(version1);
+        long timestamp2 = Long.parseLong(version2);
+        long timestamp3 = Long.parseLong(version3);
+
+        assertTrue(timestamp1 < timestamp2, "Version 1 should be less than version 2");
+        assertTrue(timestamp2 < timestamp3, "Version 2 should be less than version 3");
+        assertTrue(timestamp1 < timestamp3, "Versions should be in ascending order");
     }
 }

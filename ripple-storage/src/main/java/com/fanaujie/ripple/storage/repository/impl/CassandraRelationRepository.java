@@ -404,7 +404,7 @@ public class CassandraRelationRepository implements RelationRepository {
         List<RelationVersionRecord> changes = new ArrayList<>();
         for (Row row : resultSet) {
             RelationVersionRecord record = new RelationVersionRecord();
-            record.setVersion(row.getUuid("version"));
+            record.setVersion(String.valueOf(row.getUuid("version").timestamp()));
             record.setRelationUserId(row.getLong("relation_user_id"));
             record.setOperation(row.getByte("operation"));
             record.setNickName(row.getString("nick_name"));
