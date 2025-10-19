@@ -20,7 +20,7 @@ public class EventDataProcessor implements Processor<MessagePayload> {
 
         switch (EventData.getDefaultInstance().getEventType()) {
             case EVENT_TYPE_SELF_INFO_UPDATE:
-            case EVENT_TYPE_RELATION:
+            case EVENT_TYPE_RELATION_UPDATE:
                 this.pushProducer.send(this.pushTopic, key, data);
                 break;
             default:

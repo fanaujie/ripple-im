@@ -43,7 +43,7 @@ public class RelationEventListener implements EventListener {
                         EventData.newBuilder()
                                 .setSendUserId(userId)
                                 .setContent(request.toByteString())
-                                .setEventType(EventType.EVENT_TYPE_RELATION);
+                                .setEventType(EventType.EVENT_TYPE_RELATION_UPDATE);
                 b.addReceiveUserIds(userId); // notify self for multi-device sync
                 MessagePayload messageData =
                         MessagePayload.newBuilder().setEventData(b.build()).build();
