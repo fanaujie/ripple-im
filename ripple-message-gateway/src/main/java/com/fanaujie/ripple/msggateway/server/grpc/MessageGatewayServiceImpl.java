@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.msggateway.server.grpc;
 
+import com.fanaujie.ripple.msggateway.server.users.UserNotifier;
 import com.fanaujie.ripple.protobuf.msggateway.*;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import io.grpc.stub.StreamObserver;
@@ -11,9 +12,11 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
     private static final Logger logger = LoggerFactory.getLogger(MessageGatewayServiceImpl.class);
 
     private final OnlineUser onlineUser;
+    private final UserNotifier pushToUser;
 
-    public MessageGatewayServiceImpl(OnlineUser onlineUser) {
+    public MessageGatewayServiceImpl(OnlineUser onlineUser, UserNotifier pushToUser) {
         this.onlineUser = onlineUser;
+        this.pushToUser = pushToUser;
     }
 
     @Override
@@ -26,7 +29,7 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
                         .get(request.getReceiveUserId(), request.getRequestDeviceId())
                         .ifPresentOrElse(
                                 userSession -> {
-
+                                    pushToUser.push(userSession, request);
                                     // Respond with success
                                     PushMessageResponse response =
                                             PushMessageResponse.newBuilder()

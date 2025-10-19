@@ -3,12 +3,15 @@ syntax = "proto3";
 package com.fanaujie.ripple.protobuf;
 
 option java_multiple_files = true;
-option java_package = "com.fanaujie.ripple.protobuf.messaging";
+option java_package = "com.fanaujie.ripple.protobuf.wsmessage";
+import "MessageGateway.proto";
+
 
 message WsMessage {
   oneof message_type {
     HeartbeatRequest heartbeat_request = 1;
     HeartbeatResponse heartbeat_response = 2;
+    PushMessageRequest push_message_request = 3;
   }
 }
 

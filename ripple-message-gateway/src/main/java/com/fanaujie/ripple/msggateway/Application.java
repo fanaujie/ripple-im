@@ -3,6 +3,7 @@ package com.fanaujie.ripple.msggateway;
 import com.fanaujie.ripple.msggateway.server.grpc.GrpcServer;
 import com.fanaujie.ripple.msggateway.server.jwt.DefaultJwtDecoder;
 import com.fanaujie.ripple.msggateway.server.users.DefaultOnlineUser;
+import com.fanaujie.ripple.msggateway.server.users.DefaultUserNotifier;
 import com.fanaujie.ripple.msggateway.server.ws.WsService;
 import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
 import com.typesafe.config.ConfigFactory;
@@ -31,8 +32,8 @@ public class Application {
         logger.info("gRPC Port: {}", grpcPort);
 
         DefaultOnlineUser onlineUser = new DefaultOnlineUser();
-
-        GrpcServer grpcServer = new GrpcServer(grpcPort, onlineUser);
+        DefaultUserNotifier userNotifier = new DefaultUserNotifier();
+        GrpcServer grpcServer = new GrpcServer(grpcPort, onlineUser, userNotifier);
         WsService wsService =
                 new WsService(
                         new WsConfig(wsPort, wsPath, idleSeconds),

@@ -9,5 +9,5 @@ public interface OnlineUser {
 
     Optional<Channel> get(long userId, String deviceId);
 
-    void remove(Channel channel);
+    void remove(Channel session);
 }

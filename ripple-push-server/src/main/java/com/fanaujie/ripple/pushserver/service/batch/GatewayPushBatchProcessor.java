@@ -95,7 +95,7 @@ public class GatewayPushBatchProcessor
                     PushMessageType pushType;
                     switch (messagePayload.getEventData().getEventType()) {
                         case EVENT_TYPE_SELF_INFO_UPDATE:
-                            pushType = PushMessageType.PUSH_MESSAGE_TYPE_FRIEND_INFO_UPDATE;
+                            pushType = PushMessageType.PUSH_MESSAGE_TYPE_RELATION_INFO_UPDATE;
                             if (userInfo.getUserId()
                                     == messagePayload.getEventData().getSendUserId()) {
                                 pushType = PushMessageType.PUSH_MESSAGE_TYPE_SELF_INFO_UPDATE;

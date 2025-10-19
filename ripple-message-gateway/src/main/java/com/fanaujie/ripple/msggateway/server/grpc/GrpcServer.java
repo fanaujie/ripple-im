@@ -1,6 +1,7 @@
 package com.fanaujie.ripple.msggateway.server.grpc;
 
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
+import com.fanaujie.ripple.msggateway.server.users.UserNotifier;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
@@ -17,11 +18,13 @@ public class GrpcServer {
 
     private final int port;
     private final OnlineUser onlineUser;
+    private final UserNotifier userNotifier;
     private Server server;
 
-    public GrpcServer(int port, OnlineUser onlineUser) {
+    public GrpcServer(int port, OnlineUser onlineUser, UserNotifier userNotifier) {
         this.port = port;
         this.onlineUser = onlineUser;
+        this.userNotifier = userNotifier;
     }
 
     public CompletableFuture<Void> startAsync() {
@@ -29,7 +32,7 @@ public class GrpcServer {
                 () -> {
                     try {
                         MessageGatewayServiceImpl messageGatewayService =
-                                new MessageGatewayServiceImpl(onlineUser);
+                                new MessageGatewayServiceImpl(onlineUser, userNotifier);
 
                         server =
                                 ServerBuilder.forPort(port)
