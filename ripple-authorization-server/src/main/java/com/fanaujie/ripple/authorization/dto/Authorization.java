@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.database.model;
+package com.fanaujie.ripple.authorization.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

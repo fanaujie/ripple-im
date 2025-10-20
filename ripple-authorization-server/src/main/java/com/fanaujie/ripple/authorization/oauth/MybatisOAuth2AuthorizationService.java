@@ -6,11 +6,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import com.fanaujie.ripple.authorization.dto.Authorization;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fanaujie.ripple.database.mapper.AuthorizationMapper;
-import com.fanaujie.ripple.database.model.Authorization;
+import com.fanaujie.ripple.authorization.mapper.AuthorizationMapper;
 
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.jackson2.SecurityJackson2Modules;

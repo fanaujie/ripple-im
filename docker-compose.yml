@@ -18,6 +18,7 @@ services:
     ports:
       - "3306:3306"
     environment:
+      MYSQL_DATABASE: ripple_im
       MYSQL_ROOT: root
       MYSQL_ROOT_PASSWORD: ripple
     volumes:
@@ -219,9 +220,10 @@ services:
       OAUTH2_CLIENT_REDIRECT_URI: http://localhost:8000/callback
       OAUTH2_JWK_SECRET: YjA4ZTY1MjAtM2I0OC00OGJiLTgyOTUtODY0Y2VlM2M4ZWJm
       SNOWFLAKEID_SERVER_HOST: ripple-snowflakeid-server
-      SNOWFLAKEID_SERVER_PORT: 10004
+      SNOWFLAKEID_SERVER_PORT: 10002
     depends_on:
       - mysql
+      - cassandra
       - ripple-snowflakeid-server
 
   ripple-upload-gateway:

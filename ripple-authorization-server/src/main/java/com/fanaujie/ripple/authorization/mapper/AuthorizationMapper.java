@@ -1,8 +1,7 @@
-package com.fanaujie.ripple.database.mapper;
+package com.fanaujie.ripple.authorization.mapper;
 
-import com.fanaujie.ripple.database.model.Authorization;
+import com.fanaujie.ripple.authorization.dto.Authorization;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -31,5 +30,7 @@ public interface AuthorizationMapper {
 
     Optional<Authorization> findByDeviceCodeValue(String deviceCodeValue);
 
-    Optional<Authorization> findByStateOrAuthorizationCodeValueOrAccessTokenValueOrRefreshTokenValueOrOidcIdTokenValueOrUserCodeValueOrDeviceCodeValue(String token);
+    Optional<Authorization>
+            findByStateOrAuthorizationCodeValueOrAccessTokenValueOrRefreshTokenValueOrOidcIdTokenValueOrUserCodeValueOrDeviceCodeValue(
+                    String token);
 }
