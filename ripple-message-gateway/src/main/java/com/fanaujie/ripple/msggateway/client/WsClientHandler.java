@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.msggateway.client;
 
-import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
-import com.fanaujie.ripple.protobuf.messaging.WsMessage;
+import com.fanaujie.ripple.protobuf.wsmessage.HeartbeatResponse;
+import com.fanaujie.ripple.protobuf.wsmessage.WsMessage;
 import com.fanaujie.ripple.shaded.netty.channel.*;
 import com.fanaujie.ripple.shaded.netty.buffer.*;
 import com.fanaujie.ripple.shaded.netty.handler.codec.http.FullHttpResponse;

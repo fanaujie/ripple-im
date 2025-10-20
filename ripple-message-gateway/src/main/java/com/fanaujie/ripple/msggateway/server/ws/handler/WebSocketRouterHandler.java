@@ -5,7 +5,7 @@ import com.fanaujie.ripple.msggateway.exception.WsUnauthorizedException;
 import com.fanaujie.ripple.msggateway.server.jwt.JwtDecoder;
 import com.fanaujie.ripple.msggateway.server.uitls.HttpHeader;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
-import com.fanaujie.ripple.protobuf.messaging.WsMessage;
+import com.fanaujie.ripple.protobuf.wsmessage.WsMessage;
 import com.fanaujie.ripple.shaded.netty.buffer.ByteBufUtil;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelFutureListener;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelHandler;

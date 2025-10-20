@@ -24,11 +24,12 @@ public class UserService {
     public UserService(
             UserRepository userStorage,
             PasswordEncoder passwordEncoder,
-            @Value("${snowflake.server.host}") String snowflakeServerHost,
-            @Value("${snowflake.server.port}") int snowflakeServerPort) {
+            @Value("${snowflakeId.server.host}") String snowflakeIdServerHost,
+            @Value("${snowflakeId.server.port}") int snowflakeIdServerPort) {
         this.userStorage = userStorage;
         this.passwordEncoder = passwordEncoder;
-        this.snowflakeIdClient = new SnowflakeIdClient(snowflakeServerHost, snowflakeServerPort);
+        this.snowflakeIdClient =
+                new SnowflakeIdClient(snowflakeIdServerHost, snowflakeIdServerPort);
     }
 
     public ResponseEntity<CommonResponse> signup(

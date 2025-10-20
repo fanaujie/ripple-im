@@ -7,7 +7,7 @@ import com.fanaujie.ripple.msggateway.server.users.DefaultOnlineUser;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import com.fanaujie.ripple.msggateway.server.ws.WsService;
 import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
-import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
+import com.fanaujie.ripple.protobuf.wsmessage.HeartbeatResponse;
 import org.junit.jupiter.api.*;
 import org.mockito.Mockito;
 

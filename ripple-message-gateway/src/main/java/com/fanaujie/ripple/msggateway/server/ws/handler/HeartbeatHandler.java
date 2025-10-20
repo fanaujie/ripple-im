@@ -1,8 +1,8 @@
 package com.fanaujie.ripple.msggateway.server.ws.handler;
 
-import com.fanaujie.ripple.protobuf.messaging.HeartbeatRequest;
-import com.fanaujie.ripple.protobuf.messaging.HeartbeatResponse;
-import com.fanaujie.ripple.protobuf.messaging.WsMessage;
+import com.fanaujie.ripple.protobuf.wsmessage.HeartbeatRequest;
+import com.fanaujie.ripple.protobuf.wsmessage.HeartbeatResponse;
+import com.fanaujie.ripple.protobuf.wsmessage.WsMessage;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelHandler;
 import com.fanaujie.ripple.shaded.netty.channel.ChannelHandlerContext;
 import com.fanaujie.ripple.shaded.netty.channel.SimpleChannelInboundHandler;
