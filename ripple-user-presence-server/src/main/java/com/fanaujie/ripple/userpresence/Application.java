@@ -20,12 +20,15 @@ public class Application {
         int grpcPort = config.getInt("server.grpc.port");
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
+        int userPresenceTtlSeconds = config.getInt("user-presence.ttl-seconds");
         logger.info("Configuration - Redis Host: {}, Redis Port: {}", redisHost, redisPort);
         logger.info("Starting User Presence server...");
         logger.info("gRPC Port: {}", grpcPort);
+        logger.info("User Presence TTL (seconds): {}", userPresenceTtlSeconds);
         UserPresenceStorage userPresenceStorage =
                 new DefaultUserPresenceStorage(
-                        RedisDriver.createRedissonClient(redisHost, redisPort));
+                        RedisDriver.createRedissonClient(redisHost, redisPort),
+                        userPresenceTtlSeconds);
         GrpcServer grpcServer = new GrpcServer(grpcPort, userPresenceStorage);
         CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
         grpcFuture.join();

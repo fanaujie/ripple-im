@@ -22,13 +22,24 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
     @Override
     public StreamObserver<PushMessageRequest> pushMessageToUser(
             final StreamObserver<PushMessageResponse> responseObserver) {
+        logger.debug("pushMessageToUser: Starting push message stream");
         return new StreamObserver<PushMessageRequest>() {
             @Override
             public void onNext(PushMessageRequest request) {
+                logger.debug(
+                        "pushMessageToUser.onNext: Received push request - sendUserId: {}, receiveUserId: {}, deviceId: {}",
+                        request.getSendUserId(),
+                        request.getReceiveUserId(),
+                        request.getRequestDeviceId());
+
                 onlineUser
                         .get(request.getReceiveUserId(), request.getRequestDeviceId())
                         .ifPresentOrElse(
                                 userSession -> {
+                                    logger.debug(
+                                            "pushMessageToUser.onNext: User {} on device {} is online, pushing message",
+                                            request.getReceiveUserId(),
+                                            request.getRequestDeviceId());
                                     pushToUser.push(userSession, request);
                                     // Respond with success
                                     PushMessageResponse response =
@@ -37,12 +48,16 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
                                                     .setReceiveUserId(request.getReceiveUserId())
                                                     .setIsSuccess(true)
                                                     .build();
+                                    logger.debug(
+                                            "pushMessageToUser.onNext: Sending success response for user {}",
+                                            request.getReceiveUserId());
                                     responseObserver.onNext(response);
                                 },
                                 () -> {
                                     logger.warn(
-                                            "User {} is offline. Cannot push message.",
-                                            request.getReceiveUserId());
+                                            "pushMessageToUser.onNext: User {} on device {} is offline. Cannot push message.",
+                                            request.getReceiveUserId(),
+                                            request.getRequestDeviceId());
                                     PushMessageResponse response =
                                             PushMessageResponse.newBuilder()
                                                     .setSendUserId(request.getSendUserId())
@@ -50,18 +65,25 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
                                                     .setIsSuccess(false)
                                                     .setErrorMsg("User is offline")
                                                     .build();
+                                    logger.debug(
+                                            "pushMessageToUser.onNext: Sending failure response for offline user {}",
+                                            request.getReceiveUserId());
                                     responseObserver.onNext(response);
                                 });
             }
 
             @Override
             public void onError(Throwable t) {
-                logger.error("Error in pushMessageToUser stream", t);
+                logger.error(
+                        "pushMessageToUser.onError: Error occurred in pushMessageToUser stream - {}",
+                        t.getMessage(),
+                        t);
                 responseObserver.onCompleted();
             }
 
             @Override
             public void onCompleted() {
+                logger.debug("pushMessageToUser.onCompleted: Push message stream completed");
                 responseObserver.onCompleted();
             }
         };

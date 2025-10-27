@@ -36,7 +36,7 @@ public class ZookeeperDiscoverService {
                         this.serviceDiscoveryPath + "/service-",
                         address.getBytes(StandardCharsets.UTF_8));
 
-        logger.info("Service registered: at {}", address);
+        logger.info("ZookeeperDiscoverService: Service registered: at {}", address);
     }
 
     public void discoverService(ServiceChangeListener listener) throws Exception {
@@ -44,7 +44,12 @@ public class ZookeeperDiscoverService {
             throw new IllegalStateException("Service discovery already started");
         }
         this.cache = new PathChildrenCache(client, this.serviceDiscoveryPath, true);
-        this.cache.start();
+        this.cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
+        for (ChildData data : this.cache.getCurrentData()) {
+            PathChildrenCacheEvent event =
+                    new PathChildrenCacheEvent(PathChildrenCacheEvent.Type.CHILD_ADDED, data);
+            listener.onServiceChanged(client, event);
+        }
         PathChildrenCacheListener pathListener =
                 new PathChildrenCacheListener() {
                     @Override

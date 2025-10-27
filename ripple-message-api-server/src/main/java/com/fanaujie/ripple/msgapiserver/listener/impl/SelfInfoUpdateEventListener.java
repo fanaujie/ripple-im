@@ -10,11 +10,14 @@ import com.fanaujie.ripple.protobuf.msgdispatcher.EventType;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.storage.UserIds;
 import com.fanaujie.ripple.storage.service.RelationStorage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 
 public class SelfInfoUpdateEventListener implements EventListener {
 
+    private final Logger logger = LoggerFactory.getLogger(SelfInfoUpdateEventListener.class);
     private final String topicName;
     private final RelationStorage relationStorage;
     private final GenericProducer<String, MessagePayload> producer;
@@ -34,6 +37,8 @@ public class SelfInfoUpdateEventListener implements EventListener {
     @Override
     public SendEventResp handleEvent(SendEventReq request) throws Exception {
         long userId = request.getSelfInfoUpdateEvent().getUserId();
+        logger.debug("handleEvent: Processing self info update for userId: {}", userId);
+
         UserIds friendIds =
                 this.relationStorage
                         .getFriendIds(userId)
@@ -44,6 +49,11 @@ public class SelfInfoUpdateEventListener implements EventListener {
                                                         + request.getSelfInfoUpdateEvent()
                                                                 .getUserId()));
 
+        logger.debug(
+                "handleEvent: Found {} friends for userId: {}",
+                friendIds.getUserIdsList().size(),
+                userId);
+
         EventData.Builder b =
                 EventData.newBuilder()
                         .setSendUserId(userId)
@@ -52,11 +62,20 @@ public class SelfInfoUpdateEventListener implements EventListener {
         for (long friendUserId : friendIds.getUserIdsList()) {
             b.addReceiveUserIds(friendUserId);
         }
+
         b.addReceiveUserIds(userId); // also notify self for multi-device sync
+        logger.debug(
+                "handleEvent: Total receive users count: {}", b.getReceiveUserIdsList().size());
+
         MessagePayload messageData = MessagePayload.newBuilder().setEventData(b.build()).build();
+        logger.debug(
+                "handleEvent: Submitting message to topic: {} for userId: {}", topicName, userId);
+
         this.executorService.submit(
                 () -> {
+                    logger.debug("handleEvent: Sending message to producer for userId: {}", userId);
                     this.producer.send(this.topicName, String.valueOf(userId), messageData);
+                    logger.debug("handleEvent: Message sent successfully for userId: {}", userId);
                 });
         return SendEventResp.newBuilder().build();
     }

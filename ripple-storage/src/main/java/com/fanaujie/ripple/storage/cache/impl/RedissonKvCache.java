@@ -24,24 +24,13 @@ public class RedissonKvCache implements KvCache {
     @Override
     public void put(String key, byte[] value, long expireSeconds) {
         RBucket<byte[]> bucket = redissonClient.getBucket(key);
-        try {
-            bucket.setAsync(value, Duration.ofSeconds(expireSeconds)).get();
-        } catch (CancellationException | ExecutionException | InterruptedException e) {
-            logger.error("Failed to put value into cache for key: {}", key, e);
-        }
+        bucket.set(value, Duration.ofSeconds(expireSeconds));
     }
 
     @Override
     public byte[] getIfPresent(String key, long expireSeconds, Supplier<byte[]> loader) {
         RBucket<byte[]> bucket = redissonClient.getBucket(key);
-
-        RFuture<byte[]> value = bucket.getAsync();
-        byte[] v = null;
-        try {
-            v = value.get();
-        } catch (CancellationException | ExecutionException | InterruptedException ignored) {
-            logger.error("Failed to get value from cache for key: {}", key);
-        }
+        byte[] v = bucket.get();
         if (v == null && loader != null) {
             v = loader.get();
             if (v != null) {
@@ -60,10 +49,6 @@ public class RedissonKvCache implements KvCache {
     @Override
     public void delete(String key) {
         RBucket<String> bucket = redissonClient.getBucket(key);
-        try {
-            bucket.deleteAsync().get();
-        } catch (CancellationException | ExecutionException | InterruptedException e) {
-            logger.error("Failed to delete value from cache for key: {}", key, e);
-        }
+        bucket.delete();
     }
 }

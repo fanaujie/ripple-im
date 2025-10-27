@@ -1,13 +1,13 @@
 package com.fanaujie.ripple.pushserver;
 
 import com.fanaujie.ripple.communication.batch.Config;
-import com.fanaujie.ripple.communication.grpc.client.GrpcClientPool;
+import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.messaging.GenericConsumer;
 import com.fanaujie.ripple.communication.messaging.kafka.KafkaConsumerConfigFactory;
 import com.fanaujie.ripple.communication.messaging.kafka.KafkaGenericConsumer;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
-import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientPoolManager;
+import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.pushserver.service.PushService;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -53,15 +53,14 @@ public class Application {
         Config batchConfig =
                 new Config(batchQueueSize, batchWorkerSize, batchMaxSize, batchTimeoutMs);
 
-        MessageGatewayClientPoolManager messageGatewayManager = null;
+        MessageGatewayClientManager messageGatewayManager = null;
         PushService pushService = null;
         try {
-            // Initialize MessageGateway client pool manager
+            // Initialize MessageGatewayClientManager
             messageGatewayManager =
-                    new MessageGatewayClientPoolManager(
-                            zookeeperAddress, messageGatewayDiscoveryPath);
+                    new MessageGatewayClientManager(zookeeperAddress, messageGatewayDiscoveryPath);
             messageGatewayManager.start();
-            logger.info("MessageGatewayClientPoolManager initialized successfully");
+            logger.info("MessageGatewayClientManager initialized successfully");
 
             pushService = createPushService(userPresenceServer, messageGatewayManager, batchConfig);
 
@@ -76,7 +75,7 @@ public class Application {
             pushConsumerThread.start();
 
             // Add shutdown hook for graceful cleanup
-            final MessageGatewayClientPoolManager finalManager = messageGatewayManager;
+            final MessageGatewayClientManager finalManager = messageGatewayManager;
             final PushService finalPushService = pushService;
             Runtime.getRuntime()
                     .addShutdownHook(
@@ -84,12 +83,8 @@ public class Application {
                                     () -> {
                                         logger.info("Shutting down application...");
                                         try {
-                                            if (finalPushService != null) {
-                                                finalPushService.close();
-                                            }
-                                            if (finalManager != null) {
-                                                finalManager.close();
-                                            }
+                                            finalPushService.close();
+                                            finalManager.close();
                                         } catch (Exception e) {
                                             logger.error("Error during shutdown cleanup", e);
                                         }
@@ -100,20 +95,15 @@ public class Application {
             logger.error("Push consumer thread interrupted", e);
         } catch (Exception e) {
             logger.error("Error initializing application", e);
-            // Cleanup resources
             try {
                 if (pushService != null) {
                     pushService.close();
                 }
-            } catch (Exception closeException) {
-                logger.error("Error closing PushService", closeException);
-            }
-            try {
                 if (messageGatewayManager != null) {
                     messageGatewayManager.close();
                 }
             } catch (Exception closeException) {
-                logger.error("Error closing MessageGatewayClientPoolManager", closeException);
+                logger.error("Error closing", closeException);
             }
         }
     }
@@ -125,11 +115,11 @@ public class Application {
 
     private PushService createPushService(
             String userPresenceServer,
-            MessageGatewayClientPoolManager messageGatewayManager,
+            MessageGatewayClientManager messageGatewayManager,
             Config batchConfig) {
-        GrpcClientPool<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClientPool =
-                new GrpcClientPool<>(userPresenceServer, UserPresenceGrpc::newBlockingStub);
-        return new PushService(userPresenceClientPool, messageGatewayManager, batchConfig);
+        GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClient =
+                new GrpcClient<>(userPresenceServer, UserPresenceGrpc::newBlockingStub);
+        return new PushService(userPresenceClient, messageGatewayManager, batchConfig);
     }
 
     private GenericConsumer<String, MessagePayload> createPushTopicConsumer(

@@ -1,6 +1,7 @@
 package com.fanaujie.ripple.apigateway.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClientPool;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
@@ -50,8 +51,8 @@ public class ComponentConfig {
     }
 
     @Bean
-    public GrpcClientPool<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient(
-            @Value("${message-dispatcher.server.address}") String serverAddress) {
-        return new GrpcClientPool<>(serverAddress, MessageAPIGrpc::newBlockingStub);
+    public GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient(
+            @Value("${message-api.server.address}") String serverAddress) {
+        return new GrpcClient<>(serverAddress, MessageAPIGrpc::newBlockingStub);
     }
 }

@@ -5,9 +5,9 @@ import com.fanaujie.ripple.shaded.netty.channel.Channel;
 import java.util.Optional;
 
 public interface OnlineUser {
-    void add(long userId, String deviceId, Channel channel);
+    void add(String userId, String deviceId, Channel channel);
 
-    Optional<Channel> get(long userId, String deviceId);
+    Optional<Channel> get(String userId, String deviceId);
 
     void remove(Channel session);
 }

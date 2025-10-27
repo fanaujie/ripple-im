@@ -14,15 +14,15 @@ enum PushMessageType {
 
 message PushMessageRequest {
   PushMessageType push_message_type = 1;
-  int64 send_user_id = 2;
-  int64 receive_user_id = 3;
+  string send_user_id = 2;
+  string receive_user_id = 3;
   string request_device_id = 4;
   bytes content = 5;
 }
 
 message PushMessageResponse {
-  int64 send_user_id = 1;
-  int64 receive_user_id = 2 ;
+  string send_user_id = 1;
+  string receive_user_id = 2 ;
   bool  is_success = 3;
   string error_msg = 4;
 }

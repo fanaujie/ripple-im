@@ -6,7 +6,7 @@ option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.userpresence";
 
 message UserOnlineReq {
-  int64 user_id = 1;
+  string user_id = 1;
   string device_id = 2;
   bool is_online = 3;
   string server_location = 4;
@@ -16,11 +16,11 @@ message UserOnlineResp {
 }
 
 message QueryUserOnlineReq {
-  repeated int64 user_ids = 1;
+  repeated string  user_ids = 1;
 }
 
 message UserOnlineInfo {
-  int64 user_id = 1;
+  string user_id = 1;
   string device_id = 2;
   string server_location = 3;
 }
@@ -29,8 +29,16 @@ message QueryUserOnlineResp {
   repeated UserOnlineInfo user_online_infos = 1;
 }
 
+message BatchUserOnlineReq {
+  repeated UserOnlineReq requests = 1;
+}
+
+message BatchUserOnlineResp {
+}
+
 
 service UserPresence {
   rpc SetUserOnline(UserOnlineReq) returns (UserOnlineResp);
+  rpc SetUserOnlineBatch(BatchUserOnlineReq) returns (BatchUserOnlineResp);
   rpc QueryUserOnline(QueryUserOnlineReq) returns (QueryUserOnlineResp);
 }

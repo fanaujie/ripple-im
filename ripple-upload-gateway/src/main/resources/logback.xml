@@ -6,11 +6,11 @@
         </encoder>
     </appender>
 
-    <!-- Root logger: WARN for all third-party libraries -->
-    <root level="WARN">
-        <appender-ref ref="STDOUT" />
+    <!-- Root logger: INFO for all third-party libraries -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
     </root>
 
     <!-- Application loggers: INFO for our code -->
-    <logger name="com.fanaujie.ripple" level="INFO" />
+    <logger name="com.fanaujie.ripple" level="DEBUG"/>
 </configuration>

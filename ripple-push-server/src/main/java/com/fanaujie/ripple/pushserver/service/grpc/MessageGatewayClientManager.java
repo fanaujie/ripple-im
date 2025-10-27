@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.pushserver.service.grpc;
 
-import com.fanaujie.ripple.communication.grpc.client.GrpcClientPool;
+import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.zookeeper.ServiceChangeListener;
 import com.fanaujie.ripple.communication.zookeeper.ZookeeperDiscoverService;
 import com.fanaujie.ripple.protobuf.msggateway.MessageGatewayGrpc;
@@ -15,27 +15,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MessageGatewayClientPoolManager implements ServiceChangeListener {
-    private static final Logger logger =
-            LoggerFactory.getLogger(MessageGatewayClientPoolManager.class);
+public class MessageGatewayClientManager implements ServiceChangeListener {
+    private static final Logger logger = LoggerFactory.getLogger(MessageGatewayClientManager.class);
 
     private final ZookeeperDiscoverService discoveryService;
-    private final Map<String, GrpcClientPool<MessageGatewayGrpc.MessageGatewayStub>> clientPools;
+    private final Map<String, GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> clients;
 
-    public MessageGatewayClientPoolManager(String zookeeperAddress, String discoveryPath)
+    public MessageGatewayClientManager(String zookeeperAddress, String discoveryPath)
             throws Exception {
         this.discoveryService = new ZookeeperDiscoverService(zookeeperAddress, discoveryPath);
-        this.clientPools = new ConcurrentHashMap<>();
+        this.clients = new ConcurrentHashMap<>();
     }
 
     public void start() throws Exception {
         discoveryService.discoverService(this);
-        logger.info("MessageGatewayClientPoolManager started");
+        logger.info("MessageGatewayClientManager started");
     }
 
-    public Optional<GrpcClientPool<MessageGatewayGrpc.MessageGatewayStub>> getClientPool(
+    public Optional<GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> getClient(
             String serverAddress) {
-        return Optional.ofNullable(clientPools.get(serverAddress));
+        return Optional.ofNullable(clients.get(serverAddress));
     }
 
     @Override
@@ -61,30 +60,27 @@ public class MessageGatewayClientPoolManager implements ServiceChangeListener {
 
     private void handleServiceAdded(PathChildrenCacheEvent event) {
         String serverAddress = extractServerAddress(event);
-        if (serverAddress != null && !clientPools.containsKey(serverAddress)) {
-            GrpcClientPool<MessageGatewayGrpc.MessageGatewayStub> pool =
-                    new GrpcClientPool<>(serverAddress, MessageGatewayGrpc::newStub);
-            clientPools.put(serverAddress, pool);
-            logger.info("Added MessageGateway client pool for server: {}", serverAddress);
+        if (serverAddress != null && !clients.containsKey(serverAddress)) {
+            GrpcClient<MessageGatewayGrpc.MessageGatewayStub> c =
+                    new GrpcClient<>(serverAddress, MessageGatewayGrpc::newStub);
+            clients.put(serverAddress, c);
+            logger.info("Added MessageGateway client for server: {}", serverAddress);
         }
     }
 
     private void handleServiceRemoved(PathChildrenCacheEvent event) {
         String serverAddress = extractServerAddress(event);
         if (serverAddress != null) {
-            GrpcClientPool<MessageGatewayGrpc.MessageGatewayStub> pool =
-                    clientPools.remove(serverAddress);
-            if (pool != null) {
-                pool.close();
-                logger.info("Removed MessageGateway client pool for server: {}", serverAddress);
-            }
+            var c = clients.remove(serverAddress);
+            c.getChannel().shutdown();
+            logger.info("Removed MessageGateway client for server: {}", serverAddress);
         }
     }
 
     private void handleServiceUpdated(PathChildrenCacheEvent event) {
         String serverAddress = extractServerAddress(event);
         logger.debug("Service updated: {}", serverAddress);
-        // For updates, we might want to recreate the pool if the address changed
+        // For updates, we might want to recreate the client if the address changed
         // For now, just log it
     }
 
@@ -96,22 +92,13 @@ public class MessageGatewayClientPoolManager implements ServiceChangeListener {
     }
 
     public void close() throws IOException {
-        logger.info("Closing MessageGatewayClientPoolManager");
-
-        // Close all client pools
-        clientPools.forEach(
-                (address, pool) -> {
-                    try {
-                        pool.close();
-                        logger.debug("Closed client pool for: {}", address);
-                    } catch (Exception e) {
-                        logger.error("Error closing client pool for: {}", address, e);
-                    }
+        logger.info("Closing MessageGatewayClientManager");
+        clients.forEach(
+                (address, c) -> {
+                    c.getChannel().shutdown();
                 });
-        clientPools.clear();
-
-        // Close Zookeeper connection
+        clients.clear();
         discoveryService.close();
-        logger.info("MessageGatewayClientPoolManager closed");
+        logger.info("MessageGatewayClientManager closed");
     }
 }

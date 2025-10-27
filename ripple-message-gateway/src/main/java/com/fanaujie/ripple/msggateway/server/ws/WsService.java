@@ -1,5 +1,7 @@
 package com.fanaujie.ripple.msggateway.server.ws;
 
+import com.fanaujie.ripple.communication.batch.BatchExecutorService;
+import com.fanaujie.ripple.msggateway.batch.UserOnlineBatchTask;
 import com.fanaujie.ripple.msggateway.server.jwt.JwtDecoder;
 import com.fanaujie.ripple.msggateway.server.users.OnlineUser;
 import com.fanaujie.ripple.msggateway.server.ws.config.WsConfig;
@@ -30,25 +32,35 @@ public class WsService {
     private final WsConfig wsConfig;
     private final JwtDecoder jwtDecoder;
     private final OnlineUser onlineUser;
+    private final BatchExecutorService<UserOnlineBatchTask> batchExecutorService;
+    private final String serverLocation;
 
-    public WsService(WsConfig config, JwtDecoder jwtDecoder, OnlineUser onlineUser) {
+    public WsService(
+            WsConfig config,
+            JwtDecoder jwtDecoder,
+            OnlineUser onlineUser,
+            BatchExecutorService<UserOnlineBatchTask> batchExecutorService,
+            String serverLocation) {
         this.wsConfig = config;
         this.jwtDecoder = jwtDecoder;
         this.onlineUser = onlineUser;
+        this.batchExecutorService = batchExecutorService;
+        this.serverLocation = serverLocation;
     }
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
 
     public CompletableFuture<Void> startAsync() {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                start();
-            } catch (Exception e) {
-                logger.error("Failed to start WebSocket server", e);
-                throw new RuntimeException(e);
-            }
-        });
+        return CompletableFuture.runAsync(
+                () -> {
+                    try {
+                        start();
+                    } catch (Exception e) {
+                        logger.error("Failed to start WebSocket server", e);
+                        throw new RuntimeException(e);
+                    }
+                });
     }
 
     public void start() {
@@ -56,7 +68,8 @@ public class WsService {
         workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
         WebSocketRouterHandler webSocketRouterHandler =
                 new WebSocketRouterHandler(jwtDecoder, onlineUser);
-        HeartbeatHandler heartbeatHandler = new HeartbeatHandler();
+        HeartbeatHandler heartbeatHandler =
+                new HeartbeatHandler(batchExecutorService, serverLocation);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap
                 .group(bossGroup, workerGroup)
@@ -67,7 +80,7 @@ public class WsService {
                             protected void initChannel(NioSocketChannel ch) {
                                 ChannelPipeline pipeline = ch.pipeline();
                                 pipeline.addLast(
-                                        new IdleStateHandler(0, 0, wsConfig.getIdleSeconds()));
+                                        new IdleStateHandler(wsConfig.getIdleSeconds(), 0, 0));
                                 pipeline.addLast(new HttpServerCodec());
                                 pipeline.addLast(new HttpObjectAggregator(MAX_CONTENT_LENGTH));
                                 pipeline.addLast(new ChunkedWriteHandler());

@@ -51,7 +51,7 @@ class GrpcServerTest {
     void testSetUserOnline() throws Exception {
         UserOnlineReq request =
                 UserOnlineReq.newBuilder()
-                        .setUserId(12345L)
+                        .setUserId("12345")
                         .setDeviceId("device-001")
                         .setIsOnline(true)
                         .setServerLocation("server-01")
@@ -77,14 +77,14 @@ class GrpcServerTest {
     void testQueryUserOnline() throws Exception {
         QueryUserOnlineReq request =
                 QueryUserOnlineReq.newBuilder()
-                        .addAllUserIds(Arrays.asList(100L, 200L, 300L))
+                        .addAllUserIds(Arrays.asList("100", "200", "300"))
                         .build();
         UserOnlineInfo info100L =
-                UserOnlineInfo.newBuilder().setUserId(100L).setServerLocation("loc1").build();
+                UserOnlineInfo.newBuilder().setUserId("100").setServerLocation("loc1").build();
         UserOnlineInfo info300L =
-                UserOnlineInfo.newBuilder().setUserId(300L).setServerLocation("loc3").build();
+                UserOnlineInfo.newBuilder().setUserId("300").setServerLocation("loc3").build();
         UserOnlineInfo info200L =
-                UserOnlineInfo.newBuilder().setUserId(200L).setServerLocation("loc2").build();
+                UserOnlineInfo.newBuilder().setUserId("200").setServerLocation("loc2").build();
 
         QueryUserOnlineResp mockResponse =
                 QueryUserOnlineResp.newBuilder()
@@ -118,14 +118,14 @@ class GrpcServerTest {
     void testMultipleSetUserOnlineCalls() throws Exception {
         UserOnlineReq request1 =
                 UserOnlineReq.newBuilder()
-                        .setUserId(1L)
+                        .setUserId("1")
                         .setDeviceId("device-1")
                         .setIsOnline(true)
                         .build();
 
         UserOnlineReq request2 =
                 UserOnlineReq.newBuilder()
-                        .setUserId(2L)
+                        .setUserId("2")
                         .setDeviceId("device-2")
                         .setIsOnline(false)
                         .build();

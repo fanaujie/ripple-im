@@ -11,7 +11,11 @@ public class GrpcClient<T> {
     private final T stub;
 
     public GrpcClient(String serverAddr, Function<ManagedChannel, T> stubFactory) {
-        this.channel = ManagedChannelBuilder.forTarget(serverAddr).usePlaintext().build();
+        this.channel =
+                ManagedChannelBuilder.forTarget(String.format("dns:///%s", serverAddr))
+                        .usePlaintext()
+                        .defaultLoadBalancingPolicy("round_robin")
+                        .build();
         this.stub = stubFactory.apply(channel);
     }
 

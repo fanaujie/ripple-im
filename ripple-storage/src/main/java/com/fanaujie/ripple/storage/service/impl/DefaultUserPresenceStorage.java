@@ -6,20 +6,24 @@ import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineReq;
 import com.fanaujie.ripple.storage.service.UserPresenceStorage;
 import com.fanaujie.ripple.storage.service.utils.LuaUtils;
+import org.redisson.api.RBucket;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DefaultUserPresenceStorage implements UserPresenceStorage {
     private final RedissonClient redissonClient;
     private final String userOnlineLuaScript;
+    private final int presenceTimeoutSeconds;
 
-    public DefaultUserPresenceStorage(RedissonClient redissonClient) {
+    public DefaultUserPresenceStorage(RedissonClient redissonClient, int presenceTimeoutSeconds) {
         this.redissonClient = redissonClient;
         this.userOnlineLuaScript = LuaUtils.loadScript("lua/get_user_online.lua");
+        this.presenceTimeoutSeconds = presenceTimeoutSeconds;
     }
 
     @Override
@@ -29,7 +33,9 @@ public class DefaultUserPresenceStorage implements UserPresenceStorage {
                     .getBucket(
                             getUserPresenceKey(request.getUserId(), request.getDeviceId()),
                             StringCodec.INSTANCE)
-                    .set(request.getServerLocation());
+                    .set(
+                            request.getServerLocation(),
+                            Duration.ofSeconds(this.presenceTimeoutSeconds));
         } else {
             redissonClient
                     .getBucket(
@@ -37,6 +43,31 @@ public class DefaultUserPresenceStorage implements UserPresenceStorage {
                             StringCodec.INSTANCE)
                     .delete();
         }
+    }
+
+    @Override
+    public void setUserOnlineBatch(List<UserOnlineReq> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return;
+        }
+
+        // Use batch operations for better performance
+        var batch = redissonClient.createBatch();
+
+        for (UserOnlineReq request : requests) {
+            String key = getUserPresenceKey(request.getUserId(), request.getDeviceId());
+            if (request.getIsOnline()) {
+                batch.getBucket(key, StringCodec.INSTANCE)
+                        .setAsync(
+                                request.getServerLocation(),
+                                Duration.ofSeconds(this.presenceTimeoutSeconds));
+            } else {
+                batch.getBucket(key, StringCodec.INSTANCE).deleteAsync();
+            }
+        }
+
+        // Execute all operations in a single batch
+        batch.execute();
     }
 
     @Override
@@ -48,7 +79,7 @@ public class DefaultUserPresenceStorage implements UserPresenceStorage {
 
         // Convert user IDs to string array for Lua script
         List<Object> keys = new ArrayList<>();
-        for (Long userId : request.getUserIdsList()) {
+        for (String userId : request.getUserIdsList()) {
             keys.add(getUserPresenceKeyPattern(userId));
         }
 
@@ -66,7 +97,7 @@ public class DefaultUserPresenceStorage implements UserPresenceStorage {
         if (result != null) {
             for (int i = 0; i < result.size(); i += 3) {
                 if (i + 2 < result.size()) {
-                    long userId = Long.parseLong(result.get(i));
+                    String userId = result.get(i);
                     String deviceId = result.get(i + 1);
                     String serverLocation = result.get(i + 2);
 
@@ -84,11 +115,11 @@ public class DefaultUserPresenceStorage implements UserPresenceStorage {
         return builder.build();
     }
 
-    private String getUserPresenceKey(long userId, String deviceId) {
+    private String getUserPresenceKey(String userId, String deviceId) {
         return String.format("user_presence:%s:%s", userId, deviceId);
     }
 
-    private String getUserPresenceKeyPattern(long userId) {
+    private String getUserPresenceKeyPattern(String userId) {
         return String.format("user_presence:%s:*", userId);
     }
 }

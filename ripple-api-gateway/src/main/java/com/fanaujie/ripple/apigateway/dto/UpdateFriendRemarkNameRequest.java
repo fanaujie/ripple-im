@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateFriendRemarkNameRequest {
-    @NotBlank(message = "Display name cannot be blank")
-    @Size(max = 50, message = "Display name cannot exceed 50 characters")
+    @NotBlank(message = "Remark name cannot be blank")
+    @Size(max = 50, message = "Remark name cannot exceed 50 characters")
     private String remarkName;
 }
