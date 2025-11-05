@@ -23,22 +23,37 @@ message SendMessageResp {
 
 
 message SelfInfoUpdateEvent {
-  int64 user_id = 1;
+  enum EventType {
+    UNSPECIFIED = 0;
+    UPDATE_NICK_NAME = 1;
+    UPDATE_AVATAR = 2;
+    DELETE_AVATAR = 3;
+  }
+  EventType event_type = 1;
+  int64 user_id = 2;
+  string nickName = 3;
+  string avatar = 4;
 }
 
 
 message RelationEvent {
   enum EventType {
-    ADD_FRIEND = 0;
-    REMOVE_FRIEND = 1;
-    UPDATE_FRIEND = 2;
-    BLOCK_USER = 3;
-    UNBLOCK_USER = 4;
-    HIDE_BLOCKED_USER = 5;
+    UNSPECIFIED = 0;
+    ADD_FRIEND = 1;
+    REMOVE_FRIEND = 2;
+    UPDATE_FRIEND_REMARK_NAME = 3;
+    BLOCK_STRANGER = 4;
+    BLOCK_FRIEND = 5;
+    UNBLOCK_USER = 6;
+    HIDE_BLOCKED_USER = 7;
+    UPDATE_FRIEND_INFO = 8;
   }
   EventType event_type = 1;
   int64 user_id = 2;
   int64 target_user_id = 3;
+  string target_user_nick_name = 4;
+  string target_user_avatar = 5;
+  string target_user_remark_name = 6;
 }
 
 

@@ -24,9 +24,16 @@ message PushMessageResponse {
   string send_user_id = 1;
   string receive_user_id = 2 ;
   bool  is_success = 3;
-  string error_msg = 4;
+}
+
+message BatchPushMessageRequest {
+  repeated PushMessageRequest requests = 1;
+}
+
+message BatchPushMessageResponse {
+  repeated PushMessageResponse responses = 1;
 }
 
 service MessageGateway {
-  rpc PushMessageToUser(stream PushMessageRequest) returns (stream PushMessageResponse);
+  rpc PushMessageToUser(BatchPushMessageRequest) returns (BatchPushMessageResponse);
 }

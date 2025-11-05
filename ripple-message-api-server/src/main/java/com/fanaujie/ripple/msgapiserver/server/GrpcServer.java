@@ -1,7 +1,8 @@
 package com.fanaujie.ripple.msgapiserver.server;
 
-import com.fanaujie.ripple.msgapiserver.processor.EventProcessor;
-import com.fanaujie.ripple.msgapiserver.processor.MessageProcessor;
+import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
@@ -17,11 +18,18 @@ public class GrpcServer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
     private final int port;
-    private final MessageProcessor messageProcessor;
-    private final EventProcessor eventProcessor;
+    private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+            messageProcessor;
+    private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+            eventProcessor;
     private Server server;
 
-    public GrpcServer(int port, MessageProcessor messageProcessor, EventProcessor eventProcessor) {
+    public GrpcServer(
+            int port,
+            ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+                    messageProcessor,
+            ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+                    eventProcessor) {
         this.port = port;
         this.messageProcessor = messageProcessor;
         this.eventProcessor = eventProcessor;

@@ -2,10 +2,11 @@ package com.fanaujie.ripple.pushserver;
 
 import com.fanaujie.ripple.communication.batch.Config;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
-import com.fanaujie.ripple.communication.messaging.GenericConsumer;
-import com.fanaujie.ripple.communication.messaging.kafka.KafkaConsumerConfigFactory;
-import com.fanaujie.ripple.communication.messaging.kafka.KafkaGenericConsumer;
+import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.pushserver.service.PushService;
@@ -33,6 +34,11 @@ public class Application {
         int batchWorkerSize = config.getInt("batch.executor.worker-size");
         int batchMaxSize = config.getInt("batch.executor.max-size");
         long batchTimeoutMs = config.getLong("batch.executor.timeout-ms");
+
+        // Load Kafka consumer batch configuration
+        int kafkaMaxPollRecords = config.getInt("kafka.consumer.max-poll-records");
+        int kafkaFetchMinBytes = config.getInt("kafka.consumer.fetch-min-bytes");
+        int kafkaFetchMaxWaitMs = config.getInt("kafka.consumer.fetch-max-wait-ms");
         logger.info("Broker Config - Server: {}, Push Topic: {}", brokerServer, pushTopic);
         logger.info(
                 "Ripple Config - Push Group ID: {}, Push Client ID: {}",
@@ -49,6 +55,11 @@ public class Application {
                 batchWorkerSize,
                 batchMaxSize,
                 batchTimeoutMs);
+        logger.info(
+                "Kafka Consumer Batch Config - Max Poll Records: {}, Fetch Min Bytes: {}, Fetch Max Wait (ms): {}",
+                kafkaMaxPollRecords,
+                kafkaFetchMinBytes,
+                kafkaFetchMaxWaitMs);
 
         Config batchConfig =
                 new Config(batchQueueSize, batchWorkerSize, batchMaxSize, batchTimeoutMs);
@@ -64,12 +75,15 @@ public class Application {
 
             pushService = createPushService(userPresenceServer, messageGatewayManager, batchConfig);
 
-            GenericConsumer<String, MessagePayload> pushTopicConsumer =
+            GenericConsumer<String, PushMessage> pushTopicConsumer =
                     createPushTopicConsumer(
                             pushTopic,
                             brokerServer,
                             topicPushGroupId,
                             topicPushClientId,
+                            kafkaMaxPollRecords,
+                            kafkaFetchMinBytes,
+                            kafkaFetchMaxWaitMs,
                             pushService);
             Thread pushConsumerThread = new Thread(pushTopicConsumer);
             pushConsumerThread.start();
@@ -122,17 +136,26 @@ public class Application {
         return new PushService(userPresenceClient, messageGatewayManager, batchConfig);
     }
 
-    private GenericConsumer<String, MessagePayload> createPushTopicConsumer(
+    private GenericConsumer<String, PushMessage> createPushTopicConsumer(
             String topic,
             String brokerServer,
             String groupId,
             String clientId,
+            int maxPollRecords,
+            int fetchMinBytes,
+            int fetchMaxWaitMs,
             PushService pushService) {
-        GenericConsumer<String, MessagePayload> consumer =
+        GenericConsumer<String, PushMessage> consumer =
                 new KafkaGenericConsumer<>(
-                        KafkaConsumerConfigFactory.createMessagePayloadConsumerConfig(
-                                topic, brokerServer, groupId, clientId));
-        consumer.subscribe(pushService::processMessagePayload);
+                        KafkaConsumerConfigFactory.createPushMessageConsumerConfig(
+                                topic,
+                                brokerServer,
+                                groupId,
+                                clientId,
+                                maxPollRecords,
+                                fetchMinBytes,
+                                fetchMaxWaitMs));
+        consumer.subscribe(pushService::processPushMessageBatch);
         return consumer;
     }
 }

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RelationChange {
     private String version;
-    private String operation; // ADD, UPDATE, DELETE
+    private int operation;
     private String userId;
     private String nickName;
     private String avatar;

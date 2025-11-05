@@ -4,7 +4,7 @@ import com.fanaujie.ripple.protobuf.storage.UserIds;
 import com.fanaujie.ripple.storage.cache.KvCache;
 import com.fanaujie.ripple.storage.cache.RelationCachePrefixKey;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.service.RelationStorage;
+import com.fanaujie.ripple.storage.service.CachedRelationStorage;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Optional;
 
-public class DefaultRelationStorage implements RelationStorage {
+public class DefaultRelationStorage implements CachedRelationStorage {
     private final Logger logger = LoggerFactory.getLogger(DefaultRelationStorage.class);
     private final KvCache kvCache;
     private final RelationRepository relationRepository;

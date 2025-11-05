@@ -1,7 +1,9 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
-import com.fanaujie.ripple.storage.repository.UserRepository;
+import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
+import com.fanaujie.ripple.protobuf.msgapiserver.SelfInfoUpdateEvent;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
+
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadData;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -13,12 +15,12 @@ import org.springframework.stereotype.Service;
 public class AvatarUploadService {
 
     private final MinioStorageService minioStorageService;
-    private final UserRepository userRepository;
+    private final MessageAPISender messageAPISender;
 
     public AvatarUploadService(
-            MinioStorageService minioStorageService, UserRepository userRepository) {
+            MinioStorageService minioStorageService, MessageAPISender messageAPISender) {
         this.minioStorageService = minioStorageService;
-        this.userRepository = userRepository;
+        this.messageAPISender = messageAPISender;
     }
 
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
@@ -40,8 +42,18 @@ public class AvatarUploadService {
             }
         }
         try {
-            userRepository.updateAvatarByUserId(userId, avatarUrl);
-        } catch (NotFoundUserProfileException e) {
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setSelfInfoUpdateEvent(
+                                    SelfInfoUpdateEvent.newBuilder()
+                                            .setEventType(
+                                                    SelfInfoUpdateEvent.EventType.UPDATE_AVATAR)
+                                            .setUserId(userId)
+                                            .setAvatar(avatarUrl)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
+        } catch (Exception e) {
             log.error("Failed to update user profile for userId {}: {}", userId, e.getMessage());
             return ResponseEntity.status(500)
                     .body(new AvatarUploadResponse(500, "Failed to update user profile", null));

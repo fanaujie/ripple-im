@@ -39,22 +39,18 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
 
     @Override
     public void onServiceChanged(CuratorFramework client, PathChildrenCacheEvent event) {
-        try {
-            switch (event.getType()) {
-                case CHILD_ADDED:
-                    handleServiceAdded(event);
-                    break;
-                case CHILD_REMOVED:
-                    handleServiceRemoved(event);
-                    break;
-                case CHILD_UPDATED:
-                    handleServiceUpdated(event);
-                    break;
-                default:
-                    logger.debug("Unhandled event type: {}", event.getType());
-            }
-        } catch (Exception e) {
-            logger.error("Error handling service change event", e);
+        switch (event.getType()) {
+            case CHILD_ADDED:
+                handleServiceAdded(event);
+                break;
+            case CHILD_REMOVED:
+                handleServiceRemoved(event);
+                break;
+            case CHILD_UPDATED:
+                handleServiceUpdated(event);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown event type: " + event.getType());
         }
     }
 
@@ -78,10 +74,7 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
     }
 
     private void handleServiceUpdated(PathChildrenCacheEvent event) {
-        String serverAddress = extractServerAddress(event);
-        logger.debug("Service updated: {}", serverAddress);
-        // For updates, we might want to recreate the client if the address changed
-        // For now, just log it
+        // not handling updates for now
     }
 
     private String extractServerAddress(PathChildrenCacheEvent event) {

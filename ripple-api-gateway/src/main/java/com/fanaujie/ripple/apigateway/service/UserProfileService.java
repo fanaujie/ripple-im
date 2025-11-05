@@ -3,7 +3,9 @@ package com.fanaujie.ripple.apigateway.service;
 import com.fanaujie.ripple.apigateway.dto.CommonResponse;
 import com.fanaujie.ripple.apigateway.dto.UserProfileData;
 import com.fanaujie.ripple.apigateway.dto.UserProfileResponse;
-import com.fanaujie.ripple.apigateway.sender.NotificationSender;
+import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
+import com.fanaujie.ripple.protobuf.msgapiserver.SelfInfoUpdateEvent;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.repository.UserRepository;
@@ -16,30 +18,20 @@ import org.springframework.stereotype.Service;
 public class UserProfileService {
 
     private final UserRepository userStorage;
-    private final NotificationSender notificationSender;
+    private final MessageAPISender messageAPISender;
 
-    public UserProfileService(UserRepository userStorage, NotificationSender notificationSender) {
+    public UserProfileService(UserRepository userStorage, MessageAPISender messageAPISender) {
         this.userStorage = userStorage;
-        this.notificationSender = notificationSender;
+        this.messageAPISender = messageAPISender;
     }
 
     public ResponseEntity<UserProfileResponse> getUserProfile(long userId) {
-        log.debug("getUserProfile: Querying user profile for userId: {}", userId);
         try {
             UserProfile userProfile = this.userStorage.getUserProfile(userId);
-            log.debug(
-                    "getUserProfile: Found user profile - userId: {}, nickName: {}",
-                    userId,
-                    userProfile.getNickName());
-
             UserProfileData data = new UserProfileData();
             data.setUserId(String.valueOf(userProfile.getUserId()));
             data.setNickName(userProfile.getNickName());
             data.setAvatar(userProfile.getAvatar());
-
-            log.debug("getUserProfile: UserProfileData constructed successfully");
-            this.notifySelfInfoUpdate(userId);
-            log.debug("getUserProfile: Returning user profile response for userId: {}", userId);
             return ResponseEntity.ok(new UserProfileResponse(200, "success", data));
         } catch (NotFoundUserProfileException e) {
             log.error("getUserProfile: User profile not found for userId: {}", userId);
@@ -49,48 +41,43 @@ public class UserProfileService {
     }
 
     public ResponseEntity<CommonResponse> updateNickName(long userId, String nickName) {
-        log.debug(
-                "updateNickName: Updating nickName for userId: {}, new nickName: {}",
-                userId,
-                nickName);
         try {
-            this.userStorage.updateNickNameByUserId(userId, nickName);
-            log.debug("updateNickName: NickName updated successfully for userId: {}", userId);
-
-            log.debug(
-                    "updateNickName: Sending self info update notification for userId: {}", userId);
-            this.notificationSender.sendSelfInfoUpdatedNotification(userId);
-            log.debug(
-                    "updateNickName: Self info update notification sent successfully for userId: {}",
-                    userId);
-
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setSelfInfoUpdateEvent(
+                                    SelfInfoUpdateEvent.newBuilder()
+                                            .setEventType(
+                                                    SelfInfoUpdateEvent.EventType.UPDATE_NICK_NAME)
+                                            .setUserId(userId)
+                                            .setNickName(nickName)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundUserProfileException e) {
-            log.error("updateNickName: User profile not found for userId: {}", userId);
-            return ResponseEntity.status(404)
-                    .body(new CommonResponse(404, "User profile not found"));
+        } catch (Exception e) {
+            log.error("updateNickName: Error updating nickName for userId: {}", userId, e);
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to update nickName"));
         }
     }
 
     public ResponseEntity<CommonResponse> deleteAvatar(long userId) {
-        log.debug("deleteAvatar: Deleting avatar for userId: {}", userId);
         try {
-            this.userStorage.updateAvatarByUserId(userId, null);
-            log.debug("deleteAvatar: Avatar deleted successfully for userId: {}", userId);
-
-            log.debug("deleteAvatar: Sending self info update notification for userId: {}", userId);
-            this.notificationSender.sendSelfInfoUpdatedNotification(userId);
-            log.debug(
-                    "deleteAvatar: Self info update notification sent successfully for userId: {}",
-                    userId);
-
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setSelfInfoUpdateEvent(
+                                    SelfInfoUpdateEvent.newBuilder()
+                                            .setEventType(
+                                                    SelfInfoUpdateEvent.EventType.DELETE_AVATAR)
+                                            .setUserId(userId)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundUserProfileException e) {
-            log.error("deleteAvatar: User profile not found for userId: {}", userId);
-            return ResponseEntity.status(404)
-                    .body(new CommonResponse(404, "User profile not found"));
+        } catch (Exception e) {
+            log.error("deleteAvatar: Error deleting avatar for userId: {}", userId, e);
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to delete avatar"));
         }
     }
-
-    private void notifySelfInfoUpdate(long userId) {}
 }

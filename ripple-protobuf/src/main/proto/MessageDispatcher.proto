@@ -5,19 +5,15 @@ package com.fanaujie.ripple.protobuf;
 option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.msgdispatcher";
 
+import "MessageAPI.proto";
 
-enum EventType {
-  EVENT_TYPE_UNSPECIFIED = 0;
-  EVENT_TYPE_SELF_INFO_UPDATE = 1;
-  EVENT_TYPE_RELATION_UPDATE = 2;
-}
+
 
 
 message EventData {
-  EventType event_type = 1;
   int64 send_user_id = 2;
   repeated int64 receive_user_ids = 3;
-  bytes content = 4;
+  SendEventReq data = 4;
 }
 
 message MessageData {

@@ -20,72 +20,43 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
     }
 
     @Override
-    public StreamObserver<PushMessageRequest> pushMessageToUser(
-            final StreamObserver<PushMessageResponse> responseObserver) {
-        logger.debug("pushMessageToUser: Starting push message stream");
-        return new StreamObserver<PushMessageRequest>() {
-            @Override
-            public void onNext(PushMessageRequest request) {
-                logger.debug(
-                        "pushMessageToUser.onNext: Received push request - sendUserId: {}, receiveUserId: {}, deviceId: {}",
-                        request.getSendUserId(),
-                        request.getReceiveUserId(),
-                        request.getRequestDeviceId());
+    public void pushMessageToUser(
+            BatchPushMessageRequest batchRequest,
+            StreamObserver<BatchPushMessageResponse> responseObserver) {
+        BatchPushMessageResponse.Builder batchResponseBuilder =
+                BatchPushMessageResponse.newBuilder();
 
-                onlineUser
-                        .get(request.getReceiveUserId(), request.getRequestDeviceId())
-                        .ifPresentOrElse(
-                                userSession -> {
-                                    logger.debug(
-                                            "pushMessageToUser.onNext: User {} on device {} is online, pushing message",
-                                            request.getReceiveUserId(),
-                                            request.getRequestDeviceId());
-                                    pushToUser.push(userSession, request);
-                                    // Respond with success
-                                    PushMessageResponse response =
-                                            PushMessageResponse.newBuilder()
-                                                    .setSendUserId(request.getSendUserId())
-                                                    .setReceiveUserId(request.getReceiveUserId())
-                                                    .setIsSuccess(true)
-                                                    .build();
-                                    logger.debug(
-                                            "pushMessageToUser.onNext: Sending success response for user {}",
-                                            request.getReceiveUserId());
-                                    responseObserver.onNext(response);
-                                },
-                                () -> {
-                                    logger.warn(
-                                            "pushMessageToUser.onNext: User {} on device {} is offline. Cannot push message.",
-                                            request.getReceiveUserId(),
-                                            request.getRequestDeviceId());
-                                    PushMessageResponse response =
-                                            PushMessageResponse.newBuilder()
-                                                    .setSendUserId(request.getSendUserId())
-                                                    .setReceiveUserId(request.getReceiveUserId())
-                                                    .setIsSuccess(false)
-                                                    .setErrorMsg("User is offline")
-                                                    .build();
-                                    logger.debug(
-                                            "pushMessageToUser.onNext: Sending failure response for offline user {}",
-                                            request.getReceiveUserId());
-                                    responseObserver.onNext(response);
-                                });
-            }
+        for (PushMessageRequest request : batchRequest.getRequestsList()) {
+            PushMessageResponse response =
+                    onlineUser
+                            .get(request.getReceiveUserId(), request.getRequestDeviceId())
+                            .map(
+                                    userSession -> {
+                                        pushToUser.push(userSession, request);
+                                        return PushMessageResponse.newBuilder()
+                                                .setSendUserId(request.getSendUserId())
+                                                .setReceiveUserId(request.getReceiveUserId())
+                                                .setIsSuccess(true)
+                                                .build();
+                                    })
+                            .orElseGet(
+                                    () -> {
+                                        logger.warn(
+                                                "pushMessageToUser: User {} on device {} is offline. Cannot push message.",
+                                                request.getReceiveUserId(),
+                                                request.getRequestDeviceId());
+                                        return PushMessageResponse.newBuilder()
+                                                .setSendUserId(request.getSendUserId())
+                                                .setReceiveUserId(request.getReceiveUserId())
+                                                .setIsSuccess(false)
+                                                .build();
+                                    });
 
-            @Override
-            public void onError(Throwable t) {
-                logger.error(
-                        "pushMessageToUser.onError: Error occurred in pushMessageToUser stream - {}",
-                        t.getMessage(),
-                        t);
-                responseObserver.onCompleted();
-            }
+            batchResponseBuilder.addResponses(response);
+        }
 
-            @Override
-            public void onCompleted() {
-                logger.debug("pushMessageToUser.onCompleted: Push message stream completed");
-                responseObserver.onCompleted();
-            }
-        };
+        BatchPushMessageResponse batchResponse = batchResponseBuilder.build();
+        responseObserver.onNext(batchResponse);
+        responseObserver.onCompleted();
     }
 }

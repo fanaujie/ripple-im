@@ -31,7 +31,7 @@ public class RelationsController {
 
     private final RelationService relationService;
 
-    @PostMapping(value = "/relations", consumes = "application/json", produces = "application/json")
+    @PostMapping(value = "/friends", consumes = "application/json", produces = "application/json")
     @Operation(summary = "Add friend", description = "Add a user to the friends list")
     @ApiResponses(
             value = {
@@ -41,7 +41,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description =
@@ -49,7 +49,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -99,10 +99,10 @@ public class RelationsController {
             })
     public ResponseEntity<UserRelationsResponse> getRelations(
             @Parameter(description = "Next page token for pagination (optional)")
-                    @RequestParam(required = false)
+                    @RequestParam(required = false, name = "nextPageToken")
                     String nextPageToken,
             @Parameter(description = "Number of relations per page (default: 50, max: 100)")
-                    @RequestParam(defaultValue = "50")
+                    @RequestParam(defaultValue = "50", name = "pageSize")
                     int pageSize,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         long currentUserId = Long.parseLong(jwt.getSubject());
@@ -124,7 +124,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "400",
                         description =
@@ -132,7 +132,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -175,7 +175,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -218,7 +218,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -260,7 +260,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -301,7 +301,7 @@ public class RelationsController {
                         content =
                                 @Content(
                                         mediaType = "application/json",
-                                        schema = @Schema(implementation = RelationResponse.class))),
+                                        schema = @Schema(implementation = CommonResponse.class))),
                 @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
@@ -350,10 +350,41 @@ public class RelationsController {
             })
     public ResponseEntity<RelationSyncResponse> syncRelations(
             @Parameter(description = "Client's last known version (optional)")
-                    @RequestParam(required = false)
+                    @RequestParam(required = false, name = "version")
                     String version,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         long currentUserId = Long.parseLong(jwt.getSubject());
         return relationService.syncRelations(currentUserId, version);
+    }
+
+    @GetMapping(value = "/version", produces = "application/json")
+    @Operation(
+            summary = "Get latest relation version",
+            description =
+                    "Retrieve the latest version timestamp for the current user's relation changes")
+    @ApiResponses(
+            value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "Successfully retrieved latest version",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                RelationVersionResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Unauthorized access",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class)))
+            })
+    public ResponseEntity<RelationVersionResponse> getLatestVersion(
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+        long currentUserId = Long.parseLong(jwt.getSubject());
+        return relationService.getLatestVersion(currentUserId);
     }
 }

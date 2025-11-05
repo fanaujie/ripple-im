@@ -25,35 +25,19 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<WsMessage> {
     private final String serverLocation;
 
     public HeartbeatHandler(
-            BatchExecutorService<UserOnlineBatchTask> batchExecutorService,
-            String serverLocation) {
+            BatchExecutorService<UserOnlineBatchTask> batchExecutorService, String serverLocation) {
         this.batchExecutorService = batchExecutorService;
         this.serverLocation = serverLocation;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, WsMessage rippleMessage) {
-        logger.debug(
-                "channelRead0: Received WsMessage, hasHeartbeatRequest: {}",
-                rippleMessage.hasHeartbeatRequest());
-
         if (rippleMessage.hasHeartbeatRequest()) {
             HeartbeatRequest request = rippleMessage.getHeartbeatRequest();
             String userId = request.getUserId();
             long clientTimestamp = request.getTimestamp();
             long serverTimestamp = Instant.now().getEpochSecond();
-
-            logger.debug(
-                    "channelRead0: Received heartbeat from userId: {}, clientTimestamp: {}, serverTimestamp: {}",
-                    userId,
-                    clientTimestamp,
-                    serverTimestamp);
-
             long timeDifference = serverTimestamp - clientTimestamp;
-            logger.debug(
-                    "channelRead0: Time difference between client and server: {} seconds",
-                    timeDifference);
-
             // Push user online status to batch queue for periodic refresh
             String deviceId = ctx.channel().attr(DEVICE_ID_KEY).get();
             if (deviceId != null) {
@@ -61,10 +45,6 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<WsMessage> {
                     UserOnlineBatchTask task =
                             new UserOnlineBatchTask(userId, deviceId, true, this.serverLocation);
                     batchExecutorService.push(task);
-                    logger.debug(
-                            "channelRead0: User online heartbeat task pushed to batch queue - userId: {}, deviceId: {}",
-                            userId,
-                            deviceId);
                 } catch (InterruptedException e) {
                     logger.error(
                             "channelRead0: Failed to push heartbeat task to batch queue - userId: {}, deviceId: {}",
@@ -85,26 +65,14 @@ public class HeartbeatHandler extends SimpleChannelInboundHandler<WsMessage> {
                             .setClientTimestamp(clientTimestamp)
                             .setServerTimestamp(serverTimestamp)
                             .build();
-            logger.debug("channelRead0: Built HeartbeatResponse for userId: {}", userId);
-
             WsMessage response =
                     WsMessage.newBuilder().setHeartbeatResponse(heartbeatResponse).build();
-            logger.debug(
-                    "channelRead0: Built WsMessage response, size: {} bytes",
-                    response.getSerializedSize());
-
             BinaryWebSocketFrame respFrame =
                     new BinaryWebSocketFrame(
                             ctx.alloc().buffer().writeBytes(response.toByteArray()));
-            logger.debug("channelRead0: Created BinaryWebSocketFrame");
-
             ctx.writeAndFlush(respFrame);
-            logger.debug(
-                    "channelRead0: Heartbeat response sent to userId: {} on channel: {}",
-                    userId,
-                    ctx.channel());
         } else {
-            logger.debug(
+            logger.warn(
                     "channelRead0: Message is not a heartbeat request, passing to next handler");
             ctx.fireChannelRead(rippleMessage);
         }

@@ -1,9 +1,8 @@
 package com.fanaujie.ripple.msgapiserver.server;
 
+import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgapiserver.exception.NotFoundAnyFriendIdsException;
-import com.fanaujie.ripple.msgapiserver.exception.NotFoundEvnetListenerException;
-import com.fanaujie.ripple.msgapiserver.processor.EventProcessor;
-import com.fanaujie.ripple.msgapiserver.processor.MessageProcessor;
+import com.fanaujie.ripple.msgapiserver.exception.NotFoundListenerException;
 import com.fanaujie.ripple.protobuf.msgapiserver.*;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -17,13 +16,18 @@ public class MessageDispatcherServiceImpl extends MessageAPIGrpc.MessageAPIImplB
     private static final Logger logger =
             LoggerFactory.getLogger(MessageDispatcherServiceImpl.class);
 
-    private final MessageProcessor messageProcessor;
-    private final EventProcessor eventProcessor;
+    private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+            messageDispatcher;
+    private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+            eventDispatcher;
 
     public MessageDispatcherServiceImpl(
-            MessageProcessor messageProcessor, EventProcessor eventProcessor) {
-        this.messageProcessor = messageProcessor;
-        this.eventProcessor = eventProcessor;
+            ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+                    messageDispatcher,
+            ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
+                    eventDispatcher) {
+        this.messageDispatcher = messageDispatcher;
+        this.eventDispatcher = eventDispatcher;
     }
 
     @Override
@@ -33,31 +37,24 @@ public class MessageDispatcherServiceImpl extends MessageAPIGrpc.MessageAPIImplB
     @Override
     public void sendEvent(SendEventReq request, StreamObserver<SendEventResp> responseObserver) {
         try {
-            SendEventResp response = this.eventProcessor.processEvent(request);
+            SendEventResp response = this.eventDispatcher.dispatch(request);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
+        } catch (NotFoundAnyFriendIdsException e) {
+            responseObserver.onError(
+                    Status.NOT_FOUND.withDescription(e.getMessage()).asException());
+        } catch (NotFoundListenerException e) {
+            responseObserver.onError(
+                    Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asException());
+        } catch (RejectedExecutionException e) {
+            responseObserver.onError(
+                    Status.RESOURCE_EXHAUSTED
+                            .withDescription("Server is overloaded, try again later")
+                            .asException());
         } catch (Exception e) {
-            if (e instanceof NotFoundAnyFriendIdsException) {
-                responseObserver.onError(
-                        Status.NOT_FOUND.withDescription(e.getMessage()).asRuntimeException());
-            } else if (e instanceof NotFoundEvnetListenerException) {
-                responseObserver.onError(
-                        Status.INVALID_ARGUMENT
-                                .withDescription(e.getMessage())
-                                .asRuntimeException());
-
-            } else if (e instanceof RejectedExecutionException) {
-                responseObserver.onError(
-                        Status.RESOURCE_EXHAUSTED
-                                .withDescription("Server is overloaded, try again later")
-                                .asRuntimeException());
-            } else {
-                logger.error("Error processing event: ", e);
-                responseObserver.onError(
-                        Status.INTERNAL
-                                .withDescription("Internal server error")
-                                .asRuntimeException());
-            }
+            logger.error("Error processing event: ", e);
+            responseObserver.onError(
+                    Status.INTERNAL.withDescription("Internal server error").asRuntimeException());
         }
     }
 }

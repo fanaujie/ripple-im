@@ -6,11 +6,11 @@ import com.fanaujie.ripple.storage.exception.NotFoundBlockException;
 import com.fanaujie.ripple.storage.exception.NotFoundRelationException;
 import com.fanaujie.ripple.storage.exception.RelationAlreadyExistsException;
 import com.fanaujie.ripple.storage.model.PagedRelationResult;
-import com.fanaujie.ripple.storage.model.RelationVersionRecord;
+import com.fanaujie.ripple.storage.model.Relation;
+import com.fanaujie.ripple.storage.model.RelationVersionChange;
 import com.fanaujie.ripple.storage.model.UserProfile;
 
 import java.util.List;
-import java.util.UUID;
 
 public interface RelationRepository {
 
@@ -21,13 +21,21 @@ public interface RelationRepository {
 
     void removeFriend(long initiatorId, long friendId) throws NotFoundRelationException;
 
-    void updateRelationRemarkName(long sourceUserId, long targetUserId, String remarkName)
+    void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
             throws NotFoundRelationException;
 
-    boolean isFriends(long userId1, long userId2);
+    void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+            throws NotFoundRelationException;
 
-    void addBlock(long userId, long blockedUserId, boolean isFriend, UserProfile blockedUserProfile)
-            throws BlockAlreadyExistsException;
+    void updateFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
+            throws NotFoundRelationException;
+
+    void updateFriendRemarkName(long sourceUserId, long targetUserId, String remarkName)
+            throws NotFoundRelationException;
+
+    void addBlock(long userId, long blockedUserId) throws BlockAlreadyExistsException;
+
+    void addBlockStranger(long userId, UserProfile stranger) throws BlockAlreadyExistsException;
 
     void removeBlock(long userId, long blockedUserId) throws NotFoundBlockException;
 
@@ -35,6 +43,10 @@ public interface RelationRepository {
 
     List<Long> getFriendIds(long userId);
 
-    List<RelationVersionRecord> getRelationChanges(long userId, String afterVersion, int limit)
+    List<RelationVersionChange> getRelationChanges(long userId, String afterVersion, int limit)
             throws InvalidVersionException;
+
+    String getLatestRelationVersion(long userId);
+
+    Relation getRelationBetweenUser(long userId, long blockedUserId);
 }

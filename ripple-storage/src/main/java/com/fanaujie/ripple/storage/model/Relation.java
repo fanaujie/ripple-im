@@ -13,5 +13,5 @@ public class Relation {
     private String relationNickName;
     private String relationAvatar;
     private String relationRemarkName;
-    private int relationFlags; // bit0: is_friend, bit1: is_blocked, bit2: is_hidden
+    private byte relationFlags; // bit0: is_friend, bit1: is_blocked, bit2: is_hidden
 }

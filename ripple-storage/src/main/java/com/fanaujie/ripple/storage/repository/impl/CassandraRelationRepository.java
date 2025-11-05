@@ -24,7 +24,12 @@ public class CassandraRelationRepository implements RelationRepository {
     private final PreparedStatement deleteRelationStmt;
     private final PreparedStatement updateRelationRemarkNameStmt;
     private final PreparedStatement updateRelationFlagsStmt;
+    private final PreparedStatement updateFriendNickNameStmt;
+    private final PreparedStatement updateFriendAvatarStmt;
+    private final PreparedStatement updateFriendInfoStmt;
     private final PreparedStatement getRelationChangesStmt;
+    private final PreparedStatement getLatestVersionStmt;
+    private final PreparedStatement getRelationBetweenUsersStmt;
 
     public CassandraRelationRepository(CqlSession session) {
         this.session = session;
@@ -60,9 +65,24 @@ public class CassandraRelationRepository implements RelationRepository {
         this.updateRelationFlagsStmt =
                 session.prepare(
                         "UPDATE ripple.user_relations SET relation_flags = ? WHERE user_id = ? AND relation_user_id = ?");
+        this.updateFriendNickNameStmt =
+                session.prepare(
+                        "UPDATE ripple.user_relations SET nick_name = ? WHERE user_id = ? AND relation_user_id = ?");
+        this.updateFriendAvatarStmt =
+                session.prepare(
+                        "UPDATE ripple.user_relations SET avatar = ? WHERE user_id = ? AND relation_user_id = ?");
+        this.updateFriendInfoStmt =
+                session.prepare(
+                        "UPDATE ripple.user_relations SET nick_name = ?, avatar = ? WHERE user_id = ? AND relation_user_id = ?");
         this.getRelationChangesStmt =
                 session.prepare(
                         "SELECT version,relation_user_id, operation, nick_name, avatar, remark_name, relation_flags, version FROM ripple.user_relation_version WHERE user_id = ? AND version > ? LIMIT ?");
+        this.getLatestVersionStmt =
+                session.prepare(
+                        "SELECT version FROM ripple.user_relation_version WHERE user_id = ? ORDER BY version DESC LIMIT 1");
+        this.getRelationBetweenUsersStmt =
+                session.prepare(
+                        "SELECT user_id,relation_user_id,nick_name,avatar,remark_name, relation_flags FROM ripple.user_relations WHERE user_id = ? and relation_user_id = ? ");
     }
 
     @Override
@@ -141,10 +161,10 @@ public class CassandraRelationRepository implements RelationRepository {
                                         insertRelationVersionStmt.bind(
                                                 initiatorId,
                                                 friendProfile.getUserId(),
-                                                RelationOperation.UPDATE.getValue(),
-                                                null,
-                                                null,
-                                                null,
+                                                RelationOperation.ADD_FRIEND.getValue(),
+                                                friendProfile.getNickName(),
+                                                friendProfile.getAvatar(),
+                                                friendProfile.getNickName(),
                                                 RelationFlags.FRIEND.getValue()))
                                 .build();
                 session.execute(batch);
@@ -167,7 +187,7 @@ public class CassandraRelationRepository implements RelationRepository {
                                 insertRelationVersionStmt.bind(
                                         initiatorId,
                                         friendProfile.getUserId(),
-                                        RelationOperation.ADD.getValue(),
+                                        RelationOperation.ADD_FRIEND.getValue(),
                                         friendProfile.getNickName(),
                                         friendProfile.getAvatar(),
                                         friendProfile.getNickName(),
@@ -192,23 +212,97 @@ public class CassandraRelationRepository implements RelationRepository {
                         .addStatement(deleteRelationStmt.bind(initiatorId, friendId))
                         .addStatement(
                                 insertRelationVersionStmt.bind(
-                                        initiatorId, friendId, RelationOperation.DELETE.getValue()))
+                                        initiatorId,
+                                        friendId,
+                                        RelationOperation.DELETE_FRIEND.getValue()))
                         .build();
         session.execute(batch);
     }
 
     @Override
-    public void updateRelationRemarkName(long sourceUserId, long targetUserId, String remarkName)
+    public void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
             throws NotFoundRelationException {
-        // Check if relation exists
         Row relation = session.execute(getFullRelationStmt.bind(sourceUserId, targetUserId)).one();
 
         if (relation == null) {
             throw new NotFoundRelationException(
                     "Relation not found between " + sourceUserId + " and " + targetUserId);
         }
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(
+                                updateFriendNickNameStmt.bind(nickName, sourceUserId, targetUserId))
+                        .addStatement(
+                                insertRelationVersionStmt.bind(
+                                        sourceUserId,
+                                        targetUserId,
+                                        RelationOperation.UPDATE_FRIEND_NICK_NAME.getValue(),
+                                        nickName,
+                                        null,
+                                        null,
+                                        null))
+                        .build();
+        session.execute(batch);
+    }
 
-        // Update remark_name and record version using batch
+    @Override
+    public void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+            throws NotFoundRelationException {
+        Row relation = session.execute(getFullRelationStmt.bind(sourceUserId, targetUserId)).one();
+        if (relation == null) {
+            throw new NotFoundRelationException(
+                    "Relation not found between " + sourceUserId + " and " + targetUserId);
+        }
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(
+                                updateFriendAvatarStmt.bind(avatar, sourceUserId, targetUserId))
+                        .addStatement(
+                                insertRelationVersionStmt.bind(
+                                        sourceUserId,
+                                        targetUserId,
+                                        RelationOperation.UPDATE_FRIEND_AVATAR.getValue(),
+                                        null,
+                                        avatar,
+                                        null,
+                                        null))
+                        .build();
+        session.execute(batch);
+    }
+
+    @Override
+    public void updateFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
+            throws NotFoundRelationException {
+        Row relation = session.execute(getFullRelationStmt.bind(sourceUserId, targetUserId)).one();
+        if (relation == null) {
+            throw new NotFoundRelationException(
+                    "Relation not found between " + sourceUserId + " and " + targetUserId);
+        }
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(
+                                updateFriendInfoStmt.bind(nickName, avatar, sourceUserId, targetUserId))
+                        .addStatement(
+                                insertRelationVersionStmt.bind(
+                                        sourceUserId,
+                                        targetUserId,
+                                        RelationOperation.UPDATE_FRIEND_INFO.getValue(),
+                                        nickName,
+                                        avatar,
+                                        null,
+                                        null))
+                        .build();
+        session.execute(batch);
+    }
+
+    @Override
+    public void updateFriendRemarkName(long sourceUserId, long targetUserId, String remarkName)
+            throws NotFoundRelationException {
+        Row relation = session.execute(getFullRelationStmt.bind(sourceUserId, targetUserId)).one();
+        if (relation == null) {
+            throw new NotFoundRelationException(
+                    "Relation not found between " + sourceUserId + " and " + targetUserId);
+        }
         BatchStatement batch =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
@@ -218,7 +312,7 @@ public class CassandraRelationRepository implements RelationRepository {
                                 insertRelationVersionStmt.bind(
                                         sourceUserId,
                                         targetUserId,
-                                        RelationOperation.UPDATE.getValue(),
+                                        RelationOperation.UPDATE_FRIEND_REMARK_NAME.getValue(),
                                         null,
                                         null,
                                         remarkName,
@@ -228,42 +322,41 @@ public class CassandraRelationRepository implements RelationRepository {
     }
 
     @Override
-    public boolean isFriends(long userId1, long userId2) {
-        Row relation = session.execute(getRelationStmt.bind(userId1, userId2)).one();
-        return relation != null && RelationFlags.FRIEND.isSet(relation.getByte("relation_flags"));
-    }
-
-    @Override
-    public void addBlock(
-            long userId, long blockedUserId, boolean isFriend, UserProfile blockedUserProfile)
-            throws BlockAlreadyExistsException {
-        // Check if relation exists
-        Row relation = session.execute(getFullRelationStmt.bind(userId, blockedUserId)).one();
-
-        if (relation != null) {
-            byte currentFlags = relation.getByte("relation_flags");
+    public void addBlock(long userId, long blockedUserId) throws BlockAlreadyExistsException {
+        Relation betweenUserRelation = this.getRelationBetweenUser(userId, blockedUserId);
+        if (betweenUserRelation != null) {
+            byte currentFlags = betweenUserRelation.getRelationFlags();
             if (RelationFlags.BLOCKED.isSet(currentFlags)) {
                 throw new BlockAlreadyExistsException(
                         "Block already exists between " + userId + " and " + blockedUserId);
             }
-
             // Relation exists (is friend), update relation_flags to set BLOCKED bit
             byte newFlags = RelationFlags.setFlag(currentFlags, RelationFlags.BLOCKED);
-            BatchStatement batch =
-                    new BatchStatementBuilder(DefaultBatchType.LOGGED)
-                            .addStatement(
-                                    updateRelationFlagsStmt.bind(newFlags, userId, blockedUserId))
-                            .addStatement(
-                                    insertRelationVersionStmt.bind(
-                                            userId,
-                                            blockedUserId,
-                                            RelationOperation.UPDATE.getValue(),
-                                            null,
-                                            null,
-                                            null,
-                                            newFlags))
-                            .build();
-            session.execute(batch);
+            if (RelationFlags.FRIEND.isSet(newFlags)) {
+                BatchStatement batch =
+                        new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                                .addStatement(
+                                        updateRelationFlagsStmt.bind(
+                                                newFlags, userId, blockedUserId))
+                                .addStatement(
+                                        insertRelationVersionStmt.bind(
+                                                userId,
+                                                blockedUserId,
+                                                RelationOperation.ADD_BLOCK.getValue(),
+                                                null,
+                                                null,
+                                                null,
+                                                newFlags))
+                                .build();
+                session.execute(batch);
+                return;
+            }
+            // unexpected case, but handle it anyway
+            throw new IllegalArgumentException(
+                    "Unexpected relation flags state when adding block between "
+                            + userId
+                            + " and "
+                            + blockedUserId);
         } else {
             // Relation does not exist, insert new relation with BLOCKED flag
             BatchStatement batch =
@@ -272,18 +365,54 @@ public class CassandraRelationRepository implements RelationRepository {
                                     insertRelationStmt.bind(
                                             userId,
                                             blockedUserId,
-                                            blockedUserProfile.getNickName(),
-                                            blockedUserProfile.getAvatar(),
-                                            blockedUserProfile.getNickName(),
+                                            null,
+                                            null,
+                                            null,
                                             RelationFlags.BLOCKED.getValue()))
                             .addStatement(
                                     insertRelationVersionStmt.bind(
                                             userId,
                                             blockedUserId,
-                                            RelationOperation.ADD.getValue(),
-                                            blockedUserProfile.getNickName(),
-                                            blockedUserProfile.getAvatar(),
-                                            blockedUserProfile.getNickName(),
+                                            RelationOperation.ADD_BLOCK.getValue(),
+                                            null,
+                                            null,
+                                            null,
+                                            RelationFlags.BLOCKED.getValue()))
+                            .build();
+            session.execute(batch);
+        }
+    }
+
+    @Override
+    public void addBlockStranger(long userId, UserProfile stranger)
+            throws StrangerHasRelationshipException {
+        Relation betweenUserRelation = this.getRelationBetweenUser(userId, stranger.getUserId());
+        if (betweenUserRelation != null) {
+            throw new StrangerHasRelationshipException(
+                    "Stranger "
+                            + stranger.getUserId()
+                            + " already has a relationship with user "
+                            + userId);
+        } else {
+            // Relation does not exist, insert new relation with BLOCKED flag
+            BatchStatement batch =
+                    new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                            .addStatement(
+                                    insertRelationStmt.bind(
+                                            userId,
+                                            stranger.getUserId(),
+                                            stranger.getNickName(),
+                                            stranger.getAvatar(),
+                                            stranger.getNickName(),
+                                            RelationFlags.BLOCKED.getValue()))
+                            .addStatement(
+                                    insertRelationVersionStmt.bind(
+                                            userId,
+                                            stranger.getNickName(),
+                                            RelationOperation.ADD_STRANGER.getValue(),
+                                            stranger.getNickName(),
+                                            stranger.getAvatar(),
+                                            stranger.getNickName(),
                                             RelationFlags.BLOCKED.getValue()))
                             .build();
             session.execute(batch);
@@ -293,31 +422,28 @@ public class CassandraRelationRepository implements RelationRepository {
     @Override
     public void removeBlock(long userId, long blockedUserId) throws NotFoundBlockException {
         // Check if block exists
-        Row relation = session.execute(getFullRelationStmt.bind(userId, blockedUserId)).one();
-
-        if (relation == null || !RelationFlags.BLOCKED.isSet(relation.getByte("relation_flags"))) {
+        Relation relation = this.getRelationBetweenUser(userId, blockedUserId);
+        if (relation == null || !RelationFlags.BLOCKED.isSet(relation.getRelationFlags())) {
             throw new NotFoundBlockException(
                     "Block not found between " + userId + " and " + blockedUserId);
         }
-
-        byte currentFlags = relation.getByte("relation_flags");
-        byte newFlags = RelationFlags.clearFlag(currentFlags, RelationFlags.BLOCKED);
-
+        byte newFlags = RelationFlags.clearFlag(relation.getRelationFlags(), RelationFlags.BLOCKED);
         BatchStatementBuilder batchBuilder = new BatchStatementBuilder(DefaultBatchType.LOGGED);
         if (newFlags == 0) {
+            // stranger, delete relation
             batchBuilder.addStatement(deleteRelationStmt.bind(userId, blockedUserId));
             batchBuilder.addStatement(
                     insertRelationVersionStmt.bind(
-                            userId, blockedUserId, RelationOperation.DELETE.getValue()));
-        } else {
-
+                            userId, blockedUserId, RelationOperation.DELETE_BLOCK.getValue()));
+        } else if (RelationFlags.FRIEND.isSet(newFlags)) {
+            // still a friend, update flags
             batchBuilder.addStatement(
                     updateRelationFlagsStmt.bind(newFlags, userId, blockedUserId));
             batchBuilder.addStatement(
                     insertRelationVersionStmt.bind(
                             userId,
                             blockedUserId,
-                            RelationOperation.UPDATE.getValue(),
+                            RelationOperation.UNBLOCK_RESTORE_FRIEND.getValue(),
                             null,
                             null,
                             null,
@@ -329,21 +455,18 @@ public class CassandraRelationRepository implements RelationRepository {
     @Override
     public void hideBlock(long userId, long blockedUserId) throws NotFoundBlockException {
         // Check if block exists
-        Row relation = session.execute(getFullRelationStmt.bind(userId, blockedUserId)).one();
-
-        if (relation == null || !RelationFlags.BLOCKED.isSet(relation.getByte("relation_flags"))) {
+        Relation relation = this.getRelationBetweenUser(userId, blockedUserId);
+        if (relation == null || !RelationFlags.BLOCKED.isSet(relation.getRelationFlags())) {
             throw new NotFoundBlockException(
                     "Block not found between " + userId + " and " + blockedUserId);
         }
 
-        byte currentFlags = relation.getByte("relation_flags");
+        byte currentFlags = relation.getRelationFlags();
         byte newFlags = RelationFlags.setFlag(currentFlags, RelationFlags.HIDDEN);
-
         // If user is also a friend, clear FRIEND flag when hiding block
         if (RelationFlags.FRIEND.isSet(newFlags)) {
             newFlags = RelationFlags.clearFlag(newFlags, RelationFlags.FRIEND);
         }
-
         // Update relation_flags to set HIDDEN bit and record version
         BatchStatement batch =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
@@ -352,7 +475,7 @@ public class CassandraRelationRepository implements RelationRepository {
                                 insertRelationVersionStmt.bind(
                                         userId,
                                         blockedUserId,
-                                        RelationOperation.UPDATE.getValue(),
+                                        RelationOperation.HIDE_BLOCK.getValue(),
                                         null,
                                         null,
                                         null,
@@ -376,7 +499,7 @@ public class CassandraRelationRepository implements RelationRepository {
     }
 
     @Override
-    public List<RelationVersionRecord> getRelationChanges(
+    public List<RelationVersionChange> getRelationChanges(
             long userId, String afterVersion, int limit) throws InvalidVersionException {
         // Validate afterVersion parameter
         if (afterVersion == null || afterVersion.isEmpty()) {
@@ -384,27 +507,20 @@ public class CassandraRelationRepository implements RelationRepository {
                     "afterVersion cannot be null or empty. Use version from previous sync or call with fullSync.");
         }
 
-        UUID afterVersionUuid;
-        try {
-            afterVersionUuid = UUID.fromString(afterVersion);
-            if (afterVersionUuid.version() != 1) {
-                throw new InvalidVersionException(
-                        "Invalid version format: "
-                                + afterVersion
-                                + ". Version must be a valid UUIDv1.");
-            }
-        } catch (IllegalArgumentException e) {
+        UUID afterVersionUuid = Uuids.endOf(Long.parseLong(afterVersion));
+        if (afterVersionUuid.version() != 1) {
             throw new InvalidVersionException(
-                    "Invalid version format: " + afterVersion + ". Version must be a valid UUID.");
+                    "Invalid version format: "
+                            + afterVersion
+                            + ". Version must be a valid UUIDv1.");
         }
-
         ResultSet resultSet =
                 session.execute(getRelationChangesStmt.bind(userId, afterVersionUuid, limit));
 
-        List<RelationVersionRecord> changes = new ArrayList<>();
+        List<RelationVersionChange> changes = new ArrayList<>();
         for (Row row : resultSet) {
-            RelationVersionRecord record = new RelationVersionRecord();
-            record.setVersion(String.valueOf(row.getUuid("version").timestamp()));
+            RelationVersionChange record = new RelationVersionChange();
+            record.setVersion(String.valueOf(Uuids.unixTimestamp(row.getUuid("version"))));
             record.setRelationUserId(row.getLong("relation_user_id"));
             record.setOperation(row.getByte("operation"));
             record.setNickName(row.getString("nick_name"));
@@ -414,5 +530,30 @@ public class CassandraRelationRepository implements RelationRepository {
             changes.add(record);
         }
         return changes;
+    }
+
+    @Override
+    public String getLatestRelationVersion(long userId) {
+        Row row = session.execute(getLatestVersionStmt.bind(userId)).one();
+        if (row == null) {
+            return null;
+        }
+        return String.valueOf(Uuids.unixTimestamp(row.getUuid("version")));
+    }
+
+    @Override
+    public Relation getRelationBetweenUser(long userId, long targetUserId) {
+        Row row = session.execute(getRelationBetweenUsersStmt.bind(userId, targetUserId)).one();
+        if (row == null) {
+            return null;
+        }
+        Relation relation = new Relation();
+        relation.setSourceUserId(row.getLong("user_id"));
+        relation.setRelationUserId(row.getLong("relation_user_id"));
+        relation.setRelationNickName(row.getString("nick_name"));
+        relation.setRelationAvatar(row.getString("avatar"));
+        relation.setRelationRemarkName(row.getString("remark_name"));
+        relation.setRelationFlags(row.getByte("relation_flags"));
+        return relation;
     }
 }

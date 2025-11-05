@@ -2,7 +2,8 @@ package com.fanaujie.ripple.apigateway.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
-import com.fanaujie.ripple.communication.grpc.client.GrpcClientPool;
+import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
+import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
@@ -29,7 +30,7 @@ public class ComponentConfig {
     }
 
     @Bean
-    public UserRepository userStorage(CqlSession cqlSession) {
+    public UserRepository userRepository(CqlSession cqlSession) {
         return new CassandraUserRepository(cqlSession);
     }
 
@@ -54,5 +55,12 @@ public class ComponentConfig {
     public GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient(
             @Value("${message-api.server.address}") String serverAddress) {
         return new GrpcClient<>(serverAddress, MessageAPIGrpc::newBlockingStub);
+    }
+
+    @Bean
+    public MessageAPISender messageAPISender(
+            ExecutorService executorService,
+            GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient) {
+        return new DefaultMessageAPISender(executorService, messageDispatcherClient);
     }
 }

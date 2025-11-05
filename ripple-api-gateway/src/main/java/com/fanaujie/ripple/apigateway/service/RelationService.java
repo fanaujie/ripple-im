@@ -2,16 +2,16 @@ package com.fanaujie.ripple.apigateway.service;
 
 import com.fanaujie.ripple.apigateway.dto.*;
 
-import com.fanaujie.ripple.apigateway.sender.NotificationSender;
+import com.fanaujie.ripple.apigateway.dto.User;
+import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.storage.exception.*;
-import com.fanaujie.ripple.storage.model.PagedRelationResult;
-import com.fanaujie.ripple.storage.model.RelationOperation;
-import com.fanaujie.ripple.storage.model.RelationVersionRecord;
-import com.fanaujie.ripple.storage.model.UserProfile;
+import com.fanaujie.ripple.storage.model.*;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
 import com.fanaujie.ripple.storage.repository.UserRepository;
 import com.fanaujie.ripple.storage.exception.InvalidVersionException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -20,21 +20,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class RelationService {
 
     private static int MAX_PAGE_SIZE = 200;
     private static int MAX_SYNC_CHANGES = 200;
     private final RelationRepository relationRepository;
     private final UserRepository userRepository;
-    private final NotificationSender notificationSender;
+    private final MessageAPISender messageAPISender;
 
     public RelationService(
             RelationRepository relationRepository,
             UserRepository userRepository,
-            NotificationSender notificationSender) {
+            MessageAPISender messageAPISender) {
         this.relationRepository = relationRepository;
         this.userRepository = userRepository;
-        this.notificationSender = notificationSender;
+        this.messageAPISender = messageAPISender;
     }
 
     public ResponseEntity<UserRelationsResponse> getRelations(
@@ -69,19 +70,35 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot add yourself as friend"));
         }
-
+        Relation relation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        if (relation != null && RelationFlags.FRIEND.isSet(relation.getRelationFlags())) {
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse(400, "Target user is already your friend"));
+        }
         try {
             UserProfile targetUserProfile = this.userRepository.getUserProfile(targetUserId);
-            this.relationRepository.addFriend(currentUserId, targetUserProfile);
-            this.notificationSender.sendFriendNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.ADD_FRIEND);
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    RelationEvent.newBuilder()
+                                            .setEventType(RelationEvent.EventType.ADD_FRIEND)
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .setTargetUserNickName(targetUserProfile.getNickName())
+                                            .setTargetUserAvatar(targetUserProfile.getAvatar())
+                                            .setTargetUserRemarkName(
+                                                    targetUserProfile.getNickName())
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user profile not found"));
-        } catch (RelationAlreadyExistsException e) {
-            return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is already your friend"));
+        } catch (Exception e) {
+            log.error("addFriend: Error adding friend", e);
+            return ResponseEntity.status(500).body(new CommonResponse(500, "Failed to add friend"));
         }
     }
 
@@ -90,18 +107,27 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot remove yourself as friend"));
         }
-        if (!this.userRepository.userIdExists(targetUserId)) {
+        Relation relation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        if (relation == null) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new CommonResponse(400, "Target user is not your friend"));
         }
         try {
-            this.relationRepository.removeFriend(currentUserId, targetUserId);
-            this.notificationSender.sendFriendNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.REMOVE_FRIEND);
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    RelationEvent.newBuilder()
+                                            .setEventType(RelationEvent.EventType.REMOVE_FRIEND)
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundRelationException e) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user is not friend"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to remove friend"));
         }
     }
 
@@ -111,19 +137,30 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot update display name for yourself"));
         }
-        if (!this.userRepository.userIdExists(targetUserId)) {
+        Relation relation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        if (relation == null) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new CommonResponse(400, "Target user is not your friend"));
         }
         try {
-            this.relationRepository.updateRelationRemarkName(
-                    currentUserId, targetUserId, remarkName);
-            this.notificationSender.sendFriendNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.UPDATE_FRIEND);
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    RelationEvent.newBuilder()
+                                            .setEventType(
+                                                    RelationEvent.EventType
+                                                            .UPDATE_FRIEND_REMARK_NAME)
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .setTargetUserRemarkName(remarkName)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundRelationException e) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user is not friend"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to update friend's display name"));
         }
     }
 
@@ -132,20 +169,49 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot block yourself"));
         }
-        boolean isFriend = this.relationRepository.isFriends(currentUserId, targetUserId);
+        Relation betweenUserRelation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
         try {
-            UserProfile targetUserProfile = this.userRepository.getUserProfile(targetUserId);
-            this.relationRepository.addBlock(
-                    currentUserId, targetUserId, isFriend, targetUserProfile);
-            this.notificationSender.sendBlockNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.BLOCK_USER);
+            RelationEvent.Builder eventBuilder = RelationEvent.newBuilder();
+            eventBuilder.setEventType(RelationEvent.EventType.BLOCK_FRIEND);
+            if (betweenUserRelation == null) {
+                // block user is strange user, need to create relation record
+                eventBuilder.setEventType(RelationEvent.EventType.BLOCK_STRANGER);
+                UserProfile blockedUserProfile = this.userRepository.getUserProfile(targetUserId);
+                betweenUserRelation = new Relation();
+                betweenUserRelation.setSourceUserId(currentUserId);
+                betweenUserRelation.setRelationUserId(targetUserId);
+                betweenUserRelation.setRelationNickName(blockedUserProfile.getNickName());
+                betweenUserRelation.setRelationAvatar(blockedUserProfile.getAvatar());
+                betweenUserRelation.setRelationRemarkName(blockedUserProfile.getNickName());
+            } else {
+                if (RelationFlags.BLOCKED.isSet(betweenUserRelation.getRelationFlags())) {
+                    return ResponseEntity.badRequest()
+                            .body(new CommonResponse(400, "Target user is already blocked"));
+                }
+            }
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    eventBuilder
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .setTargetUserNickName(
+                                                    betweenUserRelation.getRelationNickName())
+                                            .setTargetUserAvatar(
+                                                    betweenUserRelation.getRelationAvatar())
+                                            .setTargetUserRemarkName(
+                                                    betweenUserRelation.getRelationRemarkName())
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user profile not found"));
-        } catch (BlockAlreadyExistsException e) {
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user is already blocked"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to block target user"));
         }
     }
 
@@ -154,18 +220,31 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot unblock yourself"));
         }
-        if (!this.userRepository.userIdExists(targetUserId)) {
+        Relation betweenUserRelation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        if (betweenUserRelation == null) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new CommonResponse(400, "Target user is not related to you"));
         }
-        try {
-            this.relationRepository.removeBlock(currentUserId, targetUserId);
-            this.notificationSender.sendBlockNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.UNBLOCK_USER);
-            return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundBlockException e) {
+        if (!RelationFlags.BLOCKED.isSet(betweenUserRelation.getRelationFlags())) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not blocked"));
+        }
+        try {
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    RelationEvent.newBuilder()
+                                            .setEventType(RelationEvent.EventType.UNBLOCK_USER)
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
+            return ResponseEntity.ok(new CommonResponse(200, "success"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to unblock user"));
         }
     }
 
@@ -174,18 +253,31 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot hide yourself"));
         }
-        if (!this.userRepository.userIdExists(targetUserId)) {
+        Relation betweenUserRelation =
+                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        if (betweenUserRelation == null) {
             return ResponseEntity.badRequest()
-                    .body(new CommonResponse(400, "Target user does not exist"));
+                    .body(new CommonResponse(400, "Target user is not related to you"));
         }
-        try {
-            this.relationRepository.hideBlock(currentUserId, targetUserId);
-            this.notificationSender.sendBlockNotification(
-                    currentUserId, targetUserId, RelationEvent.EventType.HIDE_BLOCKED_USER);
-            return ResponseEntity.ok(new CommonResponse(200, "success"));
-        } catch (NotFoundBlockException e) {
+        if (!RelationFlags.BLOCKED.isSet(betweenUserRelation.getRelationFlags())) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not blocked"));
+        }
+        try {
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(
+                                    RelationEvent.newBuilder()
+                                            .setEventType(RelationEvent.EventType.HIDE_BLOCKED_USER)
+                                            .setUserId(currentUserId)
+                                            .setTargetUserId(targetUserId)
+                                            .build())
+                            .build();
+            this.messageAPISender.sendEvent(req);
+            return ResponseEntity.ok(new CommonResponse(200, "success"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                    .body(new CommonResponse(500, "Failed to hide blocked user"));
         }
     }
 
@@ -198,7 +290,7 @@ public class RelationService {
 
         try {
             // Query changes with max batch size
-            List<RelationVersionRecord> records =
+            List<RelationVersionChange> records =
                     this.relationRepository.getRelationChanges(
                             currentUserId, version, MAX_SYNC_CHANGES);
 
@@ -207,12 +299,9 @@ public class RelationService {
                     records.stream()
                             .map(
                                     record -> {
-                                        String operation =
-                                                RelationOperation.fromValue(record.getOperation())
-                                                        .name();
                                         return new RelationChange(
                                                 record.getVersion(),
-                                                operation,
+                                                record.getOperation(),
                                                 String.valueOf(record.getRelationUserId()),
                                                 record.getNickName(),
                                                 record.getAvatar(),
@@ -233,5 +322,17 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new RelationSyncResponse(400, e.getMessage(), null));
         }
+    }
+
+    public ResponseEntity<RelationVersionResponse> getLatestVersion(long currentUserId) {
+        String latestVersion = this.relationRepository.getLatestRelationVersion(currentUserId);
+
+        if (latestVersion == null) {
+            return ResponseEntity.ok(
+                    new RelationVersionResponse(200, "success", new RelationVersionData(null)));
+        }
+
+        RelationVersionData data = new RelationVersionData(latestVersion);
+        return ResponseEntity.ok(new RelationVersionResponse(200, "success", data));
     }
 }

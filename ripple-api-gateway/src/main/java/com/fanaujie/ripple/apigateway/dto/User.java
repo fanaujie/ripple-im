@@ -12,5 +12,5 @@ public class User {
     private String nickName;
     private String avatar;
     private String remarkName;
-    private int relation; // bit0: is_friend, bit1: is_blocked, bit2: is_hidden
+    private int relationFlags; // bit0: is_friend, bit1: is_blocked, bit2: is_hidden
 }
