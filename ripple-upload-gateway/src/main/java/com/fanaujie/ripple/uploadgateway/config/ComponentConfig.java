@@ -4,14 +4,12 @@ import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
+import com.fanaujie.ripple.uploadgateway.utils.FileUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -19,15 +17,6 @@ import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class ComponentConfig {
-
-    @Bean
-    public UserRepository userRepository(
-            @Value("${cassandra.contact-points}") List<String> contactPoints,
-            @Value("${cassandra.keyspace-name}") String keyspace,
-            @Value("${cassandra.local-datacenter}") String localDatacenter) {
-        return new CassandraUserRepository(
-                CassandraDriver.createCqlSession(contactPoints, keyspace, localDatacenter));
-    }
 
     @Bean
     public ExecutorService executorService(
@@ -52,5 +41,21 @@ public class ComponentConfig {
             ExecutorService executorService,
             GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient) {
         return new DefaultMessageAPISender(executorService, messageDispatcherClient);
+    }
+
+    @Bean
+    @Qualifier("avatarFileUtils")
+    public FileUtils avatarFileUtils(AvatarProperties avatarProperties) {
+        return new FileUtils(
+                avatarProperties.getMaxFileNameLength(), avatarProperties.getMaxSize().toBytes());
+    }
+
+    @Bean
+    @Qualifier("messageAttachmentFileUtils")
+    public FileUtils messageAttachmentFileUtils(
+            MessageAttachmentProperties messageAttachmentProperties) {
+        return new FileUtils(
+                messageAttachmentProperties.getMaxExtensionLength(),
+                messageAttachmentProperties.getMaxFileSize().toBytes());
     }
 }

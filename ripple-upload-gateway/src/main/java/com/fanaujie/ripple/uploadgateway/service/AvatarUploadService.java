@@ -24,18 +24,24 @@ public class AvatarUploadService {
     }
 
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
-            long userId, byte[] fileData, String objectName, String contentType) {
-        boolean bucketExists = minioStorageService.isBucketExists();
+            long userId, byte[] fileData, String objectName) {
+        boolean bucketExists =
+                minioStorageService.isBucketExists(MinioStorageService.BucketType.AVATAR);
         if (!bucketExists) {
             return ResponseEntity.status(500)
                     .body(new AvatarUploadResponse(500, "Bucket does not exist", null));
         }
-        boolean fileExists = minioStorageService.isFileExists(objectName);
+        boolean fileExists =
+                minioStorageService.objectExists(MinioStorageService.BucketType.AVATAR, objectName);
         String avatarUrl;
         if (fileExists) {
-            avatarUrl = minioStorageService.generateFileUrl(objectName);
+            avatarUrl =
+                    minioStorageService.generateFileUrl(
+                            MinioStorageService.BucketType.AVATAR, objectName);
         } else {
-            avatarUrl = minioStorageService.uploadSingleFile(objectName, fileData, contentType);
+            avatarUrl =
+                    minioStorageService.putObject(
+                            MinioStorageService.BucketType.AVATAR, objectName, fileData);
             if (avatarUrl == null) {
                 return ResponseEntity.status(500)
                         .body(new AvatarUploadResponse(500, "Failed to upload file", null));

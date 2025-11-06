@@ -8,8 +8,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.unit.DataSize;
 
-import java.util.Optional;
-
 @EnableConfigurationProperties
 @Configuration
 @ConfigurationProperties(prefix = "avatar")
@@ -18,29 +16,13 @@ import java.util.Optional;
 @NoArgsConstructor
 public class AvatarProperties {
     private DataSize maxSize;
-    private String[] allowedContentTypes;
     private int maxWidth;
     private int maxHeight;
+    private int maxFileNameLength;
 
-    public Optional<String> getExtension(String contentType) {
-        for (String type : this.allowedContentTypes) {
-            if (type.equalsIgnoreCase(contentType)) {
-                return switch (type.toLowerCase()) {
-                    case "image/jpeg" -> Optional.of("jpg");
-                    case "image/png" -> Optional.of("png");
-                    default -> Optional.empty();
-                };
-            }
-        }
-        return Optional.empty();
-    }
-
-    public boolean isContentTypeAllowed(String contentType) {
-        for (String type : this.allowedContentTypes) {
-            if (type.equalsIgnoreCase(contentType)) {
-                return true;
-            }
-        }
-        return false;
+    public AvatarProperties(DataSize maxSize, AvatarProperties avatarProperties) {
+        this.maxSize = maxSize;
+        this.maxWidth = avatarProperties.getMaxWidth();
+        this.maxHeight = avatarProperties.getMaxHeight();
     }
 }

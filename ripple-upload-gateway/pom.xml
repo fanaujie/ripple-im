@@ -30,11 +30,6 @@
     <dependencies>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-storage</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
             <artifactId>ripple-communication</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
@@ -117,31 +112,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-cassandra-schema</id>
-                        <phase>generate-test-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.parent.basedir}/cassandra-ddl</directory>
-                                    <includes>
-                                        <include>ripple.cql</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

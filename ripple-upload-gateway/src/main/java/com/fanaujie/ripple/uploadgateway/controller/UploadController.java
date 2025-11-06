@@ -2,8 +2,10 @@ package com.fanaujie.ripple.uploadgateway.controller;
 
 import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
+import com.fanaujie.ripple.uploadgateway.exception.InvalidFileExtensionException;
 import com.fanaujie.ripple.uploadgateway.service.AvatarUploadService;
 import com.fanaujie.ripple.uploadgateway.service.AvatarFileValidationService;
+import com.fanaujie.ripple.uploadgateway.utils.FileUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/upload")
@@ -33,57 +34,79 @@ public class UploadController {
 
     private final AvatarUploadService avatarUploadService;
     private final AvatarFileValidationService fileValidationService;
-    private final AvatarProperties avatarProperties;
 
     @PutMapping(value = "/avatar", consumes = "multipart/form-data", produces = "application/json")
     @Operation(
-        summary = "Upload user avatar",
-        description = "Upload and set user avatar, supports JPEG and PNG formats, file size limit 5MB, maximum resolution 460x460"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully uploaded avatar",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = AvatarUploadResponse.class)
-            )
-        ),
-        @ApiResponse(
-            responseCode = "400", 
-            description = "Unsupported file format, file size exceeds limit, file hash validation failed, or file resolution exceeds limit",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = AvatarUploadResponse.class)
-            )
-        ),
-        @ApiResponse(
-            responseCode = "401",
-            description = "Unauthorized access",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = AvatarUploadResponse.class)
-            )
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Internal server error",
-            content = @Content(
-                mediaType = "application/json",
-                schema = @Schema(implementation = AvatarUploadResponse.class)
-            )
-        )
-    })
+            summary = "Upload user avatar",
+            description =
+                    "Upload and set user avatar, supports JPEG and PNG formats, file size limit 5MB, maximum resolution 460x460")
+    @ApiResponses(
+            value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "Successfully uploaded avatar",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                AvatarUploadResponse.class))),
+                @ApiResponse(
+                        responseCode = "400",
+                        description =
+                                "Unsupported file format, file size exceeds limit, file hash validation failed, or file resolution exceeds limit",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                AvatarUploadResponse.class))),
+                @ApiResponse(
+                        responseCode = "401",
+                        description = "Unauthorized access",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                AvatarUploadResponse.class))),
+                @ApiResponse(
+                        responseCode = "500",
+                        description = "Internal server error",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                AvatarUploadResponse.class)))
+            })
     public ResponseEntity<AvatarUploadResponse> uploadAvatar(
-            @Parameter(description = "File SHA-256 hash value for file integrity verification") @RequestPart("hash") String hash,
-            @Parameter(description = "Avatar file (JPEG/PNG, max 5MB, max resolution 460x460)") @RequestPart("avatar") MultipartFile avatarFile,
+            @Parameter(
+                            description =
+                                    "SHA-256 hash value of the avatar file for integrity verification",
+                            required = true,
+                            example =
+                                    "a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e")
+                    @RequestPart("hash")
+                    String hash,
+            @Parameter(
+                            description =
+                                    "Original filename with extension (used to determine file extension)",
+                            required = true,
+                            example = "avatar.jpg")
+                    @RequestPart("originalFilename")
+                    String originalFilename,
+            @Parameter(
+                            description =
+                                    "Avatar image file. Maximum file size: 5MB. Maximum resolution: 460x460 pixels.",
+                            required = true)
+                    @RequestPart("avatar")
+                    MultipartFile avatarFile,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
-
-        // Validate file type３
-        AvatarUploadResponse fileTypeError = fileValidationService.validateFileType(avatarFile);
-        if (fileTypeError != null) {
-            return ResponseEntity.badRequest().body(fileTypeError);
-        }
 
         // Validate file size before reading file data
         AvatarUploadResponse fileSizeError = fileValidationService.validateFileSize(avatarFile);
@@ -91,6 +114,7 @@ public class UploadController {
             return ResponseEntity.badRequest().body(fileSizeError);
         }
 
+        // Read file data
         byte[] fileData;
         try {
             fileData = avatarFile.getBytes();
@@ -98,7 +122,9 @@ public class UploadController {
             return ResponseEntity.badRequest()
                     .body(new AvatarUploadResponse(400, "Failed to read file", null));
         }
+
         // Validate and read image file with dimension check
+        // ImageIO.read() will validate that the file is a valid image
         AvatarUploadResponse imageResult =
                 fileValidationService.validateAndReadImageWithDimensions(fileData);
         if (imageResult != null) {
@@ -111,18 +137,14 @@ public class UploadController {
             return ResponseEntity.badRequest().body(hashError);
         }
 
-        // Generate object name with hash + file extension
-        Optional<String> fileExtension = avatarProperties.getExtension(avatarFile.getContentType());
-        if (fileExtension.isEmpty()) {
+        try {
+            String extension = fileValidationService.extractFileExtension(originalFilename);
+            String objectName = hash + extension;
+            return avatarUploadService.uploadAvatar(
+                    Long.parseLong(jwt.getSubject()), fileData, objectName);
+        } catch (InvalidFileExtensionException e) {
             return ResponseEntity.badRequest()
-                    .body(new AvatarUploadResponse(400, "Unsupported file type", null));
+                    .body(new AvatarUploadResponse(400, "Invalid file extension", null));
         }
-        String objectName = hash + "." + fileExtension.get();
-
-        return avatarUploadService.uploadAvatar(
-                Long.parseLong(jwt.getSubject()),
-                fileData,
-                objectName,
-                avatarFile.getContentType());
     }
 }

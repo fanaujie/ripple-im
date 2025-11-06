@@ -8,14 +8,15 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Response for avatar upload")
-public class AvatarUploadResponse {
+@Schema(description = "Response for single attachment upload")
+public class SingleAttachmentUploadResponse {
+
     @Schema(description = "Response code", example = "200")
     private int code;
 
     @Schema(description = "Response message", example = "success")
     private String message;
 
-    @Schema(description = "Avatar upload data")
-    private AvatarUploadData data;
+    @Schema(description = "Upload completion data")
+    private CompleteUploadData data;
 }
