@@ -105,7 +105,12 @@ public class PushService {
                                 .map(id -> Long.toString(id))
                                 .collect(Collectors.toList());
                 return userIds;
-            case PAYLOAD_NOT_SET:
+            case MESSAGE_DATA:
+                List<String> msgUserIds =
+                        pushMessage.getMessageData().getReceiveUserIdsList().stream()
+                                .map(id -> Long.toString(id))
+                                .collect(Collectors.toList());
+                return msgUserIds;
             default:
                 logger.error(
                         "getReceiveUserIds: Unknown payload type: {}",

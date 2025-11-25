@@ -5,10 +5,18 @@ package com.fanaujie.ripple.protobuf;
 option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.push";
 
+
+import "MessageAPI.proto";
+
 enum EventType {
   EVENT_TYPE_UNSPECIFIED = 0;
   EVENT_TYPE_SELF_INFO_UPDATE = 1;
   EVENT_TYPE_RELATION_UPDATE = 2;
+}
+
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_SINGLE_MESSAGE = 1;
 }
 
 message PushEventData {
@@ -17,8 +25,16 @@ message PushEventData {
   repeated int64 receive_user_ids = 3;
 }
 
+message PushMessageData {
+  MessageType message_type = 1;
+  int64 send_user_id = 2;
+  repeated int64 receive_user_ids = 3;
+  SendMessageReq data = 4;
+}
+
 message PushMessage {
   oneof payload {
     PushEventData event_data = 1;
+    PushMessageData message_data = 2;
   }
 }

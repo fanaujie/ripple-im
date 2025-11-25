@@ -6,19 +6,27 @@ option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.msgapiserver";
 
 
+message SingleMessageContent {
+  string text = 2;
+  string file_url = 3;
+  string file_name = 4;
+}
+
+
 
 message SendMessageReq {
-  int64 user_id = 1;
-  string message_content = 2;
-  string message_type = 3;
-  int64 timestamp = 4;
-  map<string, string> metadata = 5;
+  int64 sender_id = 1;
+  string conversation_id = 2;
+  int64 receiver_id = 3;
+  int64 group_id = 4;
+  int64 message_id = 5;
+  int64 send_timestamp = 6;
+  oneof message {
+    SingleMessageContent single_message_content = 7;
+  };
 }
 
 message SendMessageResp {
-  bool success = 1;
-  string message = 2;
-  string dispatch_id = 3;
 }
 
 

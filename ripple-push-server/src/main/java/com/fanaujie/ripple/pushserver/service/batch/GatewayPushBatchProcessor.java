@@ -118,7 +118,18 @@ public class GatewayPushBatchProcessor
                             .setPushMessageType(pushType)
                             .setSendUserId(String.valueOf(eventData.getSendUserId()))
                             .setReceiveUserId(userInfo.getUserId())
+                            .setRequestDeviceId(userInfo.getDeviceId()) // not set even data
+                            .build();
+                }
+            case MESSAGE_DATA:
+                {
+                    return PushMessageRequest.newBuilder()
+                            .setPushMessageType(PushMessageType.PUSH_MESSAGE_TYPE_SINGLE_MESSAGE)
+                            .setSendUserId(
+                                    String.valueOf(pushMessage.getMessageData().getSendUserId()))
+                            .setReceiveUserId(userInfo.getUserId())
                             .setRequestDeviceId(userInfo.getDeviceId())
+                            .setMessageData(pushMessage.getMessageData().getData())
                             .build();
                 }
             default:

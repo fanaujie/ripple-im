@@ -1,13 +1,17 @@
 package com.fanaujie.ripple.apigateway.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.apigateway.service.MessageService;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
+import com.fanaujie.ripple.storage.repository.ConversationRepository;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
 import com.fanaujie.ripple.storage.repository.UserRepository;
+import com.fanaujie.ripple.storage.repository.impl.CassandraConversationRepository;
 import com.fanaujie.ripple.storage.repository.impl.CassandraRelationRepository;
 import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
 
@@ -35,8 +39,13 @@ public class ComponentConfig {
     }
 
     @Bean
-    RelationRepository relationStorage(CqlSession cqlSession) {
+    RelationRepository relationRepository(CqlSession cqlSession) {
         return new CassandraRelationRepository(cqlSession);
+    }
+
+    @Bean
+    ConversationRepository conversationRepository(CqlSession cqlSession) {
+        return new CassandraConversationRepository(cqlSession);
     }
 
     @Bean
@@ -62,5 +71,12 @@ public class ComponentConfig {
             ExecutorService executorService,
             GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient) {
         return new DefaultMessageAPISender(executorService, messageDispatcherClient);
+    }
+
+    @Bean
+    public SnowflakeIdClient snowflakeIdClient(
+            @Value("${snowflakeId.server.host}") String host,
+            @Value("${snowflakeId.server.port}") int port) {
+        return new SnowflakeIdClient(host, port);
     }
 }

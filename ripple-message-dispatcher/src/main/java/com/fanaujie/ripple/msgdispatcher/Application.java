@@ -7,19 +7,24 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFacto
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFactory;
+import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgdispatcher.consumer.MessageConsumer;
-import com.fanaujie.ripple.msgdispatcher.consumer.DefaultEventPayloadRouter;
-import com.fanaujie.ripple.msgdispatcher.consumer.processor.DefaultEventPayloadProcessorDispatcher;
+import com.fanaujie.ripple.msgdispatcher.consumer.DefaultPayloadRouter;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.RelationUpdateEventPayloadProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.SelfInfoUpdateEventPayloadProcessor;
+import com.fanaujie.ripple.msgdispatcher.consumer.processor.SingleMessagePayloadProcessor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
+import com.fanaujie.ripple.storage.repository.ConversationRepository;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
 import com.fanaujie.ripple.storage.repository.UserRepository;
+import com.fanaujie.ripple.storage.repository.impl.CassandraConversationRepository;
 import com.fanaujie.ripple.storage.repository.impl.CassandraRelationRepository;
 import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
 import com.typesafe.config.Config;
@@ -52,10 +57,8 @@ public class Application {
         int kafkaFetchMinBytes = config.getInt("kafka.consumer.fetch-min-bytes");
         int kafkaFetchMaxWaitMs = config.getInt("kafka.consumer.fetch-max-wait-ms");
 
-        // Load event processor configuration
-        int selfEventProcessorThreadPoolSize =
-                config.getInt("selfevent.processor.thread.pool.size");
-        int routerPushThreadPoolSize = config.getInt("router.push.thread.pool.size");
+        // Load processor configuration
+        int processorThreadPoolSize = config.getInt("processor.thread.pool.size");
         logger.info("Configuration - Broker Server: {}", brokerServer);
         logger.info("Starting Message Dispatcher...");
         logger.info("Message Topic: {}", messageTopic);
@@ -68,25 +71,24 @@ public class Application {
                 kafkaFetchMinBytes,
                 kafkaFetchMaxWaitMs);
         logger.info(
-                "Event Processor Config - Self Event Processor Thread Pool Size: {}, Router Push Thread Pool Size: {}",
-                selfEventProcessorThreadPoolSize,
-                routerPushThreadPoolSize);
+                "Event Processor Config - Processor Thread Pool Size: {}", processorThreadPoolSize);
 
         CqlSession cqlSession =
                 createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
         UserRepository userRepository = createUserRepository(cqlSession);
         RelationRepository relationRepository = createRelationRepository(cqlSession);
+        ConversationRepository conversationRepository =
+                new CassandraConversationRepository(cqlSession);
         int cpuSize = Runtime.getRuntime().availableProcessors();
-        DefaultEventPayloadRouter eventPayloadProcessor =
-                createEventPayloadProcessor(
+        DefaultPayloadRouter payloadRouter =
+                createPayloadRouter(
                         pushTopic,
                         createPushMessageProducer(brokerServer),
                         userRepository,
                         relationRepository,
-                        createExecutorService(
-                                cpuSize, cpuSize * 2, selfEventProcessorThreadPoolSize),
-                        createExecutorService(cpuSize, cpuSize * 2, routerPushThreadPoolSize));
-        MessageConsumer msgProcessor = new MessageConsumer(eventPayloadProcessor, null);
+                        conversationRepository,
+                        createExecutorService(cpuSize, cpuSize * 2, processorThreadPoolSize));
+        MessageConsumer msgProcessor = new MessageConsumer(payloadRouter);
         GenericConsumer<String, MessagePayload> messageTopicConsumer =
                 createMessageTopicConsumer(
                         messageTopic,
@@ -141,25 +143,33 @@ public class Application {
                 KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
     }
 
-    private DefaultEventPayloadRouter createEventPayloadProcessor(
+    private DefaultPayloadRouter createPayloadRouter(
             String pushTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             UserRepository userRepository,
             RelationRepository relationRepository,
-            ExecutorService selfInfoExecutor,
-            ExecutorService routerExecutor) {
+            ConversationRepository conversationRepository,
+            ExecutorService executor) {
 
-        ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> dispatcher =
-                new DefaultEventPayloadProcessorDispatcher();
-        dispatcher.RegisterProcessor(
+        ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher =
+                new DefaultProcessorDispatcher<>();
+        messageDispatcher.RegisterProcessor(
+                SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
+                new SingleMessagePayloadProcessor(
+                        executor,
+                        conversationRepository)); // Placeholder for message content processor
+
+        ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher =
+                new DefaultProcessorDispatcher<>();
+        eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventPayloadProcessor(
-                        selfInfoExecutor, userRepository, relationRepository));
-        dispatcher.RegisterProcessor(
+                        executor, userRepository, relationRepository));
+        eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
                 new RelationUpdateEventPayloadProcessor(userRepository, relationRepository));
-        return new DefaultEventPayloadRouter(
-                pushTopic, pushMessageProducer, dispatcher, routerExecutor);
+        return new DefaultPayloadRouter(
+                pushTopic, pushMessageProducer, eventDispatcher, messageDispatcher, executor);
     }
 
     private CqlSession createCQLSession(

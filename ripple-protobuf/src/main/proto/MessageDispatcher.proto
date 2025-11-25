@@ -18,7 +18,8 @@ message EventData {
 
 message MessageData {
   int64 send_user_id = 1;
-  int64 receive_user_id = 2;
+  repeated int64 receive_user_ids = 2;
+  SendMessageReq data = 3;
 }
 
 message MessagePayload {

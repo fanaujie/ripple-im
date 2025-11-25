@@ -1,9 +1,9 @@
 package com.fanaujie.ripple.communication.processor;
 
-public interface ProcessorDispatcher<EVENT_TYPE, REQUEST, RESPONSE> {
-    void RegisterProcessor(EVENT_TYPE eventCase, Processor<REQUEST, RESPONSE> processor);
+public interface ProcessorDispatcher<CASE_TYPE, REQUEST, RESPONSE> {
+    void RegisterProcessor(CASE_TYPE caseType, Processor<REQUEST, RESPONSE> processor);
 
-    void UnregisterProcessor(EVENT_TYPE eventCase);
+    void UnregisterProcessor(CASE_TYPE caseType);
 
-    RESPONSE dispatch(REQUEST request) throws Exception;
+    RESPONSE dispatch(CASE_TYPE caseType, REQUEST request) throws Exception;
 }

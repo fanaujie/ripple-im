@@ -2,7 +2,6 @@ package com.fanaujie.ripple.msgapiserver.processor;
 
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
-import com.fanaujie.ripple.msgapiserver.exception.NotFoundAnyFriendIdsException;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
@@ -12,6 +11,7 @@ import com.fanaujie.ripple.storage.service.CachedRelationStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 public class SelfInfoUpdateEventProcessor implements Processor<SendEventReq, SendEventResp> {
@@ -36,20 +36,14 @@ public class SelfInfoUpdateEventProcessor implements Processor<SendEventReq, Sen
     @Override
     public SendEventResp handle(SendEventReq request) throws Exception {
         long userId = request.getSelfInfoUpdateEvent().getUserId();
-        UserIds friendIds =
-                this.relationStorage
-                        .getFriendIds(userId)
-                        .orElseThrow(
-                                () ->
-                                        new NotFoundAnyFriendIdsException(
-                                                "No friends found for userId: "
-                                                        + request.getSelfInfoUpdateEvent()
-                                                                .getUserId()));
-
+        Optional<UserIds> friendIds = this.relationStorage.getFriendIds(userId);
         EventData.Builder b = EventData.newBuilder().setSendUserId(userId).setData(request);
-        for (long friendUserId : friendIds.getUserIdsList()) {
-            b.addReceiveUserIds(friendUserId);
-        }
+        friendIds.ifPresent(
+                friends -> {
+                    for (long friendUserId : friends.getUserIdsList()) {
+                        b.addReceiveUserIds(friendUserId);
+                    }
+                });
         b.addReceiveUserIds(userId); // also notify self for multi-device sync
         MessagePayload messageData = MessagePayload.newBuilder().setEventData(b.build()).build();
         this.executorService

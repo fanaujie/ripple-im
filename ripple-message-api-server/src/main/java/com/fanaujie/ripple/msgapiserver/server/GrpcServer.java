@@ -3,6 +3,8 @@ package com.fanaujie.ripple.msgapiserver.server;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
@@ -18,21 +20,21 @@ public class GrpcServer {
     private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
     private final int port;
+    private final ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
+            messageDispatcher;
     private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
-            messageProcessor;
-    private final ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
-            eventProcessor;
+            eventDispatcher;
     private Server server;
 
     public GrpcServer(
             int port,
+            ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
+                    messageDispatcher,
             ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
-                    messageProcessor,
-            ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
-                    eventProcessor) {
+                    eventDispatcher) {
         this.port = port;
-        this.messageProcessor = messageProcessor;
-        this.eventProcessor = eventProcessor;
+        this.messageDispatcher = messageDispatcher;
+        this.eventDispatcher = eventDispatcher;
     }
 
     public CompletableFuture<Void> startAsync() {
@@ -40,7 +42,8 @@ public class GrpcServer {
                 () -> {
                     try {
                         MessageDispatcherServiceImpl messageDispatcherService =
-                                new MessageDispatcherServiceImpl(messageProcessor, eventProcessor);
+                                new MessageDispatcherServiceImpl(
+                                        messageDispatcher, eventDispatcher);
 
                         server =
                                 ServerBuilder.forPort(port)

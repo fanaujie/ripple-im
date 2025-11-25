@@ -44,4 +44,9 @@ public class DefaultRelationStorage implements CachedRelationStorage {
         }
         return Optional.empty();
     }
+
+    @Override
+    public boolean isSenderBlocked(long senderId, long receiverId) {
+        return false;
+    }
 }

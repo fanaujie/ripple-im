@@ -7,10 +7,13 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFacto
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgapiserver.processor.RelationEventProcessor;
 import com.fanaujie.ripple.msgapiserver.processor.SelfInfoUpdateEventProcessor;
-import com.fanaujie.ripple.msgapiserver.processor.DefaultSendEventProcessorDispatcher;
+import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
+import com.fanaujie.ripple.msgapiserver.processor.SingleMessageContentProcessor;
 import com.fanaujie.ripple.msgapiserver.server.GrpcServer;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.storage.cache.KvCache;
 import com.fanaujie.ripple.storage.cache.impl.RedissonKvCache;
@@ -67,8 +70,9 @@ public class Application {
         GrpcServer grpcServer =
                 new GrpcServer(
                         grpcPort,
-                        null,
-                        createEventProcessor(
+                        createMessageDispatcher(
+                                brokerTopic, cachedRelationStorage, producer, executorService),
+                        createEventDispatcher(
                                 brokerTopic,
                                 userRepository,
                                 relationRepository,
@@ -108,24 +112,39 @@ public class Application {
                 KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
     }
 
+    private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
+            createMessageDispatcher(
+                    String topic,
+                    CachedRelationStorage relationStorage,
+                    GenericProducer<String, MessagePayload> producer,
+                    ExecutorService executorService) {
+        ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
+                messageDispatcher = new DefaultProcessorDispatcher<>();
+        messageDispatcher.RegisterProcessor(
+                SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
+                new SingleMessageContentProcessor(
+                        topic, relationStorage, producer, executorService));
+        return messageDispatcher;
+    }
+
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
-            createEventProcessor(
+            createEventDispatcher(
                     String topic,
                     UserRepository userRepository,
                     RelationRepository relationRepository,
                     CachedRelationStorage relationStorage,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
-        ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventProcessor =
-                new DefaultSendEventProcessorDispatcher();
-        eventProcessor.RegisterProcessor(
+        ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
+                new DefaultProcessorDispatcher<>();
+        eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventProcessor(
                         topic, relationStorage, producer, executorService));
-        eventProcessor.RegisterProcessor(
+        eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
                 new RelationEventProcessor(
                         topic, producer, executorService, userRepository, relationRepository));
-        return eventProcessor;
+        return eventDispatcher;
     }
 }

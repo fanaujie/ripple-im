@@ -13,13 +13,18 @@ public class DefaultMessageAPISender implements MessageAPISender {
 
     public DefaultMessageAPISender(
             ExecutorService executorService,
-            GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> msgAPIClientPool) {
+            GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> msgAPIClient) {
         this.executorService = executorService;
-        this.msgAPIClient = msgAPIClientPool;
+        this.msgAPIClient = msgAPIClient;
     }
 
     @Override
     public void sendEvent(SendEventReq req) throws Exception {
         this.executorService.submit(() -> this.msgAPIClient.getStub().sendEvent(req)).get();
+    }
+
+    @Override
+    public void seenMessage(SendMessageReq req) throws Exception {
+        this.executorService.submit(() -> this.msgAPIClient.getStub().sendMessage(req)).get();
     }
 }

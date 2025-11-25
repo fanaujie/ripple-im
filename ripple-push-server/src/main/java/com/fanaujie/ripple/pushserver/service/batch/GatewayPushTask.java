@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.pushserver.service.batch;
 
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 

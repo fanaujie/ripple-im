@@ -7,14 +7,10 @@ import java.util.List;
 
 public class MessageConsumer {
 
-    private final PayloadRouter<MessagePayload> eventPayloadProcessor;
-    private final PayloadRouter<MessagePayload> messagePayloadProcessor;
+    private final PayloadRouter<MessagePayload> payloadRouter;
 
-    public MessageConsumer(
-            PayloadRouter<MessagePayload> eventDataConsumer,
-            PayloadRouter<MessagePayload> messageDataConsumer) {
-        this.eventPayloadProcessor = eventDataConsumer;
-        this.messagePayloadProcessor = messageDataConsumer;
+    public MessageConsumer(PayloadRouter<MessagePayload> payloadRouter) {
+        this.payloadRouter = payloadRouter;
     }
 
     public void consumeBatch(List<MessageRecord<String, MessagePayload>> records) throws Exception {
@@ -26,13 +22,12 @@ public class MessageConsumer {
     public void consume(String key, MessagePayload payload) throws Exception {
         switch (payload.getPayloadCase()) {
             case EVENT_DATA:
-                this.eventPayloadProcessor.handle(key, payload);
-                break;
             case MESSAGE_DATA:
-                this.messagePayloadProcessor.handle(key, payload);
+                this.payloadRouter.handle(key, payload);
                 break;
-            case PAYLOAD_NOT_SET:
-                break;
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported payload type: " + payload.getPayloadCase());
         }
     }
 }

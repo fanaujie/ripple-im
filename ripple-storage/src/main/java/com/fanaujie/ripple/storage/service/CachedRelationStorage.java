@@ -6,4 +6,6 @@ import java.util.Optional;
 
 public interface CachedRelationStorage {
     Optional<UserIds> getFriendIds(long userId);
+
+    boolean isSenderBlocked(long senderId, long receiverId);
 }
