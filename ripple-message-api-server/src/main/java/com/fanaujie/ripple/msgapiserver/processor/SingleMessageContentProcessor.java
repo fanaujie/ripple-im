@@ -4,8 +4,13 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
+import com.fanaujie.ripple.protobuf.msgapiserver.StrangerInfo;
+import com.fanaujie.ripple.protobuf.msgapiserver.StrangerInfoOrBuilder;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.storage.model.RelationFlags;
+import com.fanaujie.ripple.storage.model.UserProfile;
+import com.fanaujie.ripple.storage.repository.UserRepository;
 import com.fanaujie.ripple.storage.service.CachedRelationStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +40,9 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
     public SendMessageResp handle(SendMessageReq request) throws Exception {
         long senderId = request.getSenderId();
         long receiverId = request.getReceiverId();
-        if (!this.relationStorage.isSenderBlocked(senderId, receiverId)) {
+        Byte flags = this.relationStorage.getRelationFlags(senderId, receiverId).orElse((byte) 0);
+        if (!RelationFlags.BLOCKED.isSet(flags)) {
+            // not blocked
             MessageData.Builder b = MessageData.newBuilder().setSendUserId(senderId);
             b.addReceiveUserIds(receiverId);
             b.addReceiveUserIds(senderId); // also notify self for multi-device sync
@@ -50,10 +57,6 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
                     .get();
             return SendMessageResp.newBuilder().build();
         }
-        logger.info(
-                "handle: Message from senderId {} to receiverId {} is blocked.",
-                senderId,
-                receiverId);
         return SendMessageResp.newBuilder().build();
     }
 }

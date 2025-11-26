@@ -12,6 +12,11 @@ message SingleMessageContent {
   string file_name = 4;
 }
 
+message StrangerInfo {
+  string nick_name = 2;
+  string avatar = 3;
+}
+
 
 
 message SendMessageReq {

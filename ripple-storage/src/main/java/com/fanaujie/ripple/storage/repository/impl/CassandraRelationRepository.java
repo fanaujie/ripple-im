@@ -271,7 +271,8 @@ public class CassandraRelationRepository implements RelationRepository {
     }
 
     @Override
-    public void updateFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
+    public void updateFriendInfo(
+            long sourceUserId, long targetUserId, String nickName, String avatar)
             throws NotFoundRelationException {
         Row relation = session.execute(getFullRelationStmt.bind(sourceUserId, targetUserId)).one();
         if (relation == null) {
@@ -281,7 +282,8 @@ public class CassandraRelationRepository implements RelationRepository {
         BatchStatement batch =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
-                                updateFriendInfoStmt.bind(nickName, avatar, sourceUserId, targetUserId))
+                                updateFriendInfoStmt.bind(
+                                        nickName, avatar, sourceUserId, targetUserId))
                         .addStatement(
                                 insertRelationVersionStmt.bind(
                                         sourceUserId,
@@ -408,7 +410,7 @@ public class CassandraRelationRepository implements RelationRepository {
                             .addStatement(
                                     insertRelationVersionStmt.bind(
                                             userId,
-                                            stranger.getNickName(),
+                                            stranger.getUserId(),
                                             RelationOperation.ADD_STRANGER.getValue(),
                                             stranger.getNickName(),
                                             stranger.getAvatar(),

@@ -3,6 +3,8 @@ package com.fanaujie.ripple.storage.service.impl;
 import com.fanaujie.ripple.protobuf.storage.UserIds;
 import com.fanaujie.ripple.storage.cache.KvCache;
 import com.fanaujie.ripple.storage.cache.RelationCachePrefixKey;
+import com.fanaujie.ripple.storage.exception.NotFoundRelationException;
+import com.fanaujie.ripple.storage.model.Relation;
 import com.fanaujie.ripple.storage.repository.RelationRepository;
 import com.fanaujie.ripple.storage.service.CachedRelationStorage;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -46,7 +48,12 @@ public class DefaultRelationStorage implements CachedRelationStorage {
     }
 
     @Override
-    public boolean isSenderBlocked(long senderId, long receiverId) {
-        return false;
+    public Optional<Byte> getRelationFlags(long senderId, long receiverId) {
+        Relation r = this.relationRepository.getRelationBetweenUser(senderId, receiverId);
+        if (r != null) {
+            return Optional.of(r.getRelationFlags());
+        } else {
+            return Optional.empty();
+        }
     }
 }

@@ -126,6 +126,7 @@ public class RelationService {
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
+            log.error("removeFriend: Error removing friend", e);
             return ResponseEntity.status(500)
                     .body(new CommonResponse(500, "Failed to remove friend"));
         }
@@ -159,6 +160,7 @@ public class RelationService {
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
+            log.error("updateFriendRemarkName: Error updating friend's display name", e);
             return ResponseEntity.status(500)
                     .body(new CommonResponse(500, "Failed to update friend's display name"));
         }
@@ -210,6 +212,7 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user profile not found"));
         } catch (Exception e) {
+            log.error("addBlockedUser: Error blocking user", e);
             return ResponseEntity.status(500)
                     .body(new CommonResponse(500, "Failed to block target user"));
         }
@@ -243,6 +246,7 @@ public class RelationService {
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
+            log.error("removeBlockedUser: Error unblocking user", e);
             return ResponseEntity.status(500)
                     .body(new CommonResponse(500, "Failed to unblock user"));
         }
@@ -276,6 +280,7 @@ public class RelationService {
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
+            log.error("hideBlockedUser: Error unblocking user", e);
             return ResponseEntity.status(500)
                     .body(new CommonResponse(500, "Failed to hide blocked user"));
         }
