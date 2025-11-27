@@ -13,7 +13,7 @@ public enum RelationOperation {
     HIDE_BLOCK(7),
     UPDATE_FRIEND_NICK_NAME(8),
     UPDATE_FRIEND_AVATAR(9),
-    ADD_STRANGER(10),
+    BLOCK_STRANGER(10),
     UPDATE_FRIEND_INFO(11);
     private final byte value;
 

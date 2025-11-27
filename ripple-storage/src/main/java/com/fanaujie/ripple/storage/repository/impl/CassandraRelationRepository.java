@@ -411,7 +411,7 @@ public class CassandraRelationRepository implements RelationRepository {
                                     insertRelationVersionStmt.bind(
                                             userId,
                                             stranger.getUserId(),
-                                            RelationOperation.ADD_STRANGER.getValue(),
+                                            RelationOperation.BLOCK_STRANGER.getValue(),
                                             stranger.getNickName(),
                                             stranger.getAvatar(),
                                             stranger.getNickName(),
