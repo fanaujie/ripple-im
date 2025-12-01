@@ -27,12 +27,8 @@ public class UserOnlineBatchProcessor
     @Override
     public void process(List<UserOnlineBatchTask> batch) {
         if (batch == null || batch.isEmpty()) {
-            logger.debug("process: Empty batch received, skipping");
             return;
         }
-
-        logger.debug("process: Processing batch with {} user online tasks", batch.size());
-
         // Convert batch tasks to UserOnlineReq list
         BatchUserOnlineReq.Builder requestBuilder = BatchUserOnlineReq.newBuilder();
 
@@ -48,10 +44,6 @@ public class UserOnlineBatchProcessor
         }
 
         BatchUserOnlineReq batchRequest = requestBuilder.build();
-
-        logger.debug(
-                "process: Sending async batch request to UserPresence service with {} requests",
-                batchRequest.getRequestsCount());
         final int batchSize = batch.size();
         // Call the batch gRPC method asynchronously (fire-and-forget)
         userPresenceGrpcClient
@@ -60,11 +52,7 @@ public class UserOnlineBatchProcessor
                         batchRequest,
                         new StreamObserver<BatchUserOnlineResp>() {
                             @Override
-                            public void onNext(BatchUserOnlineResp response) {
-                                logger.debug(
-                                        "process: Batch processing completed successfully size: {}",
-                                        batchSize);
-                            }
+                            public void onNext(BatchUserOnlineResp response) {}
 
                             @Override
                             public void onError(Throwable throwable) {
@@ -76,13 +64,7 @@ public class UserOnlineBatchProcessor
                             }
 
                             @Override
-                            public void onCompleted() {
-                                logger.debug(
-                                        "process: Async batch request completed for {} tasks",
-                                        batchSize);
-                            }
+                            public void onCompleted() {}
                         });
-
-        logger.debug("process: Async batch request sent successfully for {} tasks", batch.size());
     }
 }

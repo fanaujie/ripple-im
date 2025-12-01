@@ -12,6 +12,8 @@ public class Conversation {
     private String conversationId;
     private long peerId; // 0 for group chats
     private long groupId; // 0 for single chats
+    private String name;
+    private String avatar;
     private long lastMessageId;
     private String lastMessage;
     private long lastMessageTimestamp;

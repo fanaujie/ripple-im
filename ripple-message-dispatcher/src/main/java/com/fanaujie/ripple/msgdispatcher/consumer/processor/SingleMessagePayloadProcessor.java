@@ -3,8 +3,10 @@ package com.fanaujie.ripple.msgdispatcher.consumer.processor;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
-import com.fanaujie.ripple.storage.repository.ConversationRepository;
-import com.fanaujie.ripple.storage.utils.ConversationUtils;
+import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,13 +17,14 @@ import static com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq.MessageCa
 
 public class SingleMessagePayloadProcessor implements Processor<MessageData, Void> {
 
+    private final Logger logger = LoggerFactory.getLogger(SingleMessagePayloadProcessor.class);
     private final ExecutorService executor;
-    private final ConversationRepository conversationRepository;
+    private final RippleStorageFacade storageFacade;
 
     public SingleMessagePayloadProcessor(
-            ExecutorService executor, ConversationRepository conversationRepository) {
+            ExecutorService executor, RippleStorageFacade storageFacade) {
         this.executor = executor;
-        this.conversationRepository = conversationRepository;
+        this.storageFacade = storageFacade;
     }
 
     @Override
@@ -37,30 +40,49 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
 
     private void updateConversationStorage(SendMessageReq sendMessageReq) throws Exception {
         List<Future<?>> futures = new ArrayList<>();
-        if (!this.conversationRepository.existsById(
+        if (!this.storageFacade.existsByConversationId(
                 sendMessageReq.getConversationId(), sendMessageReq.getSenderId())) {
             futures.add(
                     this.executor.submit(
-                            () ->
-                                    this.conversationRepository.createSingeMessageConversation(
+                            () -> {
+                                try {
+                                    this.storageFacade.createSingeMessageConversation(
                                             sendMessageReq.getConversationId(),
                                             sendMessageReq.getSenderId(),
-                                            sendMessageReq.getReceiverId())));
+                                            sendMessageReq.getReceiverId());
+                                } catch (NotFoundUserProfileException e) {
+                                    logger.warn(
+                                            "Failed to create single message conversation: {}",
+                                            e.getMessage());
+                                }
+                            }));
         }
-        if (!this.conversationRepository.existsById(
+        if (!this.storageFacade.existsByConversationId(
                 sendMessageReq.getConversationId(), sendMessageReq.getReceiverId())) {
             futures.add(
                     this.executor.submit(
-                            () ->
-                                    this.conversationRepository.createSingeMessageConversation(
+                            () -> {
+                                try {
+                                    this.storageFacade.createSingeMessageConversation(
                                             sendMessageReq.getConversationId(),
                                             sendMessageReq.getReceiverId(),
-                                            sendMessageReq.getSenderId())));
+                                            sendMessageReq.getSenderId());
+                                } catch (NotFoundUserProfileException e) {
+                                    logger.warn(
+                                            "Failed to create single message conversation: {}",
+                                            e.getMessage());
+                                }
+                            }));
         }
+        // Wait for conversation creation tasks to complete
+        for (Future<?> f : futures) {
+            f.get();
+        }
+        futures.clear();
         futures.add(
                 this.executor.submit(
                         () ->
-                                this.conversationRepository.updateSingeMessageConversation(
+                                this.storageFacade.updateSingeMessageConversation(
                                         sendMessageReq.getConversationId(),
                                         sendMessageReq.getSenderId(),
                                         sendMessageReq.getReceiverId(),
@@ -70,7 +92,7 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
         futures.add(
                 this.executor.submit(
                         () ->
-                                this.conversationRepository.updateSingeMessageConversation(
+                                this.storageFacade.updateSingeMessageConversation(
                                         sendMessageReq.getConversationId(),
                                         sendMessageReq.getReceiverId(),
                                         sendMessageReq.getSenderId(),
@@ -80,7 +102,7 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
         futures.add(
                 this.executor.submit(
                         () ->
-                                this.conversationRepository.saveMessage(
+                                this.storageFacade.saveMessage(
                                         sendMessageReq.getConversationId(),
                                         sendMessageReq.getMessageId(),
                                         sendMessageReq.getSenderId(),

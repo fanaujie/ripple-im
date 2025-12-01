@@ -11,16 +11,16 @@ enum PushMessageType {
   PUSH_MESSAGE_TYPE_UNSPECIFIED = 0;
   PUSH_MESSAGE_TYPE_SELF_INFO_UPDATE = 1;
   PUSH_MESSAGE_TYPE_RELATION_INFO_UPDATE = 2;
-  PUSH_MESSAGE_TYPE_SINGLE_MESSAGE = 3;
+  PUSH_MESSAGE_TYPE_CONVERSATION_INFO_UPDATE = 3;
+  PUSH_MESSAGE_TYPE_SINGLE_MESSAGE = 4;
 }
 
 message PushMessageRequest {
-  PushMessageType push_message_type = 1;
+  repeated PushMessageType push_message_type = 1;
   string send_user_id = 2;
   string receive_user_id = 3;
-  string request_device_id = 4;
+  string receive_device_id = 4;
   oneof payload {
-    SendEventReq event_data = 5;
     SendMessageReq message_data = 6;
   }
 }

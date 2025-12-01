@@ -7,9 +7,8 @@ import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.model.Message;
 import com.fanaujie.ripple.storage.model.Messages;
-import com.fanaujie.ripple.storage.repository.ConversationRepository;
-import com.fanaujie.ripple.storage.utils.ConversationUtils;
-import lombok.RequiredArgsConstructor;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -26,15 +25,15 @@ public class MessageService {
 
     private final MessageAPISender messageAPISender;
     private final SnowflakeIdClient snowflakeIdClient;
-    private final ConversationRepository conversationRepository;
+    private final RippleStorageFacade storageFacade;
 
     public MessageService(
             MessageAPISender messageAPISender,
             SnowflakeIdClient snowflakeIdClient,
-            ConversationRepository conversationRepository) {
+            RippleStorageFacade storageFacade) {
         this.messageAPISender = messageAPISender;
         this.snowflakeIdClient = snowflakeIdClient;
-        this.conversationRepository = conversationRepository;
+        this.storageFacade = storageFacade;
     }
 
     public ResponseEntity<MessageResponse> sendMessage(SendMessageRequest request) {
@@ -66,8 +65,7 @@ public class MessageService {
                                 ReadMessagesResponse.error(
                                         400, "Invalid read size. Must be between 1 and 200"));
             }
-            Messages result =
-                    conversationRepository.getMessages(conversationId, messageId, readSize);
+            Messages result = storageFacade.getMessages(conversationId, messageId, readSize);
             List<MessageItem> messageItems =
                     result.getMessages().stream()
                             .map(this::toMessageItem)
@@ -88,7 +86,7 @@ public class MessageService {
     public ResponseEntity<CommonResponse> markLastReadMessageId(
             String conversationId, long messageId, long currentUserId) {
         try {
-            conversationRepository.markLastReadMessageId(conversationId, currentUserId, messageId);
+            this.storageFacade.markLastReadMessageId(conversationId, currentUserId, messageId);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
             log.error("readMessages: Error reading messages", e);

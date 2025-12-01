@@ -15,19 +15,13 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-import com.fanaujie.ripple.storage.cache.KvCache;
-import com.fanaujie.ripple.storage.cache.impl.RedissonKvCache;
+
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraRelationRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
-import com.fanaujie.ripple.storage.service.CachedRelationStorage;
-import com.fanaujie.ripple.storage.service.impl.DefaultRelationStorage;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,22 +57,19 @@ public class Application {
         CqlSession cqlSession =
                 CassandraDriver.createCqlSession(
                         cassandraContacts, cassandraKeyspace, localDatacenter);
-        CachedRelationStorage cachedRelationStorage =
-                createRelationStorageService(redisHost, redisPort, cqlSession);
-        UserRepository userRepository = new CassandraUserRepository(cqlSession);
-        RelationRepository relationRepository = new CassandraRelationRepository(cqlSession);
+        CassandraUserStorageFacadeBuilder userStorageFacadeBuilder =
+                new CassandraUserStorageFacadeBuilder();
+        userStorageFacadeBuilder
+                .cqlSession(cqlSession)
+                .redissonClient(RedisDriver.createRedissonClient(redisHost, redisPort));
+        CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
         GrpcServer grpcServer =
                 new GrpcServer(
                         grpcPort,
                         createMessageDispatcher(
-                                brokerTopic, cachedRelationStorage, producer, executorService),
+                                brokerTopic, userStorageFacade, producer, executorService),
                         createEventDispatcher(
-                                brokerTopic,
-                                userRepository,
-                                relationRepository,
-                                cachedRelationStorage,
-                                producer,
-                                executorService));
+                                brokerTopic, userStorageFacade, producer, executorService));
         CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
         logger.info("Starting Message Publisher server...");
         grpcFuture.join();
@@ -87,14 +78,6 @@ public class Application {
     public static void main(String[] args) {
         Application app = new Application();
         app.run();
-    }
-
-    private DefaultRelationStorage createRelationStorageService(
-            String redisHost, int redisPort, CqlSession cqlSession) {
-        RelationRepository relationRepository = new CassandraRelationRepository(cqlSession);
-        RedissonClient redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
-        KvCache kvCache = new RedissonKvCache(redissonClient);
-        return new DefaultRelationStorage(kvCache, relationRepository);
     }
 
     private ExecutorService createExecutorService(int queueCapacity) {
@@ -115,7 +98,7 @@ public class Application {
     private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
             createMessageDispatcher(
                     String topic,
-                    CachedRelationStorage relationStorage,
+                    CassandraUserStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
@@ -123,16 +106,14 @@ public class Application {
         messageDispatcher.RegisterProcessor(
                 SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
                 new SingleMessageContentProcessor(
-                        topic, relationStorage, producer, executorService));
+                        topic, userStorageFacade, producer, executorService));
         return messageDispatcher;
     }
 
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
             createEventDispatcher(
                     String topic,
-                    UserRepository userRepository,
-                    RelationRepository relationRepository,
-                    CachedRelationStorage relationStorage,
+                    CassandraUserStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
@@ -140,11 +121,10 @@ public class Application {
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventProcessor(
-                        topic, relationStorage, producer, executorService));
+                        topic, userStorageFacade, producer, executorService));
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
-                new RelationEventProcessor(
-                        topic, producer, executorService, userRepository, relationRepository));
+                new RelationEventProcessor(topic, producer, executorService, userStorageFacade));
         return eventDispatcher;
     }
 }

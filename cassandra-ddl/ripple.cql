@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_conversations"
     "last_message"           text,
     "last_message_timestamp" bigint,
     "last_read_message_id"   bigint,
+    "name"                   text,
+    "avatar"                 text,
     primary key (owner_id, conversation_id)
 );
 
@@ -82,6 +84,8 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_conversations_version"
     "last_message"           text,
     "last_message_timestamp" bigint,
     "last_read_message_id"   bigint,
+    "name"                   text,
+    "avatar"                 text,
     primary key ( user_id, version )
 );
 

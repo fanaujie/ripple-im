@@ -2,7 +2,7 @@ package com.fanaujie.ripple.userpresence;
 
 import com.fanaujie.ripple.storage.driver.RedisDriver;
 import com.fanaujie.ripple.storage.service.UserPresenceStorage;
-import com.fanaujie.ripple.storage.service.impl.DefaultUserPresenceStorage;
+import com.fanaujie.ripple.storage.service.impl.redis.RedisUserPresenceStorage;
 import com.fanaujie.ripple.userpresence.server.GrpcServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -25,8 +25,9 @@ public class Application {
         logger.info("Starting User Presence server...");
         logger.info("gRPC Port: {}", grpcPort);
         logger.info("User Presence TTL (seconds): {}", userPresenceTtlSeconds);
+
         UserPresenceStorage userPresenceStorage =
-                new DefaultUserPresenceStorage(
+                new RedisUserPresenceStorage(
                         RedisDriver.createRedissonClient(redisHost, redisPort),
                         userPresenceTtlSeconds);
         GrpcServer grpcServer = new GrpcServer(grpcPort, userPresenceStorage);

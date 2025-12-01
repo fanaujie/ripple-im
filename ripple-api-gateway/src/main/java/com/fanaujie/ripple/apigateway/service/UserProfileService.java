@@ -8,7 +8,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SelfInfoUpdateEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.storage.model.UserProfile;
-import com.fanaujie.ripple.storage.repository.UserRepository;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -17,17 +17,18 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class UserProfileService {
 
-    private final UserRepository userStorage;
+    private final RippleStorageFacade storageFacade;
     private final MessageAPISender messageAPISender;
 
-    public UserProfileService(UserRepository userStorage, MessageAPISender messageAPISender) {
-        this.userStorage = userStorage;
+    public UserProfileService(
+            RippleStorageFacade storageFacade, MessageAPISender messageAPISender) {
+        this.storageFacade = storageFacade;
         this.messageAPISender = messageAPISender;
     }
 
     public ResponseEntity<UserProfileResponse> getUserProfile(long userId) {
         try {
-            UserProfile userProfile = this.userStorage.getUserProfile(userId);
+            UserProfile userProfile = this.storageFacade.getUserProfile(userId);
             UserProfileData data = new UserProfileData();
             data.setUserId(String.valueOf(userProfile.getUserId()));
             data.setNickName(userProfile.getNickName());

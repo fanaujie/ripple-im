@@ -8,9 +8,8 @@ import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.storage.exception.*;
 import com.fanaujie.ripple.storage.model.*;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
 import com.fanaujie.ripple.storage.exception.InvalidVersionException;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -25,16 +24,11 @@ public class RelationService {
 
     private static int MAX_PAGE_SIZE = 200;
     private static int MAX_SYNC_CHANGES = 200;
-    private final RelationRepository relationRepository;
-    private final UserRepository userRepository;
     private final MessageAPISender messageAPISender;
+    private final RippleStorageFacade storageFacade;
 
-    public RelationService(
-            RelationRepository relationRepository,
-            UserRepository userRepository,
-            MessageAPISender messageAPISender) {
-        this.relationRepository = relationRepository;
-        this.userRepository = userRepository;
+    public RelationService(RippleStorageFacade storageFacade, MessageAPISender messageAPISender) {
+        this.storageFacade = storageFacade;
         this.messageAPISender = messageAPISender;
     }
 
@@ -47,7 +41,7 @@ public class RelationService {
         }
 
         PagedRelationResult result =
-                this.relationRepository.getRelations(currentUserId, nextPageToken, pageSize);
+                this.storageFacade.getRelations(currentUserId, nextPageToken, pageSize);
         List<User> users =
                 result.getRelations().stream()
                         .map(
@@ -70,14 +64,13 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot add yourself as friend"));
         }
-        Relation relation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        Relation relation = this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         if (relation != null && RelationFlags.FRIEND.isSet(relation.getRelationFlags())) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is already your friend"));
         }
         try {
-            UserProfile targetUserProfile = this.userRepository.getUserProfile(targetUserId);
+            UserProfile targetUserProfile = this.storageFacade.getUserProfile(targetUserId);
             SendEventReq req =
                     SendEventReq.newBuilder()
                             .setRelationEvent(
@@ -107,8 +100,7 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot remove yourself as friend"));
         }
-        Relation relation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        Relation relation = this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         if (relation == null) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not your friend"));
@@ -138,8 +130,7 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Cannot update display name for yourself"));
         }
-        Relation relation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+        Relation relation = this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         if (relation == null) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not your friend"));
@@ -172,14 +163,14 @@ public class RelationService {
                     .body(new CommonResponse(400, "Cannot block yourself"));
         }
         Relation betweenUserRelation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+                this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         try {
             RelationEvent.Builder eventBuilder = RelationEvent.newBuilder();
             eventBuilder.setEventType(RelationEvent.EventType.BLOCK_FRIEND);
             if (betweenUserRelation == null) {
                 // block user is strange user, need to create relation record
                 eventBuilder.setEventType(RelationEvent.EventType.BLOCK_STRANGER);
-                UserProfile blockedUserProfile = this.userRepository.getUserProfile(targetUserId);
+                UserProfile blockedUserProfile = this.storageFacade.getUserProfile(targetUserId);
                 betweenUserRelation = new Relation();
                 betweenUserRelation.setSourceUserId(currentUserId);
                 betweenUserRelation.setRelationUserId(targetUserId);
@@ -224,7 +215,7 @@ public class RelationService {
                     .body(new CommonResponse(400, "Cannot unblock yourself"));
         }
         Relation betweenUserRelation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+                this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         if (betweenUserRelation == null) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not related to you"));
@@ -258,7 +249,7 @@ public class RelationService {
                     .body(new CommonResponse(400, "Cannot hide yourself"));
         }
         Relation betweenUserRelation =
-                this.relationRepository.getRelationBetweenUser(currentUserId, targetUserId);
+                this.storageFacade.getRelationBetweenUser(currentUserId, targetUserId);
         if (betweenUserRelation == null) {
             return ResponseEntity.badRequest()
                     .body(new CommonResponse(400, "Target user is not related to you"));
@@ -296,8 +287,7 @@ public class RelationService {
         try {
             // Query changes with max batch size
             List<RelationVersionChange> records =
-                    this.relationRepository.getRelationChanges(
-                            currentUserId, version, MAX_SYNC_CHANGES);
+                    this.storageFacade.getRelationChanges(currentUserId, version, MAX_SYNC_CHANGES);
 
             // Convert records to RelationChange DTOs
             List<RelationChange> changes =
@@ -330,7 +320,7 @@ public class RelationService {
     }
 
     public ResponseEntity<RelationVersionResponse> getLatestVersion(long currentUserId) {
-        String latestVersion = this.relationRepository.getLatestRelationVersion(currentUserId);
+        String latestVersion = this.storageFacade.getLatestRelationVersion(currentUserId);
 
         if (latestVersion == null) {
             return ResponseEntity.ok(

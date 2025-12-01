@@ -4,41 +4,48 @@ import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
+import com.fanaujie.ripple.protobuf.push.MultiNotifications;
+import com.fanaujie.ripple.protobuf.push.PushEventData;
+import com.fanaujie.ripple.protobuf.push.UserNotifications;
 import com.fanaujie.ripple.storage.exception.*;
-import com.fanaujie.ripple.storage.model.UserProfile;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
+import com.fanaujie.ripple.storage.model.SyncFriendInfoResult;
+import com.fanaujie.ripple.storage.model.UpdateFriendRemarkNameResult;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-
 import static com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq.EventCase.RELATION_EVENT;
+import static com.fanaujie.ripple.protobuf.push.UserNotificationType.*;
 
-public class RelationUpdateEventPayloadProcessor implements Processor<EventData, Void> {
+public class RelationUpdateEventPayloadProcessor implements Processor<EventData, PushEventData> {
     private final Logger logger =
             LoggerFactory.getLogger(RelationUpdateEventPayloadProcessor.class);
-    private final UserRepository userRepository;
-    private final RelationRepository relationRepository;
+    private final RippleStorageFacade storageFacade;
 
-    public RelationUpdateEventPayloadProcessor(
-            UserRepository userRepository, RelationRepository relationRepository) {
-        this.userRepository = userRepository;
-        this.relationRepository = relationRepository;
+    public RelationUpdateEventPayloadProcessor(RippleStorageFacade aggregator) {
+        this.storageFacade = aggregator;
     }
 
     @Override
-    public Void handle(EventData eventData) throws Exception {
+    public PushEventData handle(EventData eventData) throws Exception {
         SendEventReq sendEventReq = eventData.getData();
         if (sendEventReq.getEventCase() == RELATION_EVENT) {
-            this.updateRelationStorage(sendEventReq);
-            return null;
+            long receiverId = eventData.getReceiveUserIds(0);
+            PushEventData.Builder pushEventDataBuilder = PushEventData.newBuilder();
+            pushEventDataBuilder.setSendUserId(eventData.getSendUserId());
+            UserNotifications userNotifications =
+                    this.updateRelationStorage(receiverId, sendEventReq);
+            return pushEventDataBuilder
+                    .putUserNotifications(
+                            userNotifications.getReceiveUserId(),
+                            userNotifications.getNotification())
+                    .build();
         }
         throw new IllegalArgumentException(
                 "Unknown event type for SelfInfoUpdateEventPayloadProcessor");
     }
 
-    private void updateRelationStorage(SendEventReq sendEventReq)
+    private UserNotifications updateRelationStorage(long receiverId, SendEventReq sendEventReq)
             throws NotFoundUserProfileException,
                     NotFoundRelationException,
                     RelationAlreadyExistsException,
@@ -46,42 +53,60 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                     StrangerHasRelationshipException,
                     NotFoundBlockException {
         RelationEvent event = sendEventReq.getRelationEvent();
+        UserNotifications.Builder userNotificationBuilder = UserNotifications.newBuilder();
+        MultiNotifications.Builder multiNotificationsBuilder = MultiNotifications.newBuilder();
+        userNotificationBuilder.setReceiveUserId(receiverId);
+        multiNotificationsBuilder.addNotificationTypes(USER_NOTIFICATION_TYPE_RELATION_UPDATE);
         switch (event.getEventType()) {
             case ADD_FRIEND:
-                UserProfile userProfile =
-                        this.userRepository.getUserProfile(event.getTargetUserId());
-                this.relationRepository.addFriend(event.getUserId(), userProfile);
+                storageFacade.addFriend(event);
                 break;
+
             case REMOVE_FRIEND:
-                this.relationRepository.removeFriend(event.getUserId(), event.getTargetUserId());
+                storageFacade.removeFriend(event);
                 break;
+
             case UPDATE_FRIEND_REMARK_NAME:
-                this.relationRepository.updateFriendRemarkName(
-                        event.getUserId(),
-                        event.getTargetUserId(),
-                        event.getTargetUserRemarkName());
+                {
+                    UpdateFriendRemarkNameResult result =
+                            storageFacade.updateFriendRemarkName(event);
+                    if (result.isConversationUpdated()) {
+                        multiNotificationsBuilder.addNotificationTypes(
+                                USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE);
+                    }
+                }
                 break;
             case BLOCK_FRIEND:
-                this.relationRepository.addBlock(event.getUserId(), event.getTargetUserId());
+                storageFacade.blockFriend(event);
                 break;
+
             case BLOCK_STRANGER:
-                UserProfile strangerProfile =
-                        this.userRepository.getUserProfile(event.getTargetUserId());
-                this.relationRepository.addBlockStranger(event.getUserId(), strangerProfile);
+                storageFacade.blockStranger(event);
                 break;
+
             case UNBLOCK_USER:
-                this.relationRepository.removeBlock(event.getUserId(), event.getTargetUserId());
+                storageFacade.unblockUser(event);
                 break;
+
             case HIDE_BLOCKED_USER:
-                this.relationRepository.hideBlock(event.getUserId(), event.getTargetUserId());
+                storageFacade.hideBlockedUser(event);
                 break;
+
             case UPDATE_FRIEND_INFO:
-                this.relationRepository.updateFriendInfo(
-                        event.getUserId(),
-                        event.getTargetUserId(),
-                        event.getTargetUserNickName(),
-                        event.getTargetUserAvatar());
+                {
+                    SyncFriendInfoResult result =
+                            this.storageFacade.syncFriendInfo(
+                                    event.getUserId(),
+                                    event.getTargetUserId(),
+                                    event.getTargetUserNickName(),
+                                    event.getTargetUserAvatar());
+                    if (result.isConversationUpdated()) {
+                        multiNotificationsBuilder.addNotificationTypes(
+                                USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE);
+                    }
+                }
                 break;
+
             default:
                 logger.error(
                         "updateRelationRepository: Unknown relation event type: {}",
@@ -89,5 +114,6 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                 throw new IllegalArgumentException(
                         "Unknown relation event type: " + event.getEventType());
         }
+        return userNotificationBuilder.setNotification(multiNotificationsBuilder.build()).build();
     }
 }

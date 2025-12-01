@@ -16,4 +16,6 @@ public class ConversationItem {
     private long lastMessageTimestamp;
     private String lastReadMessageId;
     private int unreadCount;
+    private String name;
+    private String avatar;
 }

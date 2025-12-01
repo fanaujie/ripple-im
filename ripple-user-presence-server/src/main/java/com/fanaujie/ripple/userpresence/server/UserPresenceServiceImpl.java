@@ -1,6 +1,7 @@
 package com.fanaujie.ripple.userpresence.server;
 
 import com.fanaujie.ripple.protobuf.userpresence.*;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.UserPresenceStorage;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -20,7 +21,7 @@ public class UserPresenceServiceImpl extends UserPresenceGrpc.UserPresenceImplBa
     public void setUserOnline(
             UserOnlineReq request, StreamObserver<UserOnlineResp> responseObserver) {
         try {
-            userPresenceStorage.setUserOnline(request);
+            this.userPresenceStorage.setUserOnline(request);
             UserOnlineResp response = UserOnlineResp.newBuilder().build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -38,7 +39,7 @@ public class UserPresenceServiceImpl extends UserPresenceGrpc.UserPresenceImplBa
     public void setUserOnlineBatch(
             BatchUserOnlineReq request, StreamObserver<BatchUserOnlineResp> responseObserver) {
         try {
-            userPresenceStorage.setUserOnlineBatch(request.getRequestsList());
+            this.userPresenceStorage.setUserOnlineBatch(request.getRequestsList());
             BatchUserOnlineResp response = BatchUserOnlineResp.newBuilder().build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();

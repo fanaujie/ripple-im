@@ -19,14 +19,11 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.repository.ConversationRepository;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraConversationRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraRelationRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -75,18 +72,17 @@ public class Application {
 
         CqlSession cqlSession =
                 createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
-        UserRepository userRepository = createUserRepository(cqlSession);
-        RelationRepository relationRepository = createRelationRepository(cqlSession);
-        ConversationRepository conversationRepository =
-                new CassandraConversationRepository(cqlSession);
+
+        CassandraUserStorageFacadeBuilder userStorageFacadeBuilder =
+                new CassandraUserStorageFacadeBuilder();
+        userStorageFacadeBuilder.cqlSession(cqlSession);
+        CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
         int cpuSize = Runtime.getRuntime().availableProcessors();
         DefaultPayloadRouter payloadRouter =
                 createPayloadRouter(
                         pushTopic,
                         createPushMessageProducer(brokerServer),
-                        userRepository,
-                        relationRepository,
-                        conversationRepository,
+                        userStorageFacade,
                         createExecutorService(cpuSize, cpuSize * 2, processorThreadPoolSize));
         MessageConsumer msgProcessor = new MessageConsumer(payloadRouter);
         GenericConsumer<String, MessagePayload> messageTopicConsumer =
@@ -146,9 +142,7 @@ public class Application {
     private DefaultPayloadRouter createPayloadRouter(
             String pushTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
-            UserRepository userRepository,
-            RelationRepository relationRepository,
-            ConversationRepository conversationRepository,
+            CassandraUserStorageFacade userStorageFacade,
             ExecutorService executor) {
 
         ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher =
@@ -156,18 +150,16 @@ public class Application {
         messageDispatcher.RegisterProcessor(
                 SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
                 new SingleMessagePayloadProcessor(
-                        executor,
-                        conversationRepository)); // Placeholder for message content processor
+                        executor, userStorageFacade)); // Placeholder for message content processor
 
-        ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher =
+        ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData> eventDispatcher =
                 new DefaultProcessorDispatcher<>();
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
-                new SelfInfoUpdateEventPayloadProcessor(
-                        executor, userRepository, relationRepository));
+                new SelfInfoUpdateEventPayloadProcessor(executor, userStorageFacade));
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
-                new RelationUpdateEventPayloadProcessor(userRepository, relationRepository));
+                new RelationUpdateEventPayloadProcessor(userStorageFacade));
         return new DefaultPayloadRouter(
                 pushTopic, pushMessageProducer, eventDispatcher, messageDispatcher, executor);
     }
@@ -176,14 +168,6 @@ public class Application {
             List<String> cassandraContacts, String cassandraKeyspace, String localDatacenter) {
         return CassandraDriver.createCqlSession(
                 cassandraContacts, cassandraKeyspace, localDatacenter);
-    }
-
-    private UserRepository createUserRepository(CqlSession cqlSession) {
-        return new CassandraUserRepository(cqlSession);
-    }
-
-    private RelationRepository createRelationRepository(CqlSession cqlSession) {
-        return new CassandraRelationRepository(cqlSession);
     }
 
     private ExecutorService createExecutorService(

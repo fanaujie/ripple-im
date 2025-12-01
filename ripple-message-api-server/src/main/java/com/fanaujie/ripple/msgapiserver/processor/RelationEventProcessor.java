@@ -6,14 +6,11 @@ import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessageDispatcher;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.storage.model.Relation;
 import com.fanaujie.ripple.storage.model.RelationFlags;
 import com.fanaujie.ripple.storage.model.UserProfile;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.google.protobuf.Message;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,20 +22,17 @@ public class RelationEventProcessor implements Processor<SendEventReq, SendEvent
     private final String topicName;
     private final GenericProducer<String, MessagePayload> producer;
     private final ExecutorService executorService;
-    private final UserRepository userRepository;
-    private final RelationRepository relationRepository;
+    private final RippleStorageFacade storageFacade;
 
     public RelationEventProcessor(
             String topicName,
             GenericProducer<String, MessagePayload> producer,
             ExecutorService executorService,
-            UserRepository userRepository,
-            RelationRepository relationRepository) {
+            RippleStorageFacade storageFacade) {
         this.topicName = topicName;
         this.producer = producer;
         this.executorService = executorService;
-        this.userRepository = userRepository;
-        this.relationRepository = relationRepository;
+        this.storageFacade = storageFacade;
     }
 
     @Override
@@ -46,12 +40,16 @@ public class RelationEventProcessor implements Processor<SendEventReq, SendEvent
         List<Future<?>> futures = new ArrayList<>();
         switch (request.getRelationEvent().getEventType()) {
             case ADD_FRIEND:
+                // When user A adds user B as a friend, we need to check if B has already added A
+                // If B has already added A (bidirectional friendship exists), we need to notify B
+                // to update A's friend information (nickname and avatar) in B's friend list
+
                 RelationEvent e = request.getRelationEvent();
                 Relation r =
-                        this.relationRepository.getRelationBetweenUser(
+                        this.storageFacade.getRelationBetweenUser(
                                 e.getTargetUserId(), e.getUserId());
                 if (r != null && RelationFlags.FRIEND.isSet(r.getRelationFlags())) {
-                    UserProfile userProfile = this.userRepository.getUserProfile(e.getUserId());
+                    UserProfile userProfile = this.storageFacade.getUserProfile(e.getUserId());
                     SendEventReq req =
                             SendEventReq.newBuilder()
                                     .setRelationEvent(

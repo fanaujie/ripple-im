@@ -1,20 +1,15 @@
 package com.fanaujie.ripple.apigateway.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.fanaujie.ripple.apigateway.service.MessageService;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.repository.ConversationRepository;
-import com.fanaujie.ripple.storage.repository.RelationRepository;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraConversationRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraRelationRepository;
-import com.fanaujie.ripple.storage.repository.impl.CassandraUserRepository;
 
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,18 +29,10 @@ public class ComponentConfig {
     }
 
     @Bean
-    public UserRepository userRepository(CqlSession cqlSession) {
-        return new CassandraUserRepository(cqlSession);
-    }
-
-    @Bean
-    RelationRepository relationRepository(CqlSession cqlSession) {
-        return new CassandraRelationRepository(cqlSession);
-    }
-
-    @Bean
-    ConversationRepository conversationRepository(CqlSession cqlSession) {
-        return new CassandraConversationRepository(cqlSession);
+    RippleStorageFacade userStorageAggregator(CqlSession cqlSession) {
+        CassandraUserStorageFacadeBuilder b = new CassandraUserStorageFacadeBuilder();
+        b.cqlSession(cqlSession);
+        return b.build();
     }
 
     @Bean

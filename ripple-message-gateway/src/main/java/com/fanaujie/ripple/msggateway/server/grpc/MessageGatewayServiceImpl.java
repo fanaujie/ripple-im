@@ -29,7 +29,7 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
         for (PushMessageRequest request : batchRequest.getRequestsList()) {
             PushMessageResponse response =
                     onlineUser
-                            .get(request.getReceiveUserId(), request.getRequestDeviceId())
+                            .get(request.getReceiveUserId(), request.getReceiveDeviceId())
                             .map(
                                     userSession -> {
                                         pushToUser.push(userSession, request);
@@ -44,7 +44,7 @@ public class MessageGatewayServiceImpl extends MessageGatewayGrpc.MessageGateway
                                         logger.warn(
                                                 "pushMessageToUser: User {} on device {} is offline. Cannot push message.",
                                                 request.getReceiveUserId(),
-                                                request.getRequestDeviceId());
+                                                request.getReceiveDeviceId());
                                         return PushMessageResponse.newBuilder()
                                                 .setSendUserId(request.getSendUserId())
                                                 .setReceiveUserId(request.getReceiveUserId())

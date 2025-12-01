@@ -4,14 +4,9 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
-import com.fanaujie.ripple.protobuf.msgapiserver.StrangerInfo;
-import com.fanaujie.ripple.protobuf.msgapiserver.StrangerInfoOrBuilder;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-import com.fanaujie.ripple.storage.model.RelationFlags;
-import com.fanaujie.ripple.storage.model.UserProfile;
-import com.fanaujie.ripple.storage.repository.UserRepository;
-import com.fanaujie.ripple.storage.service.CachedRelationStorage;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,17 +16,17 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
 
     private final Logger logger = LoggerFactory.getLogger(SingleMessageContentProcessor.class);
     private final String topicName;
-    private final CachedRelationStorage relationStorage;
     private final GenericProducer<String, MessagePayload> producer;
     private final ExecutorService executorService;
+    private final RippleStorageFacade storageFacade;
 
     public SingleMessageContentProcessor(
             String topicName,
-            CachedRelationStorage relationStorage,
+            RippleStorageFacade storageFacade,
             GenericProducer<String, MessagePayload> producer,
             ExecutorService executorService) {
         this.topicName = topicName;
-        this.relationStorage = relationStorage;
+        this.storageFacade = storageFacade;
         this.producer = producer;
         this.executorService = executorService;
     }
@@ -40,9 +35,7 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
     public SendMessageResp handle(SendMessageReq request) throws Exception {
         long senderId = request.getSenderId();
         long receiverId = request.getReceiverId();
-        Byte flags = this.relationStorage.getRelationFlags(senderId, receiverId).orElse((byte) 0);
-        if (!RelationFlags.BLOCKED.isSet(flags)) {
-            // not blocked
+        if (!this.storageFacade.isBlocked(senderId, receiverId)) {
             MessageData.Builder b = MessageData.newBuilder().setSendUserId(senderId);
             b.addReceiveUserIds(receiverId);
             b.addReceiveUserIds(senderId); // also notify self for multi-device sync

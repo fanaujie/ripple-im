@@ -17,4 +17,6 @@ public class ConversationVersionChange {
     private long lastMessageTimestamp;
     private long lastReadMessageId;
     private String version;
+    private String name;
+    private String avatar;
 }

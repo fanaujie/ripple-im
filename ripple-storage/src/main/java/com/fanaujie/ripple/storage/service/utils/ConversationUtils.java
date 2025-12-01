@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.storage.utils;
+package com.fanaujie.ripple.storage.service.utils;
 
 import org.springframework.util.DigestUtils;
 

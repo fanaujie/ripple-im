@@ -25,14 +25,14 @@ public class DefaultUserNotifier implements UserNotifier {
                         logger.error(
                                 "push: Failed to push message to user {} on device {} - {}",
                                 request.getReceiveUserId(),
-                                request.getRequestDeviceId(),
+                                request.getReceiveDeviceId(),
                                 future.cause().getMessage(),
                                 future.cause());
                     } else {
                         logger.debug(
                                 "push: Successfully pushed message to user {} on device {}",
                                 request.getReceiveUserId(),
-                                request.getRequestDeviceId());
+                                request.getReceiveDeviceId());
                     }
                 });
     }

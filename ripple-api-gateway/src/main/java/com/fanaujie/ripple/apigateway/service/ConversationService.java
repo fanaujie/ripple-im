@@ -5,7 +5,7 @@ import com.fanaujie.ripple.storage.exception.InvalidVersionException;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.storage.model.ConversationVersionChange;
 import com.fanaujie.ripple.storage.model.PagedConversationResult;
-import com.fanaujie.ripple.storage.repository.ConversationRepository;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -20,10 +20,10 @@ public class ConversationService {
 
     private static final int MAX_PAGE_SIZE = 200;
     private static final int MAX_SYNC_CHANGES = 200;
-    private final ConversationRepository conversationRepository;
+    private final RippleStorageFacade storageFacade;
 
-    public ConversationService(ConversationRepository conversationRepository) {
-        this.conversationRepository = conversationRepository;
+    public ConversationService(RippleStorageFacade storageFacade) {
+        this.storageFacade = storageFacade;
     }
 
     public ResponseEntity<ConversationsResponse> getConversations(
@@ -35,8 +35,7 @@ public class ConversationService {
         }
 
         PagedConversationResult result =
-                this.conversationRepository.getConversations(
-                        currentUserId, nextPageToken, pageSize);
+                this.storageFacade.getConversations(currentUserId, nextPageToken, pageSize);
         List<ConversationItem> conversations =
                 result.getConversations().stream()
                         .map(this::toConversationItem)
@@ -58,7 +57,7 @@ public class ConversationService {
         try {
             // Query changes with max batch size
             List<ConversationVersionChange> records =
-                    this.conversationRepository.getConversationChanges(
+                    this.storageFacade.getConversationChanges(
                             currentUserId, version, MAX_SYNC_CHANGES);
 
             // Convert records to ConversationChange DTOs
@@ -78,8 +77,7 @@ public class ConversationService {
     }
 
     public ResponseEntity<ConversationVersionResponse> getLatestVersion(long currentUserId) {
-        String latestVersion =
-                this.conversationRepository.getLatestConversationVersion(currentUserId);
+        String latestVersion = this.storageFacade.getLatestConversationVersion(currentUserId);
 
         if (latestVersion == null) {
             return ResponseEntity.ok(
@@ -102,7 +100,9 @@ public class ConversationService {
                 conversation.getLastReadMessageId() != 0
                         ? String.valueOf(conversation.getLastReadMessageId())
                         : null,
-                conversation.getUnreadCount());
+                conversation.getUnreadCount(),
+                conversation.getName(),
+                conversation.getAvatar());
     }
 
     private ConversationChange toConversationChange(ConversationVersionChange record) {
@@ -117,6 +117,8 @@ public class ConversationService {
                 record.getLastMessageTimestamp(),
                 record.getLastReadMessageId() != 0
                         ? String.valueOf(record.getLastReadMessageId())
-                        : null);
+                        : null,
+                record.getName(),
+                record.getAvatar());
     }
 }

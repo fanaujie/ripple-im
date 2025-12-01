@@ -7,7 +7,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.storage.UserIds;
-import com.fanaujie.ripple.storage.service.CachedRelationStorage;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,17 +18,17 @@ public class SelfInfoUpdateEventProcessor implements Processor<SendEventReq, Sen
 
     private final Logger logger = LoggerFactory.getLogger(SelfInfoUpdateEventProcessor.class);
     private final String topicName;
-    private final CachedRelationStorage relationStorage;
     private final GenericProducer<String, MessagePayload> producer;
     private final ExecutorService executorService;
+    private final RippleStorageFacade storageFacade;
 
     public SelfInfoUpdateEventProcessor(
             String topicName,
-            CachedRelationStorage relationStorage,
+            RippleStorageFacade storageFacade,
             GenericProducer<String, MessagePayload> producer,
             ExecutorService executorService) {
         this.topicName = topicName;
-        this.relationStorage = relationStorage;
+        this.storageFacade = storageFacade;
         this.producer = producer;
         this.executorService = executorService;
     }
@@ -36,7 +36,7 @@ public class SelfInfoUpdateEventProcessor implements Processor<SendEventReq, Sen
     @Override
     public SendEventResp handle(SendEventReq request) throws Exception {
         long userId = request.getSelfInfoUpdateEvent().getUserId();
-        Optional<UserIds> friendIds = this.relationStorage.getFriendIds(userId);
+        Optional<UserIds> friendIds = this.storageFacade.getFriendIds(userId);
         EventData.Builder b = EventData.newBuilder().setSendUserId(userId).setData(request);
         friendIds.ifPresent(
                 friends -> {

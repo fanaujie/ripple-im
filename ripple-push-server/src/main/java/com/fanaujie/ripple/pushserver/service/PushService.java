@@ -4,7 +4,6 @@ import com.fanaujie.ripple.communication.batch.BatchExecutorService;
 import com.fanaujie.ripple.communication.batch.Config;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.MessageRecord;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineReq;
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineResp;
@@ -100,17 +99,13 @@ public class PushService {
 
         switch (pushMessage.getPayloadCase()) {
             case EVENT_DATA:
-                List<String> userIds =
-                        pushMessage.getEventData().getReceiveUserIdsList().stream()
-                                .map(id -> Long.toString(id))
-                                .collect(Collectors.toList());
-                return userIds;
+                return pushMessage.getEventData().getUserNotificationsMap().keySet().stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.toList());
             case MESSAGE_DATA:
-                List<String> msgUserIds =
-                        pushMessage.getMessageData().getReceiveUserIdsList().stream()
-                                .map(id -> Long.toString(id))
-                                .collect(Collectors.toList());
-                return msgUserIds;
+                return pushMessage.getMessageData().getReceiveUserIdsList().stream()
+                        .map(id -> Long.toString(id))
+                        .collect(Collectors.toList());
             default:
                 logger.error(
                         "getReceiveUserIds: Unknown payload type: {}",

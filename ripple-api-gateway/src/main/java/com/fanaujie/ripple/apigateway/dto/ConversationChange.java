@@ -17,4 +17,6 @@ public class ConversationChange {
     private String lastMessage;
     private long lastMessageTimestamp;
     private String lastReadMessageId;
+    private String name;
+    private String avatar;
 }

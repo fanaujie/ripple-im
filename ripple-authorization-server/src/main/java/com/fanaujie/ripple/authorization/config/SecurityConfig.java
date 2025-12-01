@@ -85,6 +85,7 @@ public class SecurityConfig {
     public SecurityFilterChain defaultSecurityFilterChain(
             HttpSecurity http, UserService userService) throws Exception {
         http.csrf(c -> c.disable());
+        http.cors(c -> c.disable());
         http.authorizeHttpRequests(
                         c -> c.requestMatchers("/signup").permitAll().anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").permitAll())

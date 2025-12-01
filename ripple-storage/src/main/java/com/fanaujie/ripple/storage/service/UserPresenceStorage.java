@@ -7,7 +7,6 @@ import com.fanaujie.ripple.protobuf.userpresence.UserOnlineReq;
 import java.util.List;
 
 public interface UserPresenceStorage {
-
     void setUserOnline(UserOnlineReq request);
 
     void setUserOnlineBatch(List<UserOnlineReq> requests);

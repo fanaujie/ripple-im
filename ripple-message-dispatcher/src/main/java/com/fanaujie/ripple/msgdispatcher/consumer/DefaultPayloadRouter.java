@@ -8,6 +8,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,8 @@ public class DefaultPayloadRouter implements PayloadRouter<MessagePayload> {
     private final Logger logger = LoggerFactory.getLogger(DefaultPayloadRouter.class);
     private final String pushTopic;
     private final GenericProducer<String, PushMessage> pushProducer;
-    private final ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher;
+    private final ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData>
+            eventDispatcher;
     private final ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void>
             messageDispatcher;
     private final ExecutorService executorService;
@@ -26,7 +28,7 @@ public class DefaultPayloadRouter implements PayloadRouter<MessagePayload> {
     public DefaultPayloadRouter(
             String pushTopic,
             GenericProducer<String, PushMessage> pushProducer,
-            ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher,
+            ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData> eventDispatcher,
             ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher,
             ExecutorService executorService) {
         this.pushTopic = pushTopic;
@@ -41,15 +43,18 @@ public class DefaultPayloadRouter implements PayloadRouter<MessagePayload> {
         switch (data.getPayloadCase()) {
             case EVENT_DATA:
                 EventData eventData = data.getEventData();
-                this.eventDispatcher.dispatch(eventData.getData().getEventCase(), eventData);
-                // Submit push producer send task asynchronously
+                PushEventData pushEventData =
+                        this.eventDispatcher.dispatch(
+                                eventData.getData().getEventCase(), eventData);
                 this.executorService.submit(
                         () -> {
                             try {
                                 this.pushProducer.send(
                                         this.pushTopic,
                                         key,
-                                        MessageConverter.toPushMessage(eventData));
+                                        PushMessage.newBuilder()
+                                                .setEventData(pushEventData)
+                                                .build());
                             } catch (Exception e) {
                                 logger.error(
                                         "process: Failed to send message to push topic for key: {}",

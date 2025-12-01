@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.storage.service.impl;
+package com.fanaujie.ripple.storage.service.impl.redis;
 
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineReq;
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineResp;
@@ -6,7 +6,6 @@ import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineReq;
 import com.fanaujie.ripple.storage.service.UserPresenceStorage;
 import com.fanaujie.ripple.storage.service.utils.LuaUtils;
-import org.redisson.api.RBucket;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -15,12 +14,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DefaultUserPresenceStorage implements UserPresenceStorage {
+public class RedisUserPresenceStorage implements UserPresenceStorage {
     private final RedissonClient redissonClient;
     private final String userOnlineLuaScript;
     private final int presenceTimeoutSeconds;
 
-    public DefaultUserPresenceStorage(RedissonClient redissonClient, int presenceTimeoutSeconds) {
+    public RedisUserPresenceStorage(RedissonClient redissonClient, int presenceTimeoutSeconds) {
         this.redissonClient = redissonClient;
         this.userOnlineLuaScript = LuaUtils.loadScript("lua/get_user_online.lua");
         this.presenceTimeoutSeconds = presenceTimeoutSeconds;
