@@ -325,7 +325,10 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             name = peerProfile.getNickName();
             avatar = peerProfile.getAvatar();
         } else {
-            name = relation.getRelationRemarkName();
+            name =
+                    relation.getRelationRemarkName() == null
+                            ? relation.getRelationNickName()
+                            : relation.getRelationRemarkName();
             avatar = relation.getRelationAvatar();
         }
         BatchStatement senderBatch =
@@ -631,7 +634,7 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                         RelationOperation.ADD_FRIEND.getValue(),
                                                         friendProfile.getNickName(),
                                                         friendProfile.getAvatar(),
-                                                        friendProfile.getNickName(),
+                                                        null,
                                                         RelationFlags.FRIEND.getValue()))
                                 .build();
                 session.execute(batch);
@@ -650,7 +653,7 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 friendProfile.getUserId(),
                                                 friendProfile.getNickName(),
                                                 friendProfile.getAvatar(),
-                                                friendProfile.getNickName(),
+                                                null,
                                                 RelationFlags.FRIEND.getValue()))
                         .addStatement(
                                 relationCqlStatement
@@ -661,7 +664,7 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 RelationOperation.ADD_FRIEND.getValue(),
                                                 friendProfile.getNickName(),
                                                 friendProfile.getAvatar(),
-                                                friendProfile.getNickName(),
+                                                null,
                                                 RelationFlags.FRIEND.getValue()))
                         .build();
         session.execute(batch);
@@ -764,8 +767,12 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
     @Override
     public void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
             throws NotFoundRelationException {
-        relationExits(sourceUserId, targetUserId);
-        BatchStatement batch =
+        Relation relation = getRelationBetweenUser(sourceUserId, targetUserId);
+        if (relation == null) {
+            throw new NotFoundRelationException(
+                    "Friend relation not found between " + sourceUserId + " and " + targetUserId);
+        }
+        BatchStatementBuilder batchBuilder =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
                                 relationCqlStatement
@@ -782,16 +789,43 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 nickName,
                                                 null,
                                                 null,
-                                                null))
-                        .build();
-        session.execute(batch);
+                                                null));
+        // When a user updates their nick_name and a single chat conversation
+        // with that friend already exists but not set remark_name, we need to synchronously update
+        // the conversation
+        // avatar displayed in the conversation list. This ensures the conversation list shows
+        // the latest avatar, keeping it consistent with the contact list's avatar.
+        String conversationId =
+                ConversationUtils.generateConversationId(sourceUserId, targetUserId);
+        if (this.existsByConversationId(conversationId, sourceUserId)
+                && relation.getRelationRemarkName() == null) {
+            batchBuilder.addStatement(
+                    conversationCqlStatement
+                            .getUpdateNameStmt()
+                            .bind(nickName, sourceUserId, conversationId));
+            batchBuilder.addStatement(
+                    conversationCqlStatement
+                            .getInsertConversationVersionStmt()
+                            .bind(
+                                    sourceUserId,
+                                    conversationId,
+                                    targetUserId,
+                                    null,
+                                    ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    nickName,
+                                    null));
+        }
+        session.execute(batchBuilder.build());
     }
 
     @Override
-    public UpdateFriendAvatarResult updateFriendAvatar(
-            long sourceUserId, long targetUserId, String avatar) throws NotFoundRelationException {
+    public void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+            throws NotFoundRelationException {
         relationExits(sourceUserId, targetUserId);
-        UpdateFriendAvatarResult result = new UpdateFriendAvatarResult();
         BatchStatementBuilder batchBuilder =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
@@ -835,11 +869,8 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     null,
                                     null,
                                     avatar));
-            result.setConversationUpdated(true);
-            result.setConversationId(conversationId);
         }
         session.execute(batchBuilder.build());
-        return result;
     }
 
     @Override
@@ -1075,11 +1106,13 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public SyncFriendInfoResult syncFriendInfo(
-            long sourceUserId, long targetUserId, String nickName, String avatar)
+    public void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
             throws NotFoundRelationException {
-        relationExits(sourceUserId, targetUserId);
-        SyncFriendInfoResult result = new SyncFriendInfoResult();
+        Relation relation = getRelationBetweenUser(sourceUserId, targetUserId);
+        if (relation == null) {
+            throw new NotFoundRelationException(
+                    "Relation not found between " + sourceUserId + " and " + targetUserId);
+        }
         BatchStatementBuilder batchBuilder =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
@@ -1112,18 +1145,18 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     conversationId,
                                     targetUserId,
                                     null,
-                                    ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
+                                    ConversationOperation.UPDATE_CONVERSATION_NAME_AVATAR
+                                            .getValue(),
                                     null,
                                     null,
                                     null,
                                     null,
-                                    null,
+                                    relation.getRelationRemarkName() == null
+                                            ? nickName
+                                            : relation.getRelationRemarkName(),
                                     avatar));
-            result.setConversationUpdated(true);
-            result.setConversationId(conversationId);
         }
         session.execute(batchBuilder.build());
-        return result;
     }
 
     private void relationExits(long sourceUserId, long targetUserId)

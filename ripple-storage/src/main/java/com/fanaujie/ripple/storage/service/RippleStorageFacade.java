@@ -79,7 +79,7 @@ public interface RippleStorageFacade {
     void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
             throws NotFoundRelationException;
 
-    UpdateFriendAvatarResult updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+    void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
             throws NotFoundRelationException;
 
     void blockFriend(RelationEvent event) throws BlockAlreadyExistsException;
@@ -93,7 +93,6 @@ public interface RippleStorageFacade {
 
     boolean isBlocked(long userId, long targetUserId);
 
-    SyncFriendInfoResult syncFriendInfo(
-            long sourceUserId, long targetUserId, String nickName, String avatar)
+    void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
             throws NotFoundRelationException;
 }

@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.profileupdater";
+
+message RelationProfileUpdateData {
+  enum UpdateType {
+    UNSPECIFIED = 0;
+    UPDATE_NICKNAME = 1;
+    UPDATE_AVATAR = 2;
+    DELETE_AVATAR = 3;
+  }
+  UpdateType update_type = 1;
+  int64 user_id = 2;
+  string nickname = 3;
+  string avatar = 4;
+}
+
+message GroupMemberProfileUpdateData {
+  enum UpdateType {
+    UNSPECIFIED = 0;
+    UPDATE_NICKNAME = 1;
+    UPDATE_AVATAR = 2;
+    DELETE_AVATAR = 3;
+  }
+  UpdateType update_type = 1;
+  int64 user_id = 2;
+  string nickname = 3;
+  string avatar = 4;
+}
+
+
+message FriendProfileUpdateData {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+  string friend_nickname = 3;
+  string friend_avatar = 4;
+}
+
+message ProfileUpdatePayload {
+  oneof payload {
+    RelationProfileUpdateData relation_profile_update_data = 1;
+    GroupMemberProfileUpdateData group_member_profile_update_data = 2;
+    FriendProfileUpdateData friend_profile_update_data = 3;
+  }
+}

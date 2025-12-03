@@ -39,58 +39,11 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         SendEventReq sendEventReq = eventData.getData();
         PushEventData.Builder pushEventDataBuilder = PushEventData.newBuilder();
         if (sendEventReq.getEventCase() == SELF_INFO_UPDATE_EVENT) {
-            List<Future<UserNotifications>> futures = new ArrayList<>();
-            final int limitBatchWriteSize = 100;
-            int batchSize = 0;
-            for (long receiverId : eventData.getReceiveUserIdsList()) {
-                ++batchSize;
-                Future<UserNotifications> future =
-                        executor.submit(
-                                () -> {
-                                    if (receiverId == eventData.getSendUserId()) {
-                                        try {
-                                            return this.updateUserStorage(sendEventReq);
-                                        } catch (NotFoundUserProfileException e) {
-                                            logger.warn(
-                                                    "NotFoundUserProfileException when updating self info for receiverId {}: {}",
-                                                    receiverId,
-                                                    e.getMessage());
-                                        }
-                                        return null;
-                                    } else {
-                                        try {
-                                            return this.updateRelationAndConversationStorage(
-                                                    receiverId, sendEventReq);
-                                        } catch (NotFoundRelationException e) {
-                                            logger.warn(
-                                                    "NotFoundRelationException when updating relation and conversation for receiverId {}: {}",
-                                                    receiverId,
-                                                    e.getMessage());
-                                        }
-                                        return null;
-                                    }
-                                });
-                futures.add(future);
-                if (batchSize >= limitBatchWriteSize) {
-                    for (Future<UserNotifications> f : futures) {
-                        UserNotifications n = f.get();
-                        if (n != null) {
-                            pushEventDataBuilder.putUserNotifications(
-                                    n.getReceiveUserId(), n.getNotification());
-                        }
-                    }
-                    futures.clear();
-                    batchSize = 0;
-                }
-            }
-            // wait for remaining tasks
-            for (Future<UserNotifications> f : futures) {
-                UserNotifications n = f.get();
-                if (n != null) {
-                    pushEventDataBuilder.putUserNotifications(
-                            n.getReceiveUserId(), n.getNotification());
-                }
-            }
+            UserNotifications userNotifications =
+                    executor.submit(() -> updateUserStorage(sendEventReq)).get();
+            pushEventDataBuilder.putUserNotifications(
+                    userNotifications.getReceiveUserId(), userNotifications.getNotification());
+            pushEventDataBuilder.setSendUserId(eventData.getSendUserId());
             return pushEventDataBuilder.build();
         }
         logger.error(
@@ -121,43 +74,6 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
             default:
                 logger.error(
                         "updateSelfInfoInUserRepository: Unknown self info update event type {}",
-                        event.getEventType());
-                throw new IllegalArgumentException(
-                        "Unknown self info update event type: " + event.getEventType());
-        }
-        return userNotificationBuilder.setNotification(multiNotificationsBuilder.build()).build();
-    }
-
-    private UserNotifications updateRelationAndConversationStorage(
-            long friendId, SendEventReq sendEventReq) throws NotFoundRelationException {
-        SelfInfoUpdateEvent event = sendEventReq.getSelfInfoUpdateEvent();
-        UserNotifications.Builder userNotificationBuilder = UserNotifications.newBuilder();
-        MultiNotifications.Builder multiNotificationsBuilder = MultiNotifications.newBuilder();
-        userNotificationBuilder.setReceiveUserId(friendId);
-        multiNotificationsBuilder.addNotificationTypes(USER_NOTIFICATION_TYPE_RELATION_UPDATE);
-        switch (event.getEventType()) {
-            case UPDATE_NICK_NAME:
-                storageFacade.updateFriendNickName(
-                        friendId, event.getUserId(), event.getNickName());
-                break;
-
-            case UPDATE_AVATAR:
-            case DELETE_AVATAR:
-                String avatar =
-                        event.getEventType() == SelfInfoUpdateEvent.EventType.UPDATE_AVATAR
-                                ? event.getAvatar()
-                                : null;
-                UpdateFriendAvatarResult result =
-                        storageFacade.updateFriendAvatar(friendId, event.getUserId(), avatar);
-                if (result.isConversationUpdated()) {
-                    // Update conversation avatar if needed
-                    multiNotificationsBuilder.addNotificationTypes(
-                            USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE);
-                }
-                break;
-            default:
-                logger.error(
-                        "updateFriendViewInRelationRepository: Unknown self info update event type {}",
                         event.getEventType());
                 throw new IllegalArgumentException(
                         "Unknown self info update event type: " + event.getEventType());

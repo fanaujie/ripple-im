@@ -15,6 +15,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
 
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.driver.RedisDriver;
@@ -40,6 +41,7 @@ public class Application {
         String cassandraKeyspace = config.getString("cassandra.keyspace.name");
         String localDatacenter = config.getString("cassandra.local.datacenter");
         String brokerTopic = config.getString("broker.topic.message");
+        String profileUpdateTopic = config.getString("broker.topic.profile-updates");
         String brokerServer = config.getString("broker.server");
         int executorQueueSize = config.getInt("ripple.executor.queue.capacity");
         int grpcPort = config.getInt("server.grpc.port");
@@ -49,9 +51,12 @@ public class Application {
         logger.info("Configuration - Cassandra Local Datacenter: {}", localDatacenter);
         logger.info("Configuration - Broker Server: {}", brokerServer);
         logger.info("Configuration - Broker Topic: {}", brokerTopic);
+        logger.info("Configuration - Profile Update Topic: {}", profileUpdateTopic);
         logger.info("Configuration - Executor Queue Size: {}", executorQueueSize);
         logger.info("gRPC Port: {}", grpcPort);
         GenericProducer<String, MessagePayload> producer = createKafkaProducer(brokerServer);
+        GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer =
+                createProfileUpdateProducer(brokerServer);
 
         ExecutorService executorService = createExecutorService(executorQueueSize);
         CqlSession cqlSession =
@@ -69,7 +74,12 @@ public class Application {
                         createMessageDispatcher(
                                 brokerTopic, userStorageFacade, producer, executorService),
                         createEventDispatcher(
-                                brokerTopic, userStorageFacade, producer, executorService));
+                                brokerTopic,
+                                profileUpdateTopic,
+                                userStorageFacade,
+                                producer,
+                                profileUpdateProducer,
+                                executorService));
         CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
         logger.info("Starting Message Publisher server...");
         grpcFuture.join();
@@ -95,6 +105,12 @@ public class Application {
                 KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
     }
 
+    private GenericProducer<String, ProfileUpdatePayload> createProfileUpdateProducer(
+            String brokerServer) {
+        return new KafkaGenericProducer<>(
+                KafkaProducerConfigFactory.createProfileUpdatePayloadProducerConfig(brokerServer));
+    }
+
     private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
             createMessageDispatcher(
                     String topic,
@@ -112,19 +128,32 @@ public class Application {
 
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
             createEventDispatcher(
-                    String topic,
+                    String messageTopic,
+                    String profileUpdateTopic,
                     CassandraUserStorageFacade userStorageFacade,
-                    GenericProducer<String, MessagePayload> producer,
+                    GenericProducer<String, MessagePayload> messageProducer,
+                    GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
                 new DefaultProcessorDispatcher<>();
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventProcessor(
-                        topic, userStorageFacade, producer, executorService));
+                        messageTopic,
+                        profileUpdateTopic,
+                        userStorageFacade,
+                        messageProducer,
+                        profileUpdateProducer,
+                        executorService));
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
-                new RelationEventProcessor(topic, producer, executorService, userStorageFacade));
+                new RelationEventProcessor(
+                        messageTopic,
+                        profileUpdateTopic,
+                        messageProducer,
+                        profileUpdateProducer,
+                        executorService,
+                        userStorageFacade));
         return eventDispatcher;
     }
 }

@@ -7,6 +7,8 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.profileupdater.FriendProfileUpdateData;
+import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
 import com.fanaujie.ripple.storage.model.Relation;
 import com.fanaujie.ripple.storage.model.RelationFlags;
 import com.fanaujie.ripple.storage.model.UserProfile;
@@ -20,17 +22,23 @@ import java.util.concurrent.Future;
 public class RelationEventProcessor implements Processor<SendEventReq, SendEventResp> {
 
     private final String topicName;
+    private final String profileUpdateTopic;
     private final GenericProducer<String, MessagePayload> producer;
+    private final GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer;
     private final ExecutorService executorService;
     private final RippleStorageFacade storageFacade;
 
     public RelationEventProcessor(
             String topicName,
+            String profileUpdateTopic,
             GenericProducer<String, MessagePayload> producer,
+            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
             ExecutorService executorService,
             RippleStorageFacade storageFacade) {
         this.topicName = topicName;
+        this.profileUpdateTopic = profileUpdateTopic;
         this.producer = producer;
+        this.profileUpdateProducer = profileUpdateProducer;
         this.executorService = executorService;
         this.storageFacade = storageFacade;
     }
@@ -50,34 +58,24 @@ public class RelationEventProcessor implements Processor<SendEventReq, SendEvent
                                 e.getTargetUserId(), e.getUserId());
                 if (r != null && RelationFlags.FRIEND.isSet(r.getRelationFlags())) {
                     UserProfile userProfile = this.storageFacade.getUserProfile(e.getUserId());
-                    SendEventReq req =
-                            SendEventReq.newBuilder()
-                                    .setRelationEvent(
-                                            RelationEvent.newBuilder()
-                                                    .setEventType(
-                                                            RelationEvent.EventType
-                                                                    .UPDATE_FRIEND_INFO)
-                                                    .setUserId(e.getTargetUserId())
-                                                    .setTargetUserId(e.getUserId())
-                                                    .setTargetUserNickName(
-                                                            userProfile.getNickName())
-                                                    .setTargetUserAvatar(userProfile.getAvatar())
-                                                    .build())
+                    FriendProfileUpdateData friendProfileUpdateData =
+                            FriendProfileUpdateData.newBuilder()
+                                    .setUserId(e.getTargetUserId())
+                                    .setFriendId(e.getUserId())
+                                    .setFriendNickname(userProfile.getNickName())
+                                    .setFriendAvatar(userProfile.getAvatar())
                                     .build();
-                    EventData.Builder b =
-                            EventData.newBuilder()
-                                    .setSendUserId(e.getUserId())
-                                    .addReceiveUserIds(e.getTargetUserId())
-                                    .setData(req);
-                    MessagePayload messageData =
-                            MessagePayload.newBuilder().setEventData(b.build()).build();
+                    ProfileUpdatePayload profileUpdatePayload =
+                            ProfileUpdatePayload.newBuilder()
+                                    .setFriendProfileUpdateData(friendProfileUpdateData)
+                                    .build();
                     futures.add(
                             this.executorService.submit(
                                     () ->
-                                            this.producer.send(
-                                                    this.topicName,
-                                                    String.valueOf(e.getTargetUserId()),
-                                                    messageData)));
+                                            this.profileUpdateProducer.send(
+                                                    this.profileUpdateTopic,
+                                                    String.valueOf(e.getUserId()),
+                                                    profileUpdatePayload)));
                 }
             case REMOVE_FRIEND:
             case UPDATE_FRIEND_REMARK_NAME:

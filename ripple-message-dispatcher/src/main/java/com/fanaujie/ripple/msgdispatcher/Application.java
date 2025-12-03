@@ -10,7 +10,7 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFacto
 import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgdispatcher.consumer.MessageConsumer;
-import com.fanaujie.ripple.msgdispatcher.consumer.DefaultPayloadRouter;
+import com.fanaujie.ripple.msgdispatcher.consumer.DefaultKeyedPayloadHandler;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.RelationUpdateEventPayloadProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.SelfInfoUpdateEventPayloadProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.SingleMessagePayloadProcessor;
@@ -78,8 +78,8 @@ public class Application {
         userStorageFacadeBuilder.cqlSession(cqlSession);
         CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
         int cpuSize = Runtime.getRuntime().availableProcessors();
-        DefaultPayloadRouter payloadRouter =
-                createPayloadRouter(
+        DefaultKeyedPayloadHandler payloadRouter =
+                createKeyedPayloadHandler(
                         pushTopic,
                         createPushMessageProducer(brokerServer),
                         userStorageFacade,
@@ -139,7 +139,7 @@ public class Application {
                 KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
     }
 
-    private DefaultPayloadRouter createPayloadRouter(
+    private DefaultKeyedPayloadHandler createKeyedPayloadHandler(
             String pushTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             CassandraUserStorageFacade userStorageFacade,
@@ -160,7 +160,7 @@ public class Application {
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
                 new RelationUpdateEventPayloadProcessor(userStorageFacade));
-        return new DefaultPayloadRouter(
+        return new DefaultKeyedPayloadHandler(
                 pushTopic, pushMessageProducer, eventDispatcher, messageDispatcher, executor);
     }
 

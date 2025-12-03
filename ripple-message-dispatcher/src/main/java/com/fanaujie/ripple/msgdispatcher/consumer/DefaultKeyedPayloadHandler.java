@@ -1,6 +1,7 @@
 package com.fanaujie.ripple.msgdispatcher.consumer;
 
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
+import com.fanaujie.ripple.communication.msgqueue.KeyedPayloadHandler;
 import com.fanaujie.ripple.communication.msgqueue.uitls.MessageConverter;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
@@ -15,8 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
 
-public class DefaultPayloadRouter implements PayloadRouter<MessagePayload> {
-    private final Logger logger = LoggerFactory.getLogger(DefaultPayloadRouter.class);
+public class DefaultKeyedPayloadHandler implements KeyedPayloadHandler<MessagePayload> {
+    private final Logger logger = LoggerFactory.getLogger(DefaultKeyedPayloadHandler.class);
     private final String pushTopic;
     private final GenericProducer<String, PushMessage> pushProducer;
     private final ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData>
@@ -25,7 +26,7 @@ public class DefaultPayloadRouter implements PayloadRouter<MessagePayload> {
             messageDispatcher;
     private final ExecutorService executorService;
 
-    public DefaultPayloadRouter(
+    public DefaultKeyedPayloadHandler(
             String pushTopic,
             GenericProducer<String, PushMessage> pushProducer,
             ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData> eventDispatcher,

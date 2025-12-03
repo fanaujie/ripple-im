@@ -59,7 +59,6 @@ message RelationEvent {
     BLOCK_FRIEND = 5;
     UNBLOCK_USER = 6;
     HIDE_BLOCKED_USER = 7;
-    SYNC_FRIEND_INFO = 8;
   }
   EventType event_type = 1;
   int64 user_id = 2;

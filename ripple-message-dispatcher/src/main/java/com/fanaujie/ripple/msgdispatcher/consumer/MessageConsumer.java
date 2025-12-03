@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.msgdispatcher.consumer;
 
+import com.fanaujie.ripple.communication.msgqueue.KeyedPayloadHandler;
 import com.fanaujie.ripple.communication.msgqueue.MessageRecord;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 
@@ -7,9 +8,9 @@ import java.util.List;
 
 public class MessageConsumer {
 
-    private final PayloadRouter<MessagePayload> payloadRouter;
+    private final KeyedPayloadHandler<MessagePayload> payloadRouter;
 
-    public MessageConsumer(PayloadRouter<MessagePayload> payloadRouter) {
+    public MessageConsumer(KeyedPayloadHandler<MessagePayload> payloadRouter) {
         this.payloadRouter = payloadRouter;
     }
 

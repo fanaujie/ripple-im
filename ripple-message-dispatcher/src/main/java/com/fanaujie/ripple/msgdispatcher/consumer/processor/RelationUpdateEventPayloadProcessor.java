@@ -61,11 +61,9 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
             case ADD_FRIEND:
                 storageFacade.addFriend(event);
                 break;
-
             case REMOVE_FRIEND:
                 storageFacade.removeFriend(event);
                 break;
-
             case UPDATE_FRIEND_REMARK_NAME:
                 {
                     UpdateFriendRemarkNameResult result =
@@ -79,34 +77,15 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
             case BLOCK_FRIEND:
                 storageFacade.blockFriend(event);
                 break;
-
             case BLOCK_STRANGER:
                 storageFacade.blockStranger(event);
                 break;
-
             case UNBLOCK_USER:
                 storageFacade.unblockUser(event);
                 break;
-
             case HIDE_BLOCKED_USER:
                 storageFacade.hideBlockedUser(event);
                 break;
-
-            case UPDATE_FRIEND_INFO:
-                {
-                    SyncFriendInfoResult result =
-                            this.storageFacade.syncFriendInfo(
-                                    event.getUserId(),
-                                    event.getTargetUserId(),
-                                    event.getTargetUserNickName(),
-                                    event.getTargetUserAvatar());
-                    if (result.isConversationUpdated()) {
-                        multiNotificationsBuilder.addNotificationTypes(
-                                USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE);
-                    }
-                }
-                break;
-
             default:
                 logger.error(
                         "updateRelationRepository: Unknown relation event type: {}",

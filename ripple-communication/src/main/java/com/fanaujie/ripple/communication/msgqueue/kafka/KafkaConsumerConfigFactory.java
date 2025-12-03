@@ -8,6 +8,8 @@ public class KafkaConsumerConfigFactory {
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.MessagePayloadDeserializer";
     private static final String PUSH_MESSAGE_DESERIALIZER =
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.PushMessageDeserializer";
+    private static final String PROFILE_UPDATE_PAYLOAD_DESERIALIZER =
+            "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.ProfileUpdatePayloadDeserializer";
 
     public static KafkaConsumerConfig createMessagePayloadConsumerConfig(
             String topic,
@@ -45,6 +47,27 @@ public class KafkaConsumerConfigFactory {
                 .clientId(clientId)
                 .keyDeserializer(STRING_DESERIALIZER)
                 .valueDeserializer(PUSH_MESSAGE_DESERIALIZER)
+                .maxPollRecords(maxPollRecords)
+                .fetchMinBytes(fetchMinBytes)
+                .fetchMaxWaitMs(fetchMaxWaitMs)
+                .build();
+    }
+
+    public static KafkaConsumerConfig createProfileUpdatePayloadConsumerConfig(
+            String topic,
+            String bootstrapServers,
+            String groupId,
+            String clientId,
+            int maxPollRecords,
+            int fetchMinBytes,
+            int fetchMaxWaitMs) {
+        return KafkaConsumerConfig.builder()
+                .topic(topic)
+                .bootstrapServers(bootstrapServers)
+                .groupId(groupId)
+                .clientId(clientId)
+                .keyDeserializer(STRING_DESERIALIZER)
+                .valueDeserializer(PROFILE_UPDATE_PAYLOAD_DESERIALIZER)
                 .maxPollRecords(maxPollRecords)
                 .fetchMinBytes(fetchMinBytes)
                 .fetchMaxWaitMs(fetchMaxWaitMs)
