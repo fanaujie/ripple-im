@@ -112,9 +112,6 @@ public class ConversationService {
                 record.getConversationId(),
                 record.getPeerId() != 0 ? String.valueOf(record.getPeerId()) : null,
                 record.getGroupId() != 0 ? String.valueOf(record.getGroupId()) : null,
-                record.getLastMessageId() != 0 ? String.valueOf(record.getLastMessageId()) : null,
-                record.getLastMessage(),
-                record.getLastMessageTimestamp(),
                 record.getLastReadMessageId() != 0
                         ? String.valueOf(record.getLastReadMessageId())
                         : null,

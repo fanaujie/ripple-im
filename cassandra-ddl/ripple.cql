@@ -59,33 +59,27 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_blocked_by"
 
 CREATE TABLE IF NOT EXISTS "ripple"."user_conversations"
 (
-    "owner_id"               bigint,
-    "conversation_id"        text,
-    "peer_id"                bigint,
-    "group_id"               bigint,
-    "last_message_id"        bigint,
-    "last_message"           text,
-    "last_message_timestamp" bigint,
-    "last_read_message_id"   bigint,
-    "name"                   text,
-    "avatar"                 text,
+    "owner_id"             bigint,
+    "conversation_id"      text,
+    "peer_id"              bigint,
+    "group_id"             bigint,
+    "last_read_message_id" bigint,
+    "name"                 text,
+    "avatar"               text,
     primary key (owner_id, conversation_id)
 );
 
 CREATE TABLE IF NOT EXISTS "ripple"."user_conversations_version"
 (
-    "user_id"                bigint,
-    "version"                timeuuid,
-    "conversation_id"        text,
-    "peer_id"                bigint,
-    "group_id"               bigint,
-    "operation"              tinyint, -- 1: new message 2:read messages
-    "last_message_id"        bigint,
-    "last_message"           text,
-    "last_message_timestamp" bigint,
-    "last_read_message_id"   bigint,
-    "name"                   text,
-    "avatar"                 text,
+    "user_id"              bigint,
+    "version"              timeuuid,
+    "conversation_id"      text,
+    "peer_id"              bigint,
+    "group_id"             bigint,
+    "operation"            tinyint,
+    "last_read_message_id" bigint,
+    "name"                 text,
+    "avatar"               text,
     primary key ( user_id, version )
 );
 

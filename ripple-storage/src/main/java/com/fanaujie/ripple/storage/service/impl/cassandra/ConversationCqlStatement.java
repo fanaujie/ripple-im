@@ -9,7 +9,6 @@ public class ConversationCqlStatement {
     private final PreparedStatement existsConversationStmt;
     private final PreparedStatement insertConversationStmt;
     private final PreparedStatement insertConversationVersionStmt;
-    private final PreparedStatement updateNewMessageStmt;
     private final PreparedStatement updateNameStmt;
     private final PreparedStatement updateAvatarStmt;
     private final PreparedStatement updateLastReadMessageIdStmt;
@@ -20,6 +19,7 @@ public class ConversationCqlStatement {
     private final PreparedStatement selectLatestVersionStmt;
     private final PreparedStatement selectMessagesStmt;
     private final PreparedStatement selectConversationUnreadCountStmt;
+    private final PreparedStatement selectLatestMessageStmt;
 
     public ConversationCqlStatement(CqlSession session) {
         this.existsConversationStmt =
@@ -30,23 +30,16 @@ public class ConversationCqlStatement {
         this.insertConversationStmt =
                 session.prepare(
                         "INSERT INTO ripple.user_conversations "
-                                + "(owner_id, conversation_id, peer_id, group_id, last_message_id, "
-                                + "last_message, last_message_timestamp, last_read_message_id, name, avatar) "
-                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                + "(owner_id, conversation_id, peer_id, group_id,"
+                                + "last_read_message_id, name, avatar) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?)");
 
         this.insertConversationVersionStmt =
                 session.prepare(
                         "INSERT INTO ripple.user_conversations_version "
                                 + "(user_id, version, conversation_id, peer_id, group_id, operation, "
-                                + "last_message_id, last_message, last_message_timestamp, last_read_message_id, name, avatar) "
-                                + "VALUES (?, now(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        this.updateNewMessageStmt =
-                session.prepare(
-                        "UPDATE ripple.user_conversations "
-                                + "SET last_message_id = ?, last_message = ?, "
-                                + "last_message_timestamp = ?"
-                                + "WHERE owner_id = ? AND conversation_id = ?");
+                                + "last_read_message_id, name, avatar) "
+                                + "VALUES (?, now(), ?, ?, ?, ?, ?, ?, ?)");
         this.updateNameStmt =
                 session.prepare(
                         "UPDATE ripple.user_conversations "
@@ -72,22 +65,22 @@ public class ConversationCqlStatement {
 
         this.selectConversationsFirstPageStmt =
                 session.prepare(
-                        "SELECT conversation_id, peer_id, group_id, last_message_id, "
-                                + "last_message, last_message_timestamp, last_read_message_id, name, avatar "
+                        "SELECT conversation_id, peer_id, group_id,"
+                                + "last_read_message_id, name, avatar "
                                 + "FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? LIMIT ?");
 
         this.selectConversationsNextPageStmt =
                 session.prepare(
-                        "SELECT conversation_id, peer_id, group_id, last_message_id, "
-                                + "last_message, last_message_timestamp, last_read_message_id, name, avatar "
+                        "SELECT conversation_id, peer_id, group_id,"
+                                + "last_read_message_id, name, avatar "
                                 + "FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? AND conversation_id > ? LIMIT ?");
 
         this.selectConversationChangesStmt =
                 session.prepare(
                         "SELECT version, conversation_id, peer_id, group_id, operation, "
-                                + "last_message_id, last_message, last_message_timestamp, last_read_message_id, name, avatar "
+                                + "last_read_message_id, name, avatar "
                                 + "FROM ripple.user_conversations_version "
                                 + "WHERE user_id = ? AND version > ? LIMIT ?");
 
@@ -106,8 +99,13 @@ public class ConversationCqlStatement {
 
         this.selectConversationUnreadCountStmt =
                 session.prepare(
-                        "SELECT message_id, receiver_id "
+                        "SELECT message_id, receiver_id, send_timestamp, text "
                                 + "FROM ripple.user_messages "
                                 + "WHERE conversation_id = ? AND message_id > ?");
+        this.selectLatestMessageStmt =
+                session.prepare(
+                        "SELECT message_id,send_timestamp, text "
+                                + "FROM ripple.user_messages "
+                                + "WHERE conversation_id = ? ORDER BY message_id DESC LIMIT 1");
     }
 }

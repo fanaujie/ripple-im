@@ -74,31 +74,6 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                                 }
                             }));
         }
-        // Wait for conversation creation tasks to complete
-        for (Future<?> f : futures) {
-            f.get();
-        }
-        futures.clear();
-        futures.add(
-                this.executor.submit(
-                        () ->
-                                this.storageFacade.updateSingeMessageConversation(
-                                        sendMessageReq.getConversationId(),
-                                        sendMessageReq.getSenderId(),
-                                        sendMessageReq.getReceiverId(),
-                                        sendMessageReq.getMessageId(),
-                                        sendMessageReq.getSendTimestamp(),
-                                        sendMessageReq.getSingleMessageContent())));
-        futures.add(
-                this.executor.submit(
-                        () ->
-                                this.storageFacade.updateSingeMessageConversation(
-                                        sendMessageReq.getConversationId(),
-                                        sendMessageReq.getReceiverId(),
-                                        sendMessageReq.getSenderId(),
-                                        sendMessageReq.getMessageId(),
-                                        sendMessageReq.getSendTimestamp(),
-                                        sendMessageReq.getSingleMessageContent())));
         futures.add(
                 this.executor.submit(
                         () ->

@@ -42,14 +42,6 @@ public interface RippleStorageFacade {
     void createSingeMessageConversation(String conversationId, long ownerId, long peerId)
             throws NotFoundUserProfileException;
 
-    void updateSingeMessageConversation(
-            String conversationId,
-            long ownerId,
-            long peerId,
-            long lastMessageId,
-            long lastMessageTimestamp,
-            SingleMessageContent singleMessageContent);
-
     void saveMessage(
             String conversationId,
             long messageId,

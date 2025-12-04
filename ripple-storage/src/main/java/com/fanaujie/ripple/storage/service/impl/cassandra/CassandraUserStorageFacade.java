@@ -18,10 +18,8 @@ import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.CompletionStage;
 
 public class CassandraUserStorageFacade implements RippleStorageFacade {
 
@@ -292,9 +290,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 null, // peer_id
                                                 null, // group_id
                                                 ConversationOperation.READ_MESSAGES.getValue(),
-                                                null, // last_message_id
-                                                null, // last_message
-                                                null, // last_message_timestamp
                                                 readMessageId, // last_read_message_id
                                                 null, // name not updated when marking read
                                                 null)) // avatar not updated when marking read
@@ -341,9 +336,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 conversationId,
                                                 peerId,
                                                 null, // group_id is null for single conversations
-                                                null,
-                                                null,
-                                                null,
                                                 null, // last_read_message_id is null initially
                                                 name,
                                                 avatar))
@@ -358,54 +350,12 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                                 null,
                                                 ConversationOperation.CREATE_CONVERSATION
                                                         .getValue(),
-                                                null, // last_message_id is null for create
-                                                // conversation
-                                                null,
-                                                null,
                                                 null, // last_read_message_id is null for create
                                                 name,
                                                 avatar))
                         // events
                         .build();
         session.execute(senderBatch);
-    }
-
-    @Override
-    public void updateSingeMessageConversation(
-            String conversationId,
-            long ownerId,
-            long peerId,
-            long lastMessageId,
-            long lastMessageTimestamp,
-            SingleMessageContent singleMessageContent) {
-        BatchStatementBuilder batchBuilder = new BatchStatementBuilder(DefaultBatchType.LOGGED);
-
-        // Update conversation with new message
-        batchBuilder.addStatement(
-                conversationCqlStatement
-                        .getUpdateNewMessageStmt()
-                        .bind(
-                                lastMessageId,
-                                singleMessageContent.getText(),
-                                lastMessageTimestamp,
-                                ownerId,
-                                conversationId));
-        batchBuilder.addStatement(
-                conversationCqlStatement
-                        .getInsertConversationVersionStmt()
-                        .bind(
-                                ownerId,
-                                conversationId,
-                                peerId,
-                                null,
-                                ConversationOperation.NEW_MESSAGE.getValue(),
-                                lastMessageId,
-                                singleMessageContent.getText(),
-                                lastMessageTimestamp,
-                                null, // last_read_message_id not updated when new message arrives
-                                null, // name not updated when new message arrives
-                                null)); // avatar not updated when new message arrives
-        session.execute(batchBuilder.build());
     }
 
     @Override
@@ -455,6 +405,7 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     .bind(userId, nextPageToken, limit));
         }
         List<Conversation> conversations = new ArrayList<>();
+        // TODO optimize unread count query
         for (Row row : resultSet) {
             String conversationId = row.getString("conversation_id");
             long lastReadMessageId = row.getLong("last_read_message_id");
@@ -463,11 +414,34 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             conversation.setConversationId(conversationId);
             conversation.setPeerId(row.getLong("peer_id"));
             conversation.setGroupId(row.getLong("group_id"));
-            conversation.setLastMessageId(row.getLong("last_message_id"));
-            conversation.setLastMessage(row.getString("last_message"));
-            conversation.setLastMessageTimestamp(row.getLong("last_message_timestamp"));
             conversation.setLastReadMessageId(lastReadMessageId);
-            conversation.setUnreadCount(getUnreadCount(conversationId, lastReadMessageId, userId));
+            ResultSet unreadCountResult =
+                    session.execute(
+                            conversationCqlStatement
+                                    .getSelectConversationUnreadCountStmt()
+                                    .bind(conversationId, lastReadMessageId));
+            int count = 0;
+            for (Row unReadRow : unreadCountResult) {
+                long rowReceiverId = unReadRow.getLong("receiver_id");
+                if (rowReceiverId == userId) {
+                    count++;
+                }
+                conversation.setLastMessage(unReadRow.getString("text"));
+                conversation.setLastMessageTimestamp(unReadRow.getLong("send_timestamp"));
+                conversation.setLastReadMessageId(unReadRow.getLong("message_id"));
+            }
+            if (count == 0) {
+                ResultSet lastMessageResult =
+                        session.execute(
+                                conversationCqlStatement
+                                        .getSelectLatestMessageStmt()
+                                        .bind(conversationId));
+                Row lastMessageRow = lastMessageResult.one();
+                conversation.setLastMessage(lastMessageRow.getString("text"));
+                conversation.setLastMessageTimestamp(lastMessageRow.getLong("send_timestamp"));
+                conversation.setLastReadMessageId(lastMessageRow.getLong("message_id"));
+            }
+            conversation.setUnreadCount(count);
             conversation.setName(row.getString("name"));
             conversation.setAvatar(row.getString("avatar"));
             conversations.add(conversation);
@@ -526,9 +500,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             record.setPeerId(row.getLong("peer_id"));
             record.setGroupId(row.getLong("group_id"));
             record.setOperation(row.getByte("operation"));
-            record.setLastMessageId(row.getLong("last_message_id"));
-            record.setLastMessage(row.getString("last_message"));
-            record.setLastMessageTimestamp(row.getLong("last_message_timestamp"));
             record.setLastReadMessageId(row.getLong("last_read_message_id"));
             record.setName(row.getString("name"));
             record.setAvatar(row.getString("avatar"));
@@ -752,9 +723,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     null,
                                     ConversationOperation.UPDATE_CONVERSATION_NAME.getValue(),
                                     null,
-                                    null,
-                                    null,
-                                    null,
                                     remarkName,
                                     null));
             result.setConversationUpdated(true);
@@ -813,9 +781,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     null,
                                     ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
                                     null,
-                                    null,
-                                    null,
-                                    null,
                                     nickName,
                                     null));
         }
@@ -863,9 +828,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     targetUserId,
                                     null,
                                     ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
-                                    null,
-                                    null,
-                                    null,
                                     null,
                                     null,
                                     avatar));
@@ -1148,9 +1110,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                     ConversationOperation.UPDATE_CONVERSATION_NAME_AVATAR
                                             .getValue(),
                                     null,
-                                    null,
-                                    null,
-                                    null,
                                     relation.getRelationRemarkName() == null
                                             ? nickName
                                             : relation.getRelationRemarkName(),
@@ -1171,22 +1130,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             throw new NotFoundRelationException(
                     "Relation not found between " + sourceUserId + " and " + targetUserId);
         }
-    }
-
-    private int getUnreadCount(String conversationId, long lastReadMessageId, long receiverId) {
-        ResultSet resultSet =
-                session.execute(
-                        conversationCqlStatement
-                                .getSelectConversationUnreadCountStmt()
-                                .bind(conversationId, lastReadMessageId));
-        int count = 0;
-        for (Row row : resultSet) {
-            long rowReceiverId = row.getLong("receiver_id");
-            if (rowReceiverId == receiverId) {
-                count++;
-            }
-        }
-        return count;
     }
 
     private Row profileExists(long userId) {

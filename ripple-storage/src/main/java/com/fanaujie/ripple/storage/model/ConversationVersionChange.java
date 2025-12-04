@@ -12,9 +12,6 @@ public class ConversationVersionChange {
     private long peerId; // 0 for group chats
     private long groupId; // 0 for single chats
     private byte operation;
-    private long lastMessageId;
-    private String lastMessage;
-    private long lastMessageTimestamp;
     private long lastReadMessageId;
     private String version;
     private String name;

@@ -7,17 +7,12 @@ import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.UserNotifications;
-import com.fanaujie.ripple.storage.exception.NotFoundRelationException;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
-import com.fanaujie.ripple.storage.model.UpdateFriendAvatarResult;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 import static com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT;
 import static com.fanaujie.ripple.protobuf.push.UserNotificationType.*;

@@ -5,15 +5,12 @@ import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
 import com.fanaujie.ripple.protobuf.profileupdater.RelationProfileUpdateData;
 import com.fanaujie.ripple.protobuf.storage.UserIds;
 import com.fanaujie.ripple.storage.exception.NotFoundRelationException;
-import com.fanaujie.ripple.storage.model.UpdateFriendAvatarResult;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.ExecutorService;
 
 import static com.fanaujie.ripple.protobuf.profileupdater.RelationProfileUpdateData.UpdateType.UPDATE_AVATAR;
-import static com.fanaujie.ripple.protobuf.push.UserNotificationType.USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE;
 
 public class RelationProfileUpdatePayloadProcessor
         implements Processor<ProfileUpdatePayload, Void> {
