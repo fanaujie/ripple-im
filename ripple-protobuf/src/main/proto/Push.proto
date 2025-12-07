@@ -18,6 +18,7 @@ enum UserNotificationType {
 enum MessageType {
   MESSAGE_TYPE_UNSPECIFIED = 0;
   MESSAGE_TYPE_SINGLE_MESSAGE = 1;
+  MESSAGE_TYPE_GROUP_MESSAGE = 2;
 }
 
 

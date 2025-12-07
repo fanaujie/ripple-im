@@ -13,6 +13,7 @@ public class ConversationCqlStatement {
     private final PreparedStatement updateAvatarStmt;
     private final PreparedStatement updateLastReadMessageIdStmt;
     private final PreparedStatement insertMessageStmt;
+    private final PreparedStatement insertGroupCommandMessageStmt;
     private final PreparedStatement selectConversationsFirstPageStmt;
     private final PreparedStatement selectConversationsNextPageStmt;
     private final PreparedStatement selectConversationChangesStmt;
@@ -60,8 +61,15 @@ public class ConversationCqlStatement {
                 session.prepare(
                         "INSERT INTO ripple.user_messages "
                                 + "(conversation_id, message_id, sender_id, receiver_id, group_id, "
-                                + "send_timestamp, text, file_url, file_name) "
-                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                + "send_timestamp, message_type, text, file_url, file_name) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        this.insertGroupCommandMessageStmt =
+                session.prepare(
+                        "INSERT INTO ripple.user_messages "
+                                + "(conversation_id, message_id, sender_id, group_id, "
+                                + "send_timestamp, message_type, command_type, command_data) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
         this.selectConversationsFirstPageStmt =
                 session.prepare(
@@ -92,7 +100,7 @@ public class ConversationCqlStatement {
         this.selectMessagesStmt =
                 session.prepare(
                         "SELECT conversation_id, message_id, sender_id, receiver_id, group_id, "
-                                + "send_timestamp, text, file_url, file_name "
+                                + "send_timestamp, message_type,text, file_url, file_name,command_type,command_data "
                                 + "FROM ripple.user_messages "
                                 + "WHERE conversation_id = ? AND message_id < ? "
                                 + "ORDER BY message_id LIMIT ?");

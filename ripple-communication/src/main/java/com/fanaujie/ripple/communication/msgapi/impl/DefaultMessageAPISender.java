@@ -27,4 +27,9 @@ public class DefaultMessageAPISender implements MessageAPISender {
     public void seenMessage(SendMessageReq req) throws Exception {
         this.executorService.submit(() -> this.msgAPIClient.getStub().sendMessage(req)).get();
     }
+
+    @Override
+    public void sendGroupCommand(SendGroupCommandReq req) throws Exception {
+        this.executorService.submit(() -> this.msgAPIClient.getStub().sendGroupCommand(req)).get();
+    }
 }

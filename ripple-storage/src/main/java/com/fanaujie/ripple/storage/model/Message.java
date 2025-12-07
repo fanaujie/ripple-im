@@ -14,7 +14,10 @@ public class Message {
     private long receiverId; // 0 for group messages
     private long groupId; // 0 for single messages
     private long sendTimestamp;
+    private byte messageType;
     private String text;
     private String fileUrl;
     private String fileName;
+    private byte commandType;
+    private String commandData;
 }

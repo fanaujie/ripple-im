@@ -2,12 +2,7 @@ package com.fanaujie.ripple.pushserver.service.batch;
 
 import com.fanaujie.ripple.communication.batch.BatchProcessorFactory;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
-import com.fanaujie.ripple.protobuf.msggateway.BatchPushMessageRequest;
-import com.fanaujie.ripple.protobuf.msggateway.BatchPushMessageResponse;
-import com.fanaujie.ripple.protobuf.msggateway.MessageGatewayGrpc;
-import com.fanaujie.ripple.protobuf.msggateway.PushMessageRequest;
-import com.fanaujie.ripple.protobuf.msggateway.PushMessageResponse;
-import com.fanaujie.ripple.protobuf.msggateway.PushMessageType;
+import com.fanaujie.ripple.protobuf.msggateway.*;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
@@ -21,8 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static com.fanaujie.ripple.protobuf.push.UserNotificationType.*;
 
 public class GatewayPushBatchProcessor
         implements BatchProcessorFactory.BatchProcessor<GatewayPushTask> {
@@ -97,7 +90,6 @@ public class GatewayPushBatchProcessor
         switch (pushMessage.getPayloadCase()) {
             case EVENT_DATA:
                 {
-                    PushMessageType pushType;
                     PushEventData eventData = pushMessage.getEventData();
                     MultiNotifications notifications =
                             eventData
@@ -110,24 +102,21 @@ public class GatewayPushBatchProcessor
                         throw new IllegalArgumentException(
                                 "No notifications found for userId: " + userInfo.getUserId());
                     }
-                    PushMessageRequest.Builder b =
-                            PushMessageRequest.newBuilder()
-                                    .setSendUserId(String.valueOf(eventData.getSendUserId()))
-                                    .setReceiveUserId(userInfo.getUserId())
-                                    .setReceiveDeviceId(userInfo.getDeviceId());
+
+                    PushEventPayload.Builder eventPayloadBuilder = PushEventPayload.newBuilder();
                     for (var notificationType : notifications.getNotificationTypesList()) {
                         switch (notificationType) {
                             case USER_NOTIFICATION_TYPE_SELF_INFO_UPDATE:
-                                b.addPushMessageType(
-                                        PushMessageType.PUSH_MESSAGE_TYPE_SELF_INFO_UPDATE);
+                                eventPayloadBuilder.addEventTypes(
+                                        PushEventType.PUSH_EVENT_TYPE_SELF_INFO_UPDATE);
                                 break;
                             case USER_NOTIFICATION_TYPE_RELATION_UPDATE:
-                                b.addPushMessageType(
-                                        PushMessageType.PUSH_MESSAGE_TYPE_RELATION_INFO_UPDATE);
+                                eventPayloadBuilder.addEventTypes(
+                                        PushEventType.PUSH_EVENT_TYPE_RELATION_UPDATE);
                                 break;
                             case USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE:
-                                b.addPushMessageType(
-                                        PushMessageType.PUSH_MESSAGE_TYPE_CONVERSATION_INFO_UPDATE);
+                                eventPayloadBuilder.addEventTypes(
+                                        PushEventType.PUSH_EVENT_TYPE_CONVERSATION_UPDATE);
                                 break;
                             default:
                                 logger.error(
@@ -137,17 +126,46 @@ public class GatewayPushBatchProcessor
                                         "Unknown notification type: " + notificationType);
                         }
                     }
-                    return b.build();
+
+                    return PushMessageRequest.newBuilder()
+                            .setSendUserId(String.valueOf(eventData.getSendUserId()))
+                            .setReceiveUserId(userInfo.getUserId())
+                            .setReceiveDeviceId(userInfo.getDeviceId())
+                            .setEventPayload(eventPayloadBuilder.build())
+                            .build();
                 }
             case MESSAGE_DATA:
                 {
+                    PushMessageType gatewayMessageType;
+                    switch (pushMessage.getMessageData().getMessageType()) {
+                        case MESSAGE_TYPE_SINGLE_MESSAGE:
+                            gatewayMessageType = PushMessageType.PUSH_MESSAGE_TYPE_SINGLE;
+                            break;
+                        case MESSAGE_TYPE_GROUP_MESSAGE:
+                            gatewayMessageType = PushMessageType.PUSH_MESSAGE_TYPE_GROUP;
+                            break;
+                        default:
+                            logger.error(
+                                    "createPushRequest: Unknown message type: {}",
+                                    pushMessage.getMessageData().getMessageType());
+                            throw new IllegalArgumentException(
+                                    "Unknown message type: "
+                                            + pushMessage.getMessageData().getMessageType());
+                    }
+
+                    // Build message payload
+                    PushMessagePayload messagePayload =
+                            PushMessagePayload.newBuilder()
+                                    .setMessageType(gatewayMessageType)
+                                    .setMessageData(pushMessage.getMessageData().getData())
+                                    .build();
+
                     return PushMessageRequest.newBuilder()
-                            .addPushMessageType(PushMessageType.PUSH_MESSAGE_TYPE_SINGLE_MESSAGE)
                             .setSendUserId(
                                     String.valueOf(pushMessage.getMessageData().getSendUserId()))
                             .setReceiveUserId(userInfo.getUserId())
                             .setReceiveDeviceId(userInfo.getDeviceId())
-                            .setMessageData(pushMessage.getMessageData().getData())
+                            .setMessagePayload(messagePayload)
                             .build();
                 }
             default:

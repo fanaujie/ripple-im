@@ -24,6 +24,7 @@ public class MessageConsumer {
         switch (payload.getPayloadCase()) {
             case EVENT_DATA:
             case MESSAGE_DATA:
+            case GROUP_COMMAND_DATA:
                 this.payloadRouter.handle(key, payload);
                 break;
             default:

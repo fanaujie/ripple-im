@@ -1,16 +1,14 @@
 package com.fanaujie.ripple.msgdispatcher.consumer;
 
-import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.KeyedPayloadHandler;
-import com.fanaujie.ripple.communication.msgqueue.uitls.MessageConverter;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-import com.fanaujie.ripple.protobuf.push.PushEventData;
-import com.fanaujie.ripple.protobuf.push.PushMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,25 +16,22 @@ import java.util.concurrent.*;
 
 public class DefaultKeyedPayloadHandler implements KeyedPayloadHandler<MessagePayload> {
     private final Logger logger = LoggerFactory.getLogger(DefaultKeyedPayloadHandler.class);
-    private final String pushTopic;
-    private final GenericProducer<String, PushMessage> pushProducer;
-    private final ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData>
-            eventDispatcher;
+    private final ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher;
     private final ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void>
             messageDispatcher;
-    private final ExecutorService executorService;
+    private final ProcessorDispatcher<
+                    SendGroupCommandReq.CommandContentCase, GroupCommandData, Void>
+            groupCommandDispatcher;
 
     public DefaultKeyedPayloadHandler(
-            String pushTopic,
-            GenericProducer<String, PushMessage> pushProducer,
-            ProcessorDispatcher<SendEventReq.EventCase, EventData, PushEventData> eventDispatcher,
+            ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher,
             ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher,
-            ExecutorService executorService) {
-        this.pushTopic = pushTopic;
-        this.pushProducer = pushProducer;
+            ProcessorDispatcher<SendGroupCommandReq.CommandContentCase, GroupCommandData, Void>
+                    groupCommandDispatcher) {
+
         this.eventDispatcher = eventDispatcher;
         this.messageDispatcher = messageDispatcher;
-        this.executorService = executorService;
+        this.groupCommandDispatcher = groupCommandDispatcher;
     }
 
     @Override
@@ -44,44 +39,17 @@ public class DefaultKeyedPayloadHandler implements KeyedPayloadHandler<MessagePa
         switch (data.getPayloadCase()) {
             case EVENT_DATA:
                 EventData eventData = data.getEventData();
-                PushEventData pushEventData =
-                        this.eventDispatcher.dispatch(
-                                eventData.getData().getEventCase(), eventData);
-                this.executorService.submit(
-                        () -> {
-                            try {
-                                this.pushProducer.send(
-                                        this.pushTopic,
-                                        key,
-                                        PushMessage.newBuilder()
-                                                .setEventData(pushEventData)
-                                                .build());
-                            } catch (Exception e) {
-                                logger.error(
-                                        "process: Failed to send message to push topic for key: {}",
-                                        key,
-                                        e);
-                            }
-                        });
+                this.eventDispatcher.dispatch(eventData.getData().getEventCase(), eventData);
                 break;
             case MESSAGE_DATA:
                 MessageData messageData = data.getMessageData();
                 this.messageDispatcher.dispatch(
                         messageData.getData().getMessageCase(), messageData);
-                this.executorService.submit(
-                        () -> {
-                            try {
-                                this.pushProducer.send(
-                                        this.pushTopic,
-                                        key,
-                                        MessageConverter.toPushMessage(messageData));
-                            } catch (Exception e) {
-                                logger.error(
-                                        "process: Failed to send message to push topic for key: {}",
-                                        key,
-                                        e);
-                            }
-                        });
+                break;
+            case GROUP_COMMAND_DATA:
+                GroupCommandData groupCommandData = data.getGroupCommandData();
+                this.groupCommandDispatcher.dispatch(
+                        groupCommandData.getData().getCommandContentCase(), groupCommandData);
                 break;
             default:
                 logger.error("process: Unknown payload case: {}", data.getPayloadCase());

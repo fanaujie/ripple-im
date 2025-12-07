@@ -10,4 +10,10 @@ public class ConversationUtils {
         String hash = DigestUtils.md5DigestAsHex(temp.getBytes());
         return hash.substring(0, 16);
     }
+
+    public static String generateGroupConversationId(long groupId) {
+        String temp = "group_" + groupId;
+        String hash = DigestUtils.md5DigestAsHex(temp.getBytes());
+        return hash.substring(0, 16);
+    }
 }

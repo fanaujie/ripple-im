@@ -68,7 +68,9 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
         String serverAddress = extractServerAddress(event);
         if (serverAddress != null) {
             var c = clients.remove(serverAddress);
-            c.getChannel().shutdown();
+            if (c != null) {
+                c.getChannel().shutdown();
+            }
             logger.info("Removed MessageGateway client for server: {}", serverAddress);
         }
     }

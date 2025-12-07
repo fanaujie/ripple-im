@@ -5,17 +5,11 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFactory;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
-import com.fanaujie.ripple.msgapiserver.processor.RelationEventProcessor;
-import com.fanaujie.ripple.msgapiserver.processor.SelfInfoUpdateEventProcessor;
+import com.fanaujie.ripple.msgapiserver.processor.*;
 import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
-import com.fanaujie.ripple.msgapiserver.processor.SingleMessageContentProcessor;
 import com.fanaujie.ripple.msgapiserver.server.GrpcServer;
-import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
-import com.fanaujie.ripple.protobuf.msgapiserver.SendEventResp;
-import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
-import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
+import com.fanaujie.ripple.protobuf.msgapiserver.*;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
 
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.driver.RedisDriver;
@@ -41,7 +35,6 @@ public class Application {
         String cassandraKeyspace = config.getString("cassandra.keyspace.name");
         String localDatacenter = config.getString("cassandra.local.datacenter");
         String brokerTopic = config.getString("broker.topic.message");
-        String profileUpdateTopic = config.getString("broker.topic.profile-updates");
         String brokerServer = config.getString("broker.server");
         int executorQueueSize = config.getInt("ripple.executor.queue.capacity");
         int grpcPort = config.getInt("server.grpc.port");
@@ -51,12 +44,9 @@ public class Application {
         logger.info("Configuration - Cassandra Local Datacenter: {}", localDatacenter);
         logger.info("Configuration - Broker Server: {}", brokerServer);
         logger.info("Configuration - Broker Topic: {}", brokerTopic);
-        logger.info("Configuration - Profile Update Topic: {}", profileUpdateTopic);
         logger.info("Configuration - Executor Queue Size: {}", executorQueueSize);
         logger.info("gRPC Port: {}", grpcPort);
         GenericProducer<String, MessagePayload> producer = createKafkaProducer(brokerServer);
-        GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer =
-                createProfileUpdateProducer(brokerServer);
 
         ExecutorService executorService = createExecutorService(executorQueueSize);
         CqlSession cqlSession =
@@ -64,9 +54,7 @@ public class Application {
                         cassandraContacts, cassandraKeyspace, localDatacenter);
         CassandraUserStorageFacadeBuilder userStorageFacadeBuilder =
                 new CassandraUserStorageFacadeBuilder();
-        userStorageFacadeBuilder
-                .cqlSession(cqlSession)
-                .redissonClient(RedisDriver.createRedissonClient(redisHost, redisPort));
+        userStorageFacadeBuilder.cqlSession(cqlSession);
         CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
         GrpcServer grpcServer =
                 new GrpcServer(
@@ -74,12 +62,9 @@ public class Application {
                         createMessageDispatcher(
                                 brokerTopic, userStorageFacade, producer, executorService),
                         createEventDispatcher(
-                                brokerTopic,
-                                profileUpdateTopic,
-                                userStorageFacade,
-                                producer,
-                                profileUpdateProducer,
-                                executorService));
+                                brokerTopic, userStorageFacade, producer, executorService),
+                        createGroupDispatcher(
+                                brokerTopic, userStorageFacade, producer, executorService));
         CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
         logger.info("Starting Message Publisher server...");
         grpcFuture.join();
@@ -105,12 +90,6 @@ public class Application {
                 KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
     }
 
-    private GenericProducer<String, ProfileUpdatePayload> createProfileUpdateProducer(
-            String brokerServer) {
-        return new KafkaGenericProducer<>(
-                KafkaProducerConfigFactory.createProfileUpdatePayloadProducerConfig(brokerServer));
-    }
-
     private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
             createMessageDispatcher(
                     String topic,
@@ -129,31 +108,48 @@ public class Application {
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
             createEventDispatcher(
                     String messageTopic,
-                    String profileUpdateTopic,
                     CassandraUserStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> messageProducer,
-                    GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
                 new DefaultProcessorDispatcher<>();
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventProcessor(
-                        messageTopic,
-                        profileUpdateTopic,
-                        userStorageFacade,
-                        messageProducer,
-                        profileUpdateProducer,
-                        executorService));
+                        messageTopic, userStorageFacade, messageProducer, executorService));
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
                 new RelationEventProcessor(
-                        messageTopic,
-                        profileUpdateTopic,
-                        messageProducer,
-                        profileUpdateProducer,
-                        executorService,
-                        userStorageFacade));
+                        messageTopic, messageProducer, executorService, userStorageFacade));
         return eventDispatcher;
+    }
+
+    private ProcessorDispatcher<
+                    SendGroupCommandReq.CommandContentCase,
+                    SendGroupCommandReq,
+                    SendGroupCommandResp>
+            createGroupDispatcher(
+                    String topic,
+                    CassandraUserStorageFacade userStorageFacade,
+                    GenericProducer<String, MessagePayload> producer,
+                    ExecutorService executorService) {
+        ProcessorDispatcher<
+                        SendGroupCommandReq.CommandContentCase,
+                        SendGroupCommandReq,
+                        SendGroupCommandResp>
+                groupDispatcher = new DefaultProcessorDispatcher<>();
+        groupDispatcher.RegisterProcessor(
+                SendGroupCommandReq.CommandContentCase.GROUP_CREATE_COMMAND,
+                new CreateGroupProcessor(topic, userStorageFacade, producer, executorService));
+        groupDispatcher.RegisterProcessor(
+                SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND,
+                new InviteMembersProcessor(topic, userStorageFacade, producer, executorService));
+        groupDispatcher.RegisterProcessor(
+                SendGroupCommandReq.CommandContentCase.GROUP_QUIT_COMMAND,
+                new QuitGroupProcessor(topic, userStorageFacade, producer, executorService));
+        groupDispatcher.RegisterProcessor(
+                SendGroupCommandReq.CommandContentCase.GROUP_UPDATE_INFO_COMMAND,
+                new UpdateGroupInfoProcessor(topic, userStorageFacade, producer, executorService));
+        return groupDispatcher;
     }
 }

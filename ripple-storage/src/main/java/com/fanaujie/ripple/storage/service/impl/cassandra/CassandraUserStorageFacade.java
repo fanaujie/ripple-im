@@ -6,41 +6,30 @@ import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SingleMessageContent;
 import com.fanaujie.ripple.protobuf.storage.UserIds;
-import com.fanaujie.ripple.storage.cache.KvCache;
-import com.fanaujie.ripple.storage.cache.RelationCachePrefixKey;
-import com.fanaujie.ripple.storage.cache.impl.RedissonKvCache;
 import com.fanaujie.ripple.storage.exception.*;
 import com.fanaujie.ripple.storage.model.*;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
-import com.google.protobuf.InvalidProtocolBufferException;
-import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
-import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 public class CassandraUserStorageFacade implements RippleStorageFacade {
 
     private final Logger logger = LoggerFactory.getLogger(CassandraUserStorageFacade.class);
-    private final RedissonClient redissonClient;
-    private final KvCache kvCache;
-    private final long kvCacheExpireSeconds;
     private final CqlSession session;
     private final UserCqlStatement userCqlStatement;
     private final RelationCqlStatement relationCqlStatement;
     private final ConversationCqlStatement conversationCqlStatement;
+    private final GroupCqlStatement groupCqlStatement;
 
     public CassandraUserStorageFacade(CassandraUserStorageFacadeBuilder builder) {
         this.session = builder.getSession();
-        this.redissonClient = builder.getRedissonClient();
-        this.kvCacheExpireSeconds = builder.getKvCacheExpireSeconds();
-        this.kvCache =
-                this.redissonClient != null ? new RedissonKvCache(this.redissonClient) : null;
         this.userCqlStatement = new UserCqlStatement(this.session);
         this.relationCqlStatement = new RelationCqlStatement(this.session);
         this.conversationCqlStatement = new ConversationCqlStatement(this.session);
+        this.groupCqlStatement = new GroupCqlStatement(this.session);
     }
 
     @Override
@@ -202,7 +191,6 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             throw new InvalidVersionException(
                     "afterVersion cannot be null or empty. Use version from previous sync or call with fullSync.");
         }
-
         UUID afterVersionUuid = Uuids.endOf(Long.parseLong(afterVersion));
         if (afterVersionUuid.version() != 1) {
             throw new InvalidVersionException(
@@ -265,9 +253,12 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
             message.setReceiverId(row.getLong("receiver_id"));
             message.setGroupId(row.getLong("group_id"));
             message.setSendTimestamp(row.getLong("send_timestamp"));
+            message.setMessageType(row.getByte("message_type"));
             message.setText(row.getString("text"));
             message.setFileUrl(row.getString("file_url"));
             message.setFileName(row.getString("file_name"));
+            message.setCommandType(row.getByte("command_type"));
+            message.setCommandData(row.getString("command_data"));
             messages.add(message);
         }
         return new Messages(messages);
@@ -359,12 +350,11 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void saveMessage(
+    public void saveTextSingleMessage(
             String conversationId,
             long messageId,
             long senderId,
             long receiverId,
-            long groupId,
             long timestamp,
             SingleMessageContent content) {
         session.execute(
@@ -374,9 +364,10 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
                                 conversationId,
                                 messageId,
                                 senderId,
-                                receiverId == 0 ? null : receiverId,
-                                groupId == 0 ? null : groupId,
+                                receiverId,
+                                null,
                                 timestamp,
+                                MessageType.MESSAGE_TYPE_TEXT.getValue(),
                                 content.getText(),
                                 content.getFileUrl(),
                                 content.getFileName()));
@@ -520,44 +511,24 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public Optional<UserIds> getFriendIds(long userId) {
-        if (this.kvCache == null) {
-            throw new IllegalStateException("KvCache is not initialized.");
-        }
-        String key = RelationCachePrefixKey.FRIEND_IDS.getValue() + userId;
-        byte[] value =
-                this.kvCache.getIfPresent(
-                        key,
-                        this.kvCacheExpireSeconds,
-                        () -> {
-                            ResultSet resultSet =
-                                    session.execute(
-                                            this.relationCqlStatement
-                                                    .getSelectAllRelationsStmt()
-                                                    .bind(userId));
+    public UserIds getFriendIds(long userId) {
 
-                            List<Long> friendIds = new ArrayList<>();
-                            for (Row row : resultSet) {
-                                byte relationFlags = row.getByte("relation_flags");
-                                if (RelationFlags.FRIEND.isSet(relationFlags)) {
-                                    friendIds.add(row.getLong("relation_user_id"));
-                                }
-                            }
-                            if (friendIds.isEmpty()) {
-                                return null;
-                            }
-                            UserIds.Builder b = UserIds.newBuilder();
-                            b.addAllUserIds(friendIds);
-                            return b.build().toByteArray();
-                        });
-        if (value != null) {
-            try {
-                return Optional.of(UserIds.parseFrom(value));
-            } catch (InvalidProtocolBufferException e) {
-                logger.error("Failed to parse UserIds from cache for userId: {}", userId, e);
+        ResultSet resultSet =
+                session.execute(this.relationCqlStatement.getSelectAllRelationsStmt().bind(userId));
+
+        List<Long> friendIds = new ArrayList<>();
+        for (Row row : resultSet) {
+            byte relationFlags = row.getByte("relation_flags");
+            if (RelationFlags.FRIEND.isSet(relationFlags)) {
+                friendIds.add(row.getLong("relation_user_id"));
             }
         }
-        return Optional.empty();
+        if (friendIds.isEmpty()) {
+            return null;
+        }
+        UserIds.Builder b = UserIds.newBuilder();
+        b.addAllUserIds(friendIds);
+        return b.build();
     }
 
     @Override
@@ -1063,7 +1034,7 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
 
     @Override
     public boolean isBlocked(long userId, long targetUserId) {
-
+        // TODO : implement isBlocked
         return false;
     }
 
@@ -1135,5 +1106,158 @@ public class CassandraUserStorageFacade implements RippleStorageFacade {
     private Row profileExists(long userId) {
         BoundStatement bound = userCqlStatement.getSelectUserIdStmt().bind(userId);
         return session.execute(bound).one();
+    }
+
+    @Override
+    public void createGroup(
+            long groupId, String groupName, String groupAvatar, List<UserProfile> members) {
+        Set<Long> memberIdSet =
+                members.stream().map(UserProfile::getUserId).collect(Collectors.toSet());
+
+        BatchStatementBuilder batchBuilder = new BatchStatementBuilder(DefaultBatchType.LOGGED);
+        BoundStatement groupStmt =
+                groupCqlStatement
+                        .getInsertGroupStmt()
+                        .bind(groupId, groupName, groupAvatar, memberIdSet, 0L);
+        batchBuilder.addStatement(groupStmt);
+        for (UserProfile member : members) {
+            BoundStatement memberStmt =
+                    groupCqlStatement
+                            .getInsertGroupMemberInfoStmt()
+                            .bind(
+                                    groupId,
+                                    member.getUserId(),
+                                    member.getNickName(),
+                                    member.getAvatar());
+            batchBuilder.addStatement(memberStmt);
+        }
+        session.execute(batchBuilder.build());
+    }
+
+    @Override
+    public void createUserGroupAndConversation(
+            long userId, long groupId, String groupName, String groupAvatar) {
+        String conversationId = ConversationUtils.generateGroupConversationId(groupId);
+
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(
+                                groupCqlStatement.getInsertUserGroupStmt().bind(userId, groupId))
+                        .addStatement(
+                                conversationCqlStatement
+                                        .getInsertConversationStmt()
+                                        .bind(
+                                                userId,
+                                                conversationId,
+                                                null,
+                                                groupId,
+                                                null,
+                                                groupName,
+                                                groupAvatar))
+                        .addStatement(
+                                conversationCqlStatement
+                                        .getInsertConversationVersionStmt()
+                                        .bind(
+                                                userId,
+                                                conversationId,
+                                                null,
+                                                groupId,
+                                                ConversationOperation.CREATE_CONVERSATION
+                                                        .getValue(),
+                                                null,
+                                                null,
+                                                null))
+                        .build();
+        session.execute(batch);
+    }
+
+    @Override
+    public void createGroupMembersProfile(long groupId, List<UserProfile> members) {
+        BatchStatementBuilder batchBuilder = new BatchStatementBuilder(DefaultBatchType.LOGGED);
+        for (UserProfile member : members) {
+            BoundStatement bound =
+                    groupCqlStatement
+                            .getInsertGroupMemberInfoStmt()
+                            .bind(
+                                    groupId,
+                                    member.getUserId(),
+                                    member.getNickName(),
+                                    member.getAvatar());
+            batchBuilder.addStatement(bound);
+        }
+        session.execute(batchBuilder.build());
+    }
+
+    @Override
+    public void updateGroupMemberProfile(
+            long groupId, long userId, String nickname, String avatar) {
+        session.execute(
+                groupCqlStatement
+                        .getUpdateGroupMemberInfoStmt()
+                        .bind(nickname, avatar, groupId, userId));
+    }
+
+    @Override
+    public List<Long> getGroupMemberIds(long groupId) throws NotFoundGroupException {
+        BoundStatement bound = groupCqlStatement.getSelectGroupStmt().bind(groupId);
+        Row row = session.execute(bound).one();
+        if (row == null) {
+            throw new NotFoundGroupException("Group not found for groupId: " + groupId);
+        }
+        Set<Long> memberIds = row.getSet("member_ids", Long.class);
+        if (memberIds == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(memberIds);
+    }
+
+    @Override
+    public GroupInfo getGroupInfo(long groupId) throws NotFoundGroupException {
+        BoundStatement bound = groupCqlStatement.getSelectGroupStmt().bind(groupId);
+        Row row = session.execute(bound).one();
+        if (row == null) {
+            throw new NotFoundGroupException("Group not found for groupId: " + groupId);
+        }
+        String groupName = row.getString("group_name");
+        String groupAvatar = row.getString("group_avatar");
+        Set<Long> memberIdsSet = row.getSet("member_ids", Long.class);
+        List<Long> memberIds =
+                memberIdsSet != null ? new ArrayList<>(memberIdsSet) : new ArrayList<>();
+        return new GroupInfo(groupId, groupName, groupAvatar, memberIds);
+    }
+
+    @Override
+    public List<Long> getUserGroupIds(long userId) {
+        ResultSet resultSet =
+                session.execute(groupCqlStatement.getSelectUserGroupsStmt().bind(userId));
+
+        List<Long> groupIds = new ArrayList<>();
+        for (Row row : resultSet) {
+            groupIds.add(row.getLong("group_id"));
+        }
+        return groupIds;
+    }
+
+    @Override
+    public void saveGroupCommandMessage(
+            String conversationId,
+            long messageId,
+            long senderId,
+            long groupId,
+            long timestamp,
+            byte commandType,
+            String commandData) {
+        session.execute(
+                conversationCqlStatement
+                        .getInsertGroupCommandMessageStmt()
+                        .bind(
+                                conversationId,
+                                messageId,
+                                senderId,
+                                groupId,
+                                timestamp,
+                                MessageType.MESSAGE_TYPE_GROUP_COMMAND.getValue(),
+                                commandType,
+                                commandData));
     }
 }

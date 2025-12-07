@@ -8,8 +8,6 @@ option java_package = "com.fanaujie.ripple.protobuf.msgdispatcher";
 import "MessageAPI.proto";
 
 
-
-
 message EventData {
   int64 send_user_id = 2;
   repeated int64 receive_user_ids = 3;
@@ -22,9 +20,17 @@ message MessageData {
   SendMessageReq data = 3;
 }
 
+message GroupCommandData {
+  int64 sender_user_id = 1;
+  repeated int64 receive_user_ids = 2;
+  SendGroupCommandReq data = 3;
+}
+
+
 message MessagePayload {
   oneof payload {
     EventData event_data = 1;
     MessageData message_data = 2;
+    GroupCommandData group_command_data = 3;
   }
 }

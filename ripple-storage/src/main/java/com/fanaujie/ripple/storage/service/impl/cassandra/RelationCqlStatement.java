@@ -22,6 +22,7 @@ public class RelationCqlStatement {
     private final PreparedStatement selectRelationChangesStmt;
     private final PreparedStatement selectLatestVersionStmt;
     private final PreparedStatement selectRelationBetweenUsersStmt;
+    private final PreparedStatement selectFriendIdsStmt;
 
     public RelationCqlStatement(CqlSession session) {
         this.selectRelationFlagStmt =
@@ -74,5 +75,8 @@ public class RelationCqlStatement {
         this.selectRelationBetweenUsersStmt =
                 session.prepare(
                         "SELECT user_id,relation_user_id,nick_name,avatar,remark_name, relation_flags FROM ripple.user_relations WHERE user_id = ? and relation_user_id = ? ");
+        this.selectFriendIdsStmt =
+                session.prepare(
+                        "SELECT relation_user_id FROM ripple.user_relations WHERE user_id = ?");
     }
 }

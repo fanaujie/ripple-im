@@ -7,21 +7,41 @@ option java_package = "com.fanaujie.ripple.protobuf.msggateway";
 
 import "MessageAPI.proto";
 
-enum PushMessageType {
-  PUSH_MESSAGE_TYPE_UNSPECIFIED = 0;
-  PUSH_MESSAGE_TYPE_SELF_INFO_UPDATE = 1;
-  PUSH_MESSAGE_TYPE_RELATION_INFO_UPDATE = 2;
-  PUSH_MESSAGE_TYPE_CONVERSATION_INFO_UPDATE = 3;
-  PUSH_MESSAGE_TYPE_SINGLE_MESSAGE = 4;
+// Event types that can be pushed to users via gateway
+enum PushEventType {
+  PUSH_EVENT_TYPE_UNSPECIFIED = 0;
+  PUSH_EVENT_TYPE_SELF_INFO_UPDATE = 1;
+  PUSH_EVENT_TYPE_RELATION_UPDATE = 2;
+  PUSH_EVENT_TYPE_CONVERSATION_UPDATE = 3;
 }
 
+// Message types for gateway push
+enum PushMessageType {
+  PUSH_MESSAGE_TYPE_UNSPECIFIED = 0;
+  PUSH_MESSAGE_TYPE_SINGLE = 1;
+  PUSH_MESSAGE_TYPE_GROUP = 2;
+}
+
+// Event payload - can contain multiple event types
+message PushEventPayload {
+  repeated PushEventType event_types = 1;
+}
+
+// Message payload - contains the actual message
+message PushMessagePayload {
+  PushMessageType message_type = 1;
+  SendMessageReq message_data = 2;
+}
+
+// Main request structure
 message PushMessageRequest {
-  repeated PushMessageType push_message_type = 1;
-  string send_user_id = 2;
-  string receive_user_id = 3;
-  string receive_device_id = 4;
+  string send_user_id = 1;
+  string receive_user_id = 2;
+  string receive_device_id = 3;
+
   oneof payload {
-    SendMessageReq message_data = 6;
+    PushEventPayload event_payload = 4;
+    PushMessagePayload message_payload = 5;
   }
 }
 

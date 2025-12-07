@@ -7,7 +7,6 @@ import com.fanaujie.ripple.storage.exception.*;
 import com.fanaujie.ripple.storage.model.*;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface RippleStorageFacade {
     User findByAccount(String account);
@@ -42,12 +41,11 @@ public interface RippleStorageFacade {
     void createSingeMessageConversation(String conversationId, long ownerId, long peerId)
             throws NotFoundUserProfileException;
 
-    void saveMessage(
+    void saveTextSingleMessage(
             String conversationId,
             long messageId,
             long senderId,
             long receiverId,
-            long groupId,
             long timestamp,
             SingleMessageContent content);
 
@@ -58,7 +56,7 @@ public interface RippleStorageFacade {
 
     String getLatestConversationVersion(long userId);
 
-    Optional<UserIds> getFriendIds(long userId);
+    UserIds getFriendIds(long userId);
 
     void addFriend(RelationEvent event)
             throws NotFoundUserProfileException, RelationAlreadyExistsException;
@@ -87,4 +85,28 @@ public interface RippleStorageFacade {
 
     void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
             throws NotFoundRelationException;
+
+    List<Long> getGroupMemberIds(long groupId) throws NotFoundGroupException;
+
+    GroupInfo getGroupInfo(long groupId) throws NotFoundGroupException;
+
+    List<Long> getUserGroupIds(long userId);
+
+    void createGroup(long groupId, String groupName, String groupAvatar, List<UserProfile> members);
+
+    void createUserGroupAndConversation(
+            long userId, long groupId, String groupName, String groupAvatar);
+
+    void createGroupMembersProfile(long groupId, List<UserProfile> members);
+
+    void updateGroupMemberProfile(long groupId, long userId, String nickname, String avatar);
+
+    void saveGroupCommandMessage(
+            String conversationId,
+            long messageId,
+            long senderId,
+            long groupId,
+            long timestamp,
+            byte commandType,
+            String commandData);
 }

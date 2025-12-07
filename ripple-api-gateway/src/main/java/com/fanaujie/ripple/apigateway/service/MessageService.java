@@ -66,11 +66,7 @@ public class MessageService {
                                         400, "Invalid read size. Must be between 1 and 200"));
             }
             Messages result = storageFacade.getMessages(conversationId, messageId, readSize);
-            List<MessageItem> messageItems =
-                    result.getMessages().stream()
-                            .map(this::toMessageItem)
-                            .collect(Collectors.toList());
-            ReadMessagesData data = new ReadMessagesData(messageItems);
+            ReadMessagesData data = new ReadMessagesData(result.getMessages());
             return ResponseEntity.ok(ReadMessagesResponse.success(data));
         } catch (NumberFormatException e) {
             log.error("readMessages: Invalid message ID format", e);
@@ -118,18 +114,5 @@ public class MessageService {
                 .setSendTimestamp(Instant.now().getEpochSecond())
                 .setSingleMessageContent(request.toSingleMessageContent());
         return res.getId();
-    }
-
-    private MessageItem toMessageItem(Message message) {
-        return new MessageItem(
-                message.getConversationId(),
-                String.valueOf(message.getMessageId()),
-                String.valueOf(message.getSenderId()),
-                String.valueOf(message.getReceiverId() == 0 ? null : message.getReceiverId()),
-                String.valueOf(message.getGroupId() == 0 ? null : message.getGroupId()),
-                message.getSendTimestamp(),
-                message.getText(),
-                message.getFileUrl(),
-                message.getFileName());
     }
 }

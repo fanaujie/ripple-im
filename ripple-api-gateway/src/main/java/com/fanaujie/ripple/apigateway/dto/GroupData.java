@@ -1,15 +1,12 @@
 package com.fanaujie.ripple.apigateway.dto;
 
-import com.fanaujie.ripple.storage.model.Message;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReadMessagesData {
-    private List<Message> messages;
+public class GroupData {
+    private String groupId;
 }

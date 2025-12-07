@@ -91,8 +91,41 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_messages"
     "receiver_id"     bigint,
     "group_id"        bigint,
     "send_timestamp"  bigint,
+    "message_type"    tinyint, -- 1: TEXT, 2: FILE, 3: GROUP_COMMAND
     "text"            text,
     "file_url"        text,
     "file_name"       text,
+    "command_type"    tinyint, -- 1: MEMBER_JOIN, 2: MEMBER_QUIT
+    "command_data"    text,
     primary key ( conversation_id, message_id )
 );
+
+
+CREATE TABLE IF NOT EXISTS "ripple"."groups"
+(
+    "group_id"     bigint,
+    "group_name"   text,
+    "group_avatar" text,
+    "member_ids"   set<bigint>,
+    "version"      bigint,
+    primary key (group_id)
+);
+
+CREATE TABLE IF NOT EXISTS "ripple"."group_members_info"
+(
+    "group_id" bigint,
+    "user_id"  bigint,
+    "name"     text,
+    "avatar"   text,
+    primary key (group_id, user_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS "ripple"."user_groups"
+(
+    "user_id"  bigint,
+    "group_id" bigint,
+    primary key ( user_id, group_id)
+);
+
+

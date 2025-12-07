@@ -1,13 +1,8 @@
 package com.fanaujie.ripple.profileupdater.consumer;
 
 import com.fanaujie.ripple.communication.msgqueue.MessageRecord;
-import com.fanaujie.ripple.communication.msgqueue.KeyedPayloadHandler;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
-import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
-import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.RelationProfileUpdateData;
-import com.fanaujie.ripple.protobuf.push.PushEventData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
