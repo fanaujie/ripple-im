@@ -248,38 +248,6 @@ public class GroupService {
         }
     }
 
-    public ResponseEntity<CommonResponse> updateGroupAvatar(
-            long groupId, UpdateGroupInfoRequest request) {
-        try {
-            GenerateIdResponse messageIdResponse = snowflakeIdClient.requestSnowflakeId().get();
-            long messageId = messageIdResponse.getId();
-            long senderId = Long.parseLong(request.getSenderId());
-
-            GroupUpdateInfoCommand.Builder updateCommandBuilder =
-                    GroupUpdateInfoCommand.newBuilder();
-            updateCommandBuilder.setUpdateType(GroupUpdateInfoCommand.UpdateType.UPDATE_AVATAR);
-            updateCommandBuilder.setNewAvatar(request.getValue());
-
-            SendGroupCommandReq.Builder commandReqBuilder = SendGroupCommandReq.newBuilder();
-            commandReqBuilder.setSenderId(senderId);
-            commandReqBuilder.setGroupId(groupId);
-            commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
-            commandReqBuilder.setGroupUpdateInfoCommand(updateCommandBuilder.build());
-
-            messageAPISender.sendGroupCommand(commandReqBuilder.build());
-            return ResponseEntity.ok(CommonResponse.success());
-        } catch (NumberFormatException e) {
-            log.error("updateGroupAvatar: Invalid sender ID format", e);
-            return ResponseEntity.badRequest()
-                    .body(CommonResponse.error(400, "Invalid sender ID format"));
-        } catch (Exception e) {
-            log.error("updateGroupAvatar: Error updating group {} avatar", groupId, e);
-            return ResponseEntity.status(500)
-                    .body(CommonResponse.error(500, "Internal server error"));
-        }
-    }
-
     public ResponseEntity<GroupSyncResponse> syncGroupMembers(long groupId, String version) {
         // If version is null or empty, require full sync
         if (version == null || version.isEmpty()) {

@@ -1,5 +1,8 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
+import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.uploadgateway.config.MessageAttachmentProperties;
 import com.fanaujie.ripple.uploadgateway.dto.*;
 import io.minio.MinioClient;
@@ -9,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -34,6 +38,12 @@ class ChunkUploadServiceTest {
         registry.add("minio.access-key", minio::getUserName);
         registry.add("minio.secret-key", minio::getPassword);
     }
+
+    @MockitoBean private MessageAPISender messageAPISender;
+
+    @MockitoBean private SnowflakeIdClient snowflakeIdClient;
+
+    @MockitoBean private RippleStorageFacade storageFacade;
 
     @Autowired private ChunkUploadService chunkUploadService;
 

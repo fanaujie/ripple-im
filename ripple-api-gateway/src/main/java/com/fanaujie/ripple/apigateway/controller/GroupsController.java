@@ -281,7 +281,7 @@ public class GroupsController {
     }
 
     @PatchMapping("/{groupId}")
-    @Operation(summary = "Update group", description = "Update the name or avatar of a group")
+    @Operation(summary = "Update group", description = "Update the name of a group")
     @ApiResponses(
             value = {
                 @ApiResponse(
@@ -340,25 +340,10 @@ public class GroupsController {
                 if (nameResult.getStatusCode().isError()) {
                     return nameResult;
                 }
+                return ResponseEntity.ok(new CommonResponse(200, "Group updated successfully"));
             }
 
-            // Update avatar if provided
-            if (request.getAvatar() != null) {
-                UpdateGroupInfoRequest avatarRequest = new UpdateGroupInfoRequest();
-                avatarRequest.setSenderId(request.getSenderId());
-                avatarRequest.setValue(request.getAvatar());
-                ResponseEntity<CommonResponse> avatarResult =
-                        groupService.updateGroupAvatar(groupIdLong, avatarRequest);
-                if (avatarResult.getStatusCode().isError()) {
-                    return avatarResult;
-                }
-            }
-
-            if (request.getName() == null && request.getAvatar() == null) {
-                return ResponseEntity.ok(new CommonResponse(200, "No fields to update"));
-            }
-
-            return ResponseEntity.ok(new CommonResponse(200, "Group updated successfully"));
+            return ResponseEntity.ok(new CommonResponse(200, "No fields to update"));
 
         } catch (NumberFormatException e) {
             log.error("updateGroup: Invalid group ID format", e);

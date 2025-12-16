@@ -18,7 +18,4 @@ public class UpdateGroupRequest {
 
     @Schema(description = "New name for the group", example = "My Group")
     private String name;
-
-    @Schema(description = "New avatar URL for the group", example = "https://example.com/avatar.png")
-    private String avatar;
 }

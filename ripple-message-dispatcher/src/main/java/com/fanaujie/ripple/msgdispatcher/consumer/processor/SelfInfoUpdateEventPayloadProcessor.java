@@ -52,8 +52,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         if (sendEventReq.getEventCase() == SELF_INFO_UPDATE_EVENT) {
             UserNotifications userNotifications = updateUserStorage(sendEventReq);
             this.pushMessageGenericProducer.send(
-                    String.valueOf(eventData.getSendUserId()),
                     this.pushTopic,
+                    String.valueOf(eventData.getSendUserId()),
                     MessageConverter.toPushMessage(eventData.getSendUserId(), userNotifications));
             return null;
         }
