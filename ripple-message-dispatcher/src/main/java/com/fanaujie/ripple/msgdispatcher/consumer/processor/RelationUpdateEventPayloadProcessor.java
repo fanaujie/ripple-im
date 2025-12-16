@@ -6,8 +6,8 @@ import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.RelationEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
-import com.fanaujie.ripple.protobuf.profileupdater.FriendProfileUpdateData;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.FriendStorageUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
@@ -31,20 +31,20 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
     private final Logger logger =
             LoggerFactory.getLogger(RelationUpdateEventPayloadProcessor.class);
     private final RippleStorageFacade storageFacade;
-    private final GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer;
-    private final String profileUpdateTopic;
+    private final GenericProducer<String, StorageUpdatePayload> storageUpdateProducer;
+    private final String storageUpdateTopic;
     private final GenericProducer<String, PushMessage> pushProducer;
     private final String pushTopic;
 
     public RelationUpdateEventPayloadProcessor(
             RippleStorageFacade storageFacade,
-            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
-            String profileUpdateTopic,
+            GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
+            String storageUpdateTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             String pushTopic) {
         this.storageFacade = storageFacade;
-        this.profileUpdateProducer = profileUpdateProducer;
-        this.profileUpdateTopic = profileUpdateTopic;
+        this.storageUpdateProducer = storageUpdateProducer;
+        this.storageUpdateTopic = storageUpdateTopic;
         this.pushProducer = pushMessageProducer;
         this.pushTopic = pushTopic;
     }
@@ -90,22 +90,22 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                 if (reverseRelation != null
                         && RelationFlags.FRIEND.isSet(reverseRelation.getRelationFlags())) {
                     UserProfile userProfile = storageFacade.getUserProfile(event.getUserId());
-                    FriendProfileUpdateData.Builder friendProfileBuilder =
-                            FriendProfileUpdateData.newBuilder()
+                    FriendStorageUpdateData.Builder friendStorageBuilder =
+                            FriendStorageUpdateData.newBuilder()
                                     .setUserId(event.getTargetUserId())
                                     .setFriendId(event.getUserId())
                                     .setFriendNickname(userProfile.getNickName());
                     if (userProfile.getAvatar() != null) {
-                        friendProfileBuilder.setFriendAvatar(userProfile.getAvatar());
+                        friendStorageBuilder.setFriendAvatar(userProfile.getAvatar());
                     }
-                    ProfileUpdatePayload profileUpdatePayload =
-                            ProfileUpdatePayload.newBuilder()
-                                    .setFriendProfileUpdateData(friendProfileBuilder.build())
+                    StorageUpdatePayload storageUpdatePayload =
+                            StorageUpdatePayload.newBuilder()
+                                    .setFriendStorageUpdateData(friendStorageBuilder.build())
                                     .build();
-                    profileUpdateProducer.send(
-                            profileUpdateTopic,
+                    storageUpdateProducer.send(
+                            storageUpdateTopic,
                             String.valueOf(event.getUserId()),
-                            profileUpdatePayload);
+                            storageUpdatePayload);
                 }
                 break;
             case REMOVE_FRIEND:

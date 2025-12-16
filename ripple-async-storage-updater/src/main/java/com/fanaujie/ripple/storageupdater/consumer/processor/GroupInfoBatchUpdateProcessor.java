@@ -1,11 +1,11 @@
-package com.fanaujie.ripple.profileupdater.consumer.processor;
+package com.fanaujie.ripple.storageupdater.consumer.processor;
 
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.GroupCommandMessageContent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
-import com.fanaujie.ripple.protobuf.profileupdater.GroupInfoBatchUpdateData;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.GroupInfoBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.MessageType;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.push.PushMessageData;
@@ -23,7 +23,7 @@ import java.util.concurrent.Future;
 
 import static com.fanaujie.ripple.storage.model.GroupCommandType.GROUP_COMMAND_TYPE_INFO_UPDATE;
 
-public class GroupInfoBatchUpdateProcessor implements Processor<ProfileUpdatePayload, Void> {
+public class GroupInfoBatchUpdateProcessor implements Processor<StorageUpdatePayload, Void> {
     private static final Logger logger =
             LoggerFactory.getLogger(GroupInfoBatchUpdateProcessor.class);
 
@@ -44,7 +44,7 @@ public class GroupInfoBatchUpdateProcessor implements Processor<ProfileUpdatePay
     }
 
     @Override
-    public Void handle(ProfileUpdatePayload payload) throws Exception {
+    public Void handle(StorageUpdatePayload payload) throws Exception {
         GroupInfoBatchUpdateData batchData = payload.getGroupInfoBatchUpdateData();
         List<Future<Void>> futures = new ArrayList<>();
 

@@ -6,9 +6,9 @@ import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SelfInfoUpdateEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.RelationBatchUpdateData;
-import com.fanaujie.ripple.protobuf.profileupdater.UserGroupBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.RelationBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.UserGroupBatchUpdateData;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.push.UserNotifications;
@@ -28,20 +28,20 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
     private static final int MAX_BATCH_SIZE = 5;
 
     private final RippleStorageFacade storageFacade;
-    private final GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer;
-    private final String profileUpdateTopic;
+    private final GenericProducer<String, StorageUpdatePayload> storageUpdateProducer;
+    private final String storageUpdateTopic;
     private final GenericProducer<String, PushMessage> pushMessageGenericProducer;
     private final String pushTopic;
 
     public SelfInfoUpdateEventPayloadProcessor(
             RippleStorageFacade storageFacade,
-            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
-            String profileUpdateTopic,
+            GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
+            String storageUpdateTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             String pushTopic) {
         this.storageFacade = storageFacade;
-        this.profileUpdateProducer = profileUpdateProducer;
-        this.profileUpdateTopic = profileUpdateTopic;
+        this.storageUpdateProducer = storageUpdateProducer;
+        this.storageUpdateTopic = storageUpdateTopic;
         this.pushMessageGenericProducer = pushMessageProducer;
         this.pushTopic = pushTopic;
     }
@@ -145,11 +145,11 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
             if (avatar != null) {
                 batchBuilder.setAvatar(avatar);
             }
-            ProfileUpdatePayload payload =
-                    ProfileUpdatePayload.newBuilder()
+            StorageUpdatePayload payload =
+                    StorageUpdatePayload.newBuilder()
                             .setRelationBatchUpdateData(batchBuilder.build())
                             .build();
-            profileUpdateProducer.send(profileUpdateTopic, String.valueOf(userId), payload);
+            storageUpdateProducer.send(storageUpdateTopic, String.valueOf(userId), payload);
         }
     }
 
@@ -185,11 +185,11 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
                 batchBuilder.setAvatar(avatar);
             }
 
-            ProfileUpdatePayload payload =
-                    ProfileUpdatePayload.newBuilder()
+            StorageUpdatePayload payload =
+                    StorageUpdatePayload.newBuilder()
                             .setUserGroupBatchUpdateData(batchBuilder.build())
                             .build();
-            profileUpdateProducer.send(profileUpdateTopic, String.valueOf(userId), payload);
+            storageUpdateProducer.send(storageUpdateTopic, String.valueOf(userId), payload);
         }
     }
 }

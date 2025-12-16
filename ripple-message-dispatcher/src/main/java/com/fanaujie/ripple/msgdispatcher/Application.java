@@ -20,7 +20,7 @@ import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
@@ -56,7 +56,7 @@ public class Application {
         String topicMessageGroupId = config.getString("ripple.topic.message.consumer.group.id");
         String topicMessageClientId = config.getString("ripple.topic.message.consumer.client.id");
         String pushTopic = config.getString("broker.topic.push");
-        String profileUpdateTopic = config.getString("broker.topic.profile-updates");
+        String storageUpdateTopic = config.getString("broker.topic.storage-updates");
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
         // Load Kafka consumer batch configuration
@@ -70,7 +70,7 @@ public class Application {
         logger.info("Starting Message Dispatcher...");
         logger.info("Message Topic: {}", messageTopic);
         logger.info("Push Topic: {}", pushTopic);
-        logger.info("Profile Update Topic: {}", profileUpdateTopic);
+        logger.info("Storage Update Topic: {}", storageUpdateTopic);
         logger.info("Message Topic Consumer Group ID: {}", topicMessageGroupId);
         logger.info("Message Topic Consumer Client ID: {}", topicMessageClientId);
         logger.info(
@@ -104,9 +104,9 @@ public class Application {
         DefaultKeyedPayloadHandler payloadRouter =
                 createKeyedPayloadHandler(
                         pushTopic,
-                        profileUpdateTopic,
+                        storageUpdateTopic,
                         createPushMessageProducer(brokerServer),
-                        createProfileUpdateProducer(brokerServer),
+                        createStorageUpdateProducer(brokerServer),
                         userStorageFacade,
                         userProfileCache,
                         conversationStorage);
@@ -165,17 +165,17 @@ public class Application {
                 KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
     }
 
-    private GenericProducer<String, ProfileUpdatePayload> createProfileUpdateProducer(
+    private GenericProducer<String, StorageUpdatePayload> createStorageUpdateProducer(
             String brokerServer) {
-        return new KafkaGenericProducer<String, ProfileUpdatePayload>(
-                KafkaProducerConfigFactory.createProfileUpdatePayloadProducerConfig(brokerServer));
+        return new KafkaGenericProducer<String, StorageUpdatePayload>(
+                KafkaProducerConfigFactory.createStorageUpdatePayloadProducerConfig(brokerServer));
     }
 
     private DefaultKeyedPayloadHandler createKeyedPayloadHandler(
             String pushTopic,
-            String profileUpdateTopic,
+            String storageUpdateTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
-            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
+            GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
             CassandraStorageFacade userStorageFacade,
             CachingUserProfileStorage userProfileCache,
             ConversationStateFacade conversationStorage) {
@@ -193,23 +193,23 @@ public class Application {
                 SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
                 new SelfInfoUpdateEventPayloadProcessor(
                         userStorageFacade,
-                        profileUpdateProducer,
-                        profileUpdateTopic,
+                        storageUpdateProducer,
+                        storageUpdateTopic,
                         pushMessageProducer,
                         pushTopic));
         eventDispatcher.RegisterProcessor(
                 SendEventReq.EventCase.RELATION_EVENT,
                 new RelationUpdateEventPayloadProcessor(
                         userStorageFacade,
-                        profileUpdateProducer,
-                        profileUpdateTopic,
+                        storageUpdateProducer,
+                        storageUpdateTopic,
                         pushMessageProducer,
                         pushTopic));
 
         GroupHelper groupNotificationHelper =
                 new GroupHelper(
-                        profileUpdateProducer,
-                        profileUpdateTopic,
+                        storageUpdateProducer,
+                        storageUpdateTopic,
                         userStorageFacade,
                         conversationStorage);
 
@@ -223,8 +223,8 @@ public class Application {
                 SendGroupCommandReq.CommandContentCase.GROUP_UPDATE_INFO_COMMAND,
                 new UpdateGroupInfoCommandPayloadProcessor(
                         userStorageFacade,
-                        profileUpdateProducer,
-                        profileUpdateTopic,
+                        storageUpdateProducer,
+                        storageUpdateTopic,
                         conversationStorage,
                         userProfileCache));
         groupCommandDispatcher.RegisterProcessor(

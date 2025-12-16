@@ -1,8 +1,8 @@
-package com.fanaujie.ripple.profileupdater.consumer.processor;
+package com.fanaujie.ripple.storageupdater.consumer.processor;
 
 import com.fanaujie.ripple.communication.processor.Processor;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.UserGroupBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.UserGroupBatchUpdateData;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-public class UserGroupBatchUpdateProcessor implements Processor<ProfileUpdatePayload, Void> {
+public class UserGroupBatchUpdateProcessor implements Processor<StorageUpdatePayload, Void> {
     private static final Logger logger =
             LoggerFactory.getLogger(UserGroupBatchUpdateProcessor.class);
 
@@ -26,14 +26,14 @@ public class UserGroupBatchUpdateProcessor implements Processor<ProfileUpdatePay
     }
 
     @Override
-    public Void handle(ProfileUpdatePayload payload) throws Exception {
+    public Void handle(StorageUpdatePayload payload) throws Exception {
         UserGroupBatchUpdateData batchData = payload.getUserGroupBatchUpdateData();
         List<Future<Void>> futures = new ArrayList<>();
         for (Long groupId : batchData.getGroupIdsList()) {
             Future<Void> future =
                     executorService.submit(
                             () -> {
-                                updateGroupMemberProfile(batchData, groupId);
+                                updateGroupMemberStorage(batchData, groupId);
                                 return null;
                             });
             futures.add(future);
@@ -44,7 +44,7 @@ public class UserGroupBatchUpdateProcessor implements Processor<ProfileUpdatePay
         return null;
     }
 
-    private void updateGroupMemberProfile(UserGroupBatchUpdateData data, Long groupId) {
+    private void updateGroupMemberStorage(UserGroupBatchUpdateData data, Long groupId) {
         switch (data.getUpdateType()) {
             case UPDATE_NICKNAME:
                 storageFacade.updateGroupMemberName(

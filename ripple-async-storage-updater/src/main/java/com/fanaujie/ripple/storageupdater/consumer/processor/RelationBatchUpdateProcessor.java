@@ -1,8 +1,8 @@
-package com.fanaujie.ripple.profileupdater.consumer.processor;
+package com.fanaujie.ripple.storageupdater.consumer.processor;
 
 import com.fanaujie.ripple.communication.processor.Processor;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
-import com.fanaujie.ripple.protobuf.profileupdater.RelationBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.RelationBatchUpdateData;
 import com.fanaujie.ripple.storage.exception.NotFoundRelationException;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-public class RelationBatchUpdateProcessor implements Processor<ProfileUpdatePayload, Void> {
+public class RelationBatchUpdateProcessor implements Processor<StorageUpdatePayload, Void> {
     private static final Logger logger =
             LoggerFactory.getLogger(RelationBatchUpdateProcessor.class);
 
@@ -27,7 +27,7 @@ public class RelationBatchUpdateProcessor implements Processor<ProfileUpdatePayl
     }
 
     @Override
-    public Void handle(ProfileUpdatePayload payload) throws Exception {
+    public Void handle(StorageUpdatePayload payload) throws Exception {
         RelationBatchUpdateData batchData = payload.getRelationBatchUpdateData();
         List<Future<Void>> futures = new ArrayList<>();
 
@@ -36,7 +36,7 @@ public class RelationBatchUpdateProcessor implements Processor<ProfileUpdatePayl
             Future<Void> future =
                     executorService.submit(
                             () -> {
-                                updateFriendProfile(batchData, friendId);
+                                updateFriendStorage(batchData, friendId);
                                 return null;
                             });
             futures.add(future);
@@ -48,7 +48,7 @@ public class RelationBatchUpdateProcessor implements Processor<ProfileUpdatePayl
         return null;
     }
 
-    private void updateFriendProfile(RelationBatchUpdateData data, Long friendId) {
+    private void updateFriendStorage(RelationBatchUpdateData data, Long friendId) {
         try {
             switch (data.getUpdateType()) {
                 case UPDATE_NICKNAME:

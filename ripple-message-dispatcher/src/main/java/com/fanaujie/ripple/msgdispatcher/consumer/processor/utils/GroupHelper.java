@@ -2,8 +2,8 @@ package com.fanaujie.ripple.msgdispatcher.consumer.processor.utils;
 
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
-import com.fanaujie.ripple.protobuf.profileupdater.GroupMemberBatchInsertData;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.GroupMemberBatchInsertData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.ConversationStateFacade;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
@@ -20,23 +20,23 @@ import static com.fanaujie.ripple.storage.model.GroupCommandType.GROUP_COMMAND_T
 public class GroupHelper {
     private static final Logger logger = LoggerFactory.getLogger(GroupHelper.class);
     private static final int MAX_BATCH_SIZE = 5;
-    private final GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer;
-    private final String profileUpdateTopic;
+    private final GenericProducer<String, StorageUpdatePayload> storageUpdateProducer;
+    private final String storageUpdateTopic;
     private final RippleStorageFacade storageFacade;
     private final ConversationStateFacade conversationStorage;
 
     public GroupHelper(
-            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
-            String profileUpdateTopic,
+            GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
+            String storageUpdateTopic,
             RippleStorageFacade storageFacade,
             ConversationStateFacade conversationStorage) {
-        this.profileUpdateProducer = profileUpdateProducer;
-        this.profileUpdateTopic = profileUpdateTopic;
+        this.storageUpdateProducer = storageUpdateProducer;
+        this.storageUpdateTopic = storageUpdateTopic;
         this.storageFacade = storageFacade;
         this.conversationStorage = conversationStorage;
     }
 
-    public void sendBatchedProfileUpdates(
+    public void sendBatchedStorageUpdates(
             long groupId,
             String groupName,
             String groupAvatar,
@@ -66,12 +66,12 @@ public class GroupHelper {
                             .setSenderId(senderId)
                             .build();
 
-            ProfileUpdatePayload payload =
-                    ProfileUpdatePayload.newBuilder()
+            StorageUpdatePayload payload =
+                    StorageUpdatePayload.newBuilder()
                             .setGroupMemberBatchInsertData(batchData)
                             .build();
-            this.profileUpdateProducer.send(
-                    this.profileUpdateTopic, String.valueOf(groupId), payload);
+            this.storageUpdateProducer.send(
+                    this.storageUpdateTopic, String.valueOf(groupId), payload);
         }
     }
 

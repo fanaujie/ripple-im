@@ -5,8 +5,8 @@ import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.GroupUpdateInfoCommand;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
-import com.fanaujie.ripple.protobuf.profileupdater.GroupInfoBatchUpdateData;
-import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.protobuf.storageupdater.GroupInfoBatchUpdateData;
+import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.ConversationStateFacade;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
@@ -26,20 +26,20 @@ public class UpdateGroupInfoCommandPayloadProcessor implements Processor<GroupCo
     private final Logger logger =
             LoggerFactory.getLogger(UpdateGroupInfoCommandPayloadProcessor.class);
     private final RippleStorageFacade storageFacade;
-    private final GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer;
-    private final String profileUpdateTopic;
+    private final GenericProducer<String, StorageUpdatePayload> storageUpdateProducer;
+    private final String storageUpdateTopic;
     private final ConversationStateFacade conversationStorage;
     private final CachingUserProfileStorage userProfileCache;
 
     public UpdateGroupInfoCommandPayloadProcessor(
             RippleStorageFacade storageFacade,
-            GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
-            String profileUpdateTopic,
+            GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
+            String storageUpdateTopic,
             ConversationStateFacade conversationStorage,
             CachingUserProfileStorage userProfileCache) {
         this.storageFacade = storageFacade;
-        this.profileUpdateProducer = profileUpdateProducer;
-        this.profileUpdateTopic = profileUpdateTopic;
+        this.storageUpdateProducer = storageUpdateProducer;
+        this.storageUpdateTopic = storageUpdateTopic;
         this.conversationStorage = conversationStorage;
         this.userProfileCache = userProfileCache;
     }
@@ -152,12 +152,12 @@ public class UpdateGroupInfoCommandPayloadProcessor implements Processor<GroupCo
                 builder.setGroupAvatar(groupAvatar);
             }
 
-            ProfileUpdatePayload payload =
-                    ProfileUpdatePayload.newBuilder()
+            StorageUpdatePayload payload =
+                    StorageUpdatePayload.newBuilder()
                             .setGroupInfoBatchUpdateData(builder.build())
                             .build();
-            this.profileUpdateProducer.send(
-                    this.profileUpdateTopic, String.valueOf(groupId), payload);
+            this.storageUpdateProducer.send(
+                    this.storageUpdateTopic, String.valueOf(groupId), payload);
         }
     }
 }

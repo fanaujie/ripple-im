@@ -9,8 +9,8 @@ public class KafkaProducerConfigFactory {
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.MessagePayloadSerializer";
     private static final String PUSH_MESSAGE_SERIALIZER =
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.PushMessageSerializer";
-    private static final String PROFILE_UPDATE_PAYLOAD_SERIALIZER =
-            "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.ProfileUpdatePayloadSerializer";
+    private static final String STORAGE_UPDATE_PAYLOAD_SERIALIZER =
+            "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.StorageUpdatePayloadSerializer";
 
     public static KafkaProducerConfig createMessagePayloadProducerConfig(String bootstrapServers) {
         return KafkaProducerConfig.builder()
@@ -28,12 +28,12 @@ public class KafkaProducerConfigFactory {
                 .build();
     }
 
-    public static KafkaProducerConfig createProfileUpdatePayloadProducerConfig(
+    public static KafkaProducerConfig createStorageUpdatePayloadProducerConfig(
             String bootstrapServers) {
         return KafkaProducerConfig.builder()
                 .bootstrapServers(bootstrapServers)
                 .keySerializer(STRING_SERIALIZER)
-                .valueSerializer(PROFILE_UPDATE_PAYLOAD_SERIALIZER)
+                .valueSerializer(STORAGE_UPDATE_PAYLOAD_SERIALIZER)
                 .build();
     }
 }

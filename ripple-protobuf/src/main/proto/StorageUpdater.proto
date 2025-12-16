@@ -3,9 +3,9 @@ syntax = "proto3";
 package com.fanaujie.ripple.protobuf;
 
 option java_multiple_files = true;
-option java_package = "com.fanaujie.ripple.protobuf.profileupdater";
+option java_package = "com.fanaujie.ripple.protobuf.storageupdater";
 
-message FriendProfileUpdateData {
+message FriendStorageUpdateData {
   int64 user_id = 1;
   int64 friend_id = 2;
   string friend_nickname = 3;
@@ -78,9 +78,9 @@ message GroupInfoBatchUpdateData {
   int64 sender_id = 10;
 }
 
-message ProfileUpdatePayload {
+message StorageUpdatePayload {
   oneof payload {
-    FriendProfileUpdateData friend_profile_update_data = 1;
+    FriendStorageUpdateData friend_storage_update_data = 1;
     GroupMemberBatchInsertData group_member_batch_insert_data = 2;
     RelationBatchUpdateData relation_batch_update_data = 3;
     UserGroupBatchUpdateData user_group_batch_update_data = 4;

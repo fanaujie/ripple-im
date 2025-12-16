@@ -59,7 +59,7 @@ public class CreateGroupCommandPayloadProcessor implements Processor<GroupComman
         this.storageFacade.createGroup(groupId, allMembers, version);
         this.groupNotificationHelper.writeJoinGroupCommandMessage(
                 sendGroupCommandReq, groupId, allMembers);
-        this.groupNotificationHelper.sendBatchedProfileUpdates(
+        this.groupNotificationHelper.sendBatchedStorageUpdates(
                 groupId,
                 groupCreateCommand.getGroupName(),
                 groupCreateCommand.getGroupAvatar(),

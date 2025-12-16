@@ -62,7 +62,7 @@ public class InviteGroupMemberCommandPayloadProcessor implements Processor<Group
 
         this.groupNotificationHelper.writeJoinGroupCommandMessage(
                 sendGroupCommandReq, groupId, newMembers);
-        this.groupNotificationHelper.sendBatchedProfileUpdates(
+        this.groupNotificationHelper.sendBatchedStorageUpdates(
                 groupId,
                 groupInviteCommand.getGroupName(),
                 groupInviteCommand.getGroupAvatar(),
