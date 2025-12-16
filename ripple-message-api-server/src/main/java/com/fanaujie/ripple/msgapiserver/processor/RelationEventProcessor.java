@@ -48,16 +48,7 @@ public class RelationEventProcessor implements Processor<SendEventReq, SendEvent
                 b.addReceiveUserIds(userId); // notify self for multi-device sync
                 MessagePayload messageData =
                         MessagePayload.newBuilder().setEventData(b.build()).build();
-                futures.add(
-                        this.executorService.submit(
-                                () ->
-                                        this.producer.send(
-                                                this.topicName,
-                                                String.valueOf(userId),
-                                                messageData)));
-                for (Future<?> f : futures) {
-                    f.get();
-                }
+                this.producer.send(this.topicName, String.valueOf(userId), messageData);
                 return SendEventResp.newBuilder().build();
             default:
                 throw new IllegalArgumentException("Unknown relation event type");

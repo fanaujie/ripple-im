@@ -20,5 +20,5 @@ public class CreateGroupRequest {
 
     @NotNull(message = "memberIds is required")
     @NotEmpty(message = "memberIds must contain at least one member")
-    private List<Long> memberIds;
+    private List<String> memberIds;
 }

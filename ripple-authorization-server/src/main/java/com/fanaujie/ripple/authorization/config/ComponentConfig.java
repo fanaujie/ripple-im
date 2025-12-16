@@ -3,7 +3,7 @@ package com.fanaujie.ripple.authorization.config;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +23,7 @@ public class ComponentConfig {
 
     @Bean
     RippleStorageFacade userStorage(CqlSession cqlSession) {
-        CassandraUserStorageFacadeBuilder b = new CassandraUserStorageFacadeBuilder();
+        CassandraStorageFacadeBuilder b = new CassandraStorageFacadeBuilder();
         b.cqlSession(cqlSession);
         return b.build();
     }

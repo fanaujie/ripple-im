@@ -5,8 +5,8 @@ import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
-import com.fanaujie.ripple.storage.model.Message;
 import com.fanaujie.ripple.storage.model.Messages;
+import com.fanaujie.ripple.storage.service.ConversationStateFacade;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -26,14 +24,17 @@ public class MessageService {
     private final MessageAPISender messageAPISender;
     private final SnowflakeIdClient snowflakeIdClient;
     private final RippleStorageFacade storageFacade;
+    private final ConversationStateFacade conversationStorage;
 
     public MessageService(
             MessageAPISender messageAPISender,
             SnowflakeIdClient snowflakeIdClient,
-            RippleStorageFacade storageFacade) {
+            RippleStorageFacade storageFacade,
+            ConversationStateFacade conversationStorage) {
         this.messageAPISender = messageAPISender;
         this.snowflakeIdClient = snowflakeIdClient;
         this.storageFacade = storageFacade;
+        this.conversationStorage = conversationStorage;
     }
 
     public ResponseEntity<MessageResponse> sendMessage(SendMessageRequest request) {
@@ -66,7 +67,9 @@ public class MessageService {
                                         400, "Invalid read size. Must be between 1 and 200"));
             }
             Messages result = storageFacade.getMessages(conversationId, messageId, readSize);
-            ReadMessagesData data = new ReadMessagesData(result.getMessages());
+            ReadMessagesData data =
+                    new ReadMessagesData(
+                            result.getMessages().stream().map(MessageItem::new).toList());
             return ResponseEntity.ok(ReadMessagesResponse.success(data));
         } catch (NumberFormatException e) {
             log.error("readMessages: Invalid message ID format", e);
@@ -83,6 +86,13 @@ public class MessageService {
             String conversationId, long messageId, long currentUserId) {
         try {
             this.storageFacade.markLastReadMessageId(conversationId, currentUserId, messageId);
+            // Reset unread count in Redis
+            try {
+                this.conversationStorage.resetUnreadCount(currentUserId, conversationId);
+            } catch (Exception redisEx) {
+                log.warn("Failed to reset unread count in Redis: {}", redisEx.getMessage());
+                // Continue - Redis failure should not block read position update
+            }
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
             log.error("readMessages: Error reading messages", e);
@@ -93,26 +103,48 @@ public class MessageService {
 
     private long validateAndConvertSendMessageRequest(
             SendMessageRequest request, SendMessageReq.Builder builder) throws Exception {
-        if (request.getSenderId() == null || request.getReceiverId() == null) {
-            throw new IllegalArgumentException("SenderId and ReceiverId cannot be null");
+        if (request.getSenderId() == null) {
+            throw new IllegalArgumentException("SenderId cannot be null");
         }
+
+        boolean hasReceiverId =
+                request.getReceiverId() != null && !request.getReceiverId().isEmpty();
+        boolean hasGroupId = request.getGroupId() != null && !request.getGroupId().isEmpty();
+
+        if (hasReceiverId && hasGroupId) {
+            throw new IllegalArgumentException(
+                    "Only one of receiverId or groupId should be provided, not both");
+        }
+        if (!hasReceiverId && !hasGroupId) {
+            throw new IllegalArgumentException("Either receiverId or groupId is required");
+        }
+
         long senderId = Long.parseLong(request.getSenderId());
-        long receiverId = Long.parseLong(request.getReceiverId());
-        if (request.getConversationId().isEmpty()) {
-            String conversationId =
-                    ConversationUtils.generateConversationId(
-                            Long.parseLong(request.getSenderId()),
-                            Long.parseLong(request.getReceiverId()));
-            request.setConversationId(conversationId);
-        }
         GenerateIdResponse res = snowflakeIdClient.requestSnowflakeId().get();
-        builder.setMessageId(res.getId());
+
         builder.setSenderId(senderId)
                 .setMessageId(res.getId())
-                .setConversationId(request.getConversationId())
-                .setReceiverId(receiverId)
                 .setSendTimestamp(Instant.now().getEpochSecond())
                 .setSingleMessageContent(request.toSingleMessageContent());
+
+        if (hasGroupId) {
+            // Group message
+            long groupId = Long.parseLong(request.getGroupId());
+            if (request.getConversationId() == null || request.getConversationId().isEmpty()) {
+                request.setConversationId(
+                        ConversationUtils.generateGroupConversationId(groupId));
+            }
+            builder.setConversationId(request.getConversationId()).setGroupId(groupId);
+        } else {
+            // Single chat message
+            long receiverId = Long.parseLong(request.getReceiverId());
+            if (request.getConversationId() == null || request.getConversationId().isEmpty()) {
+                request.setConversationId(
+                        ConversationUtils.generateConversationId(senderId, receiverId));
+            }
+            builder.setConversationId(request.getConversationId()).setReceiverId(receiverId);
+        }
+
         return res.getId();
     }
 }

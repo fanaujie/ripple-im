@@ -7,6 +7,7 @@ import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
+import com.fanaujie.ripple.storage.service.ConversationStateFacade;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
@@ -22,9 +23,13 @@ public class GatewayPushBatchProcessor
     private static final Logger logger = LoggerFactory.getLogger(GatewayPushBatchProcessor.class);
 
     private final MessageGatewayClientManager messageGatewayManager;
+    private final ConversationStateFacade conversationStorage;
 
-    public GatewayPushBatchProcessor(MessageGatewayClientManager messageGatewayManager) {
+    public GatewayPushBatchProcessor(
+            MessageGatewayClientManager messageGatewayManager,
+            ConversationStateFacade conversationStorage) {
         this.messageGatewayManager = messageGatewayManager;
+        this.conversationStorage = conversationStorage;
     }
 
     @Override
@@ -153,11 +158,19 @@ public class GatewayPushBatchProcessor
                                             + pushMessage.getMessageData().getMessageType());
                     }
 
-                    // Build message payload
+                    // Query unread count for this recipient
+                    String conversationId =
+                            pushMessage.getMessageData().getData().getConversationId();
+                    long recipientUserId = Long.parseLong(userInfo.getUserId());
+                    int unreadCount =
+                            conversationStorage.getUnreadCount(recipientUserId, conversationId);
+
+                    // Build message payload with unread count
                     PushMessagePayload messagePayload =
                             PushMessagePayload.newBuilder()
                                     .setMessageType(gatewayMessageType)
                                     .setMessageData(pushMessage.getMessageData().getData())
+                                    .setUnreadCount(unreadCount)
                                     .build();
 
                     return PushMessageRequest.newBuilder()

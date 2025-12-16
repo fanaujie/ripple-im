@@ -53,9 +53,12 @@ public class RelationService {
                                                 relation.getRelationRemarkName(),
                                                 relation.getRelationFlags() & 0xFF)) // byte to int
                         .collect(Collectors.toList());
+        ;
         UserRelationsData data =
-                new UserRelationsData(users, result.getNextPageToken(), result.isHasMore());
-
+                new UserRelationsData(users, result.getNextPageToken(), result.isHasMore(), null);
+        if (!result.isHasMore()) {
+            data.setLastVersion(this.storageFacade.getLatestRelationVersion(currentUserId));
+        }
         return ResponseEntity.ok(new UserRelationsResponse(200, "success", data));
     }
 
@@ -71,19 +74,16 @@ public class RelationService {
         }
         try {
             UserProfile targetUserProfile = this.storageFacade.getUserProfile(targetUserId);
-            SendEventReq req =
-                    SendEventReq.newBuilder()
-                            .setRelationEvent(
-                                    RelationEvent.newBuilder()
-                                            .setEventType(RelationEvent.EventType.ADD_FRIEND)
-                                            .setUserId(currentUserId)
-                                            .setTargetUserId(targetUserId)
-                                            .setTargetUserNickName(targetUserProfile.getNickName())
-                                            .setTargetUserAvatar(targetUserProfile.getAvatar())
-                                            .setTargetUserRemarkName(
-                                                    targetUserProfile.getNickName())
-                                            .build())
-                            .build();
+            RelationEvent.Builder b =
+                    RelationEvent.newBuilder()
+                            .setEventType(RelationEvent.EventType.ADD_FRIEND)
+                            .setUserId(currentUserId)
+                            .setTargetUserId(targetUserId)
+                            .setTargetUserNickName(targetUserProfile.getNickName());
+            if (targetUserProfile.getAvatar() != null) {
+                b.setTargetUserAvatar(targetUserProfile.getAvatar());
+            }
+            SendEventReq req = SendEventReq.newBuilder().setRelationEvent(b.build()).build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
@@ -176,27 +176,24 @@ public class RelationService {
                 betweenUserRelation.setRelationUserId(targetUserId);
                 betweenUserRelation.setRelationNickName(blockedUserProfile.getNickName());
                 betweenUserRelation.setRelationAvatar(blockedUserProfile.getAvatar());
-                betweenUserRelation.setRelationRemarkName(blockedUserProfile.getNickName());
             } else {
                 if (RelationFlags.BLOCKED.isSet(betweenUserRelation.getRelationFlags())) {
                     return ResponseEntity.badRequest()
                             .body(new CommonResponse(400, "Target user is already blocked"));
                 }
             }
+            eventBuilder
+                    .setUserId(currentUserId)
+                    .setTargetUserId(targetUserId)
+                    .setTargetUserNickName(betweenUserRelation.getRelationNickName());
+            if (betweenUserRelation.getRelationAvatar() != null) {
+                eventBuilder.setTargetUserAvatar(betweenUserRelation.getRelationAvatar());
+            }
+            if (betweenUserRelation.getRelationRemarkName() != null) {
+                eventBuilder.setTargetUserRemarkName(betweenUserRelation.getRelationRemarkName());
+            }
             SendEventReq req =
-                    SendEventReq.newBuilder()
-                            .setRelationEvent(
-                                    eventBuilder
-                                            .setUserId(currentUserId)
-                                            .setTargetUserId(targetUserId)
-                                            .setTargetUserNickName(
-                                                    betweenUserRelation.getRelationNickName())
-                                            .setTargetUserAvatar(
-                                                    betweenUserRelation.getRelationAvatar())
-                                            .setTargetUserRemarkName(
-                                                    betweenUserRelation.getRelationRemarkName())
-                                            .build())
-                            .build();
+                    SendEventReq.newBuilder().setRelationEvent(eventBuilder.build()).build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
@@ -317,17 +314,5 @@ public class RelationService {
             return ResponseEntity.badRequest()
                     .body(new RelationSyncResponse(400, e.getMessage(), null));
         }
-    }
-
-    public ResponseEntity<RelationVersionResponse> getLatestVersion(long currentUserId) {
-        String latestVersion = this.storageFacade.getLatestRelationVersion(currentUserId);
-
-        if (latestVersion == null) {
-            return ResponseEntity.ok(
-                    new RelationVersionResponse(200, "success", new RelationVersionData(null)));
-        }
-
-        RelationVersionData data = new RelationVersionData(latestVersion);
-        return ResponseEntity.ok(new RelationVersionResponse(200, "success", data));
     }
 }

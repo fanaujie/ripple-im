@@ -6,9 +6,9 @@ import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SelfInfoUpdateEvent;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
-import com.fanaujie.ripple.protobuf.profileupdater.GroupMemberBatchUpdateData;
 import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
 import com.fanaujie.ripple.protobuf.profileupdater.RelationBatchUpdateData;
+import com.fanaujie.ripple.protobuf.profileupdater.UserGroupBatchUpdateData;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.push.UserNotifications;
@@ -77,7 +77,7 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         String nickname = null;
         String avatar = null;
         RelationBatchUpdateData.UpdateType relationUpdateType;
-        GroupMemberBatchUpdateData.UpdateType groupUpdateType;
+        UserGroupBatchUpdateData.UpdateType groupUpdateType;
 
         // Update profile storage
         switch (event.getEventType()) {
@@ -85,18 +85,18 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
                 nickname = event.getNickName();
                 storageFacade.updateProfileNickNameByUserId(userId, nickname);
                 relationUpdateType = RelationBatchUpdateData.UpdateType.UPDATE_NICKNAME;
-                groupUpdateType = GroupMemberBatchUpdateData.UpdateType.UPDATE_NICKNAME;
+                groupUpdateType = UserGroupBatchUpdateData.UpdateType.UPDATE_NICKNAME;
                 break;
             case UPDATE_AVATAR:
                 avatar = event.getAvatar();
                 storageFacade.updateProfileAvatarByUserId(userId, avatar);
                 relationUpdateType = RelationBatchUpdateData.UpdateType.UPDATE_AVATAR;
-                groupUpdateType = GroupMemberBatchUpdateData.UpdateType.UPDATE_AVATAR;
+                groupUpdateType = UserGroupBatchUpdateData.UpdateType.UPDATE_AVATAR;
                 break;
             case DELETE_AVATAR:
                 storageFacade.updateProfileAvatarByUserId(userId, null);
                 relationUpdateType = RelationBatchUpdateData.UpdateType.DELETE_AVATAR;
-                groupUpdateType = GroupMemberBatchUpdateData.UpdateType.DELETE_AVATAR;
+                groupUpdateType = UserGroupBatchUpdateData.UpdateType.DELETE_AVATAR;
                 break;
             default:
                 logger.error(
@@ -110,9 +110,9 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         final String finalNickname = nickname;
         final String finalAvatar = avatar;
         final RelationBatchUpdateData.UpdateType finalRelationUpdateType = relationUpdateType;
-        final GroupMemberBatchUpdateData.UpdateType finalGroupUpdateType = groupUpdateType;
+        final UserGroupBatchUpdateData.UpdateType finalGroupUpdateType = groupUpdateType;
         publishRelationBatchUpdates(userId, finalNickname, finalAvatar, finalRelationUpdateType);
-        publishGroupMemberBatchUpdates(userId, finalNickname, finalAvatar, finalGroupUpdateType);
+        publishUserGroupBatchUpdates(userId, finalNickname, finalAvatar, finalGroupUpdateType);
         return userNotificationBuilder.setNotification(multiNotificationsBuilder.build()).build();
     }
 
@@ -153,11 +153,11 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         }
     }
 
-    private void publishGroupMemberBatchUpdates(
+    private void publishUserGroupBatchUpdates(
             long userId,
             String nickname,
             String avatar,
-            GroupMemberBatchUpdateData.UpdateType updateType) {
+            UserGroupBatchUpdateData.UpdateType updateType) {
 
         List<Long> groupIds = storageFacade.getUserGroupIds(userId);
 
@@ -170,8 +170,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
             int end = Math.min((i + 1) * MAX_BATCH_SIZE, groupIds.size());
             List<Long> batchGroupIds = groupIds.subList(start, end);
 
-            GroupMemberBatchUpdateData.Builder batchBuilder =
-                    GroupMemberBatchUpdateData.newBuilder()
+            UserGroupBatchUpdateData.Builder batchBuilder =
+                    UserGroupBatchUpdateData.newBuilder()
                             .setUserId(userId)
                             .addAllGroupIds(batchGroupIds)
                             .setBatchIndex(i)
@@ -187,7 +187,7 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
 
             ProfileUpdatePayload payload =
                     ProfileUpdatePayload.newBuilder()
-                            .setGroupMemberBatchUpdateData(batchBuilder.build())
+                            .setUserGroupBatchUpdateData(batchBuilder.build())
                             .build();
             profileUpdateProducer.send(profileUpdateTopic, String.valueOf(userId), payload);
         }

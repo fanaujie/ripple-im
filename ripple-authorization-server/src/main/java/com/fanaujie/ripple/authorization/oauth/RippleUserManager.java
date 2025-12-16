@@ -19,7 +19,7 @@ public class RippleUserManager implements UserDetailsManager {
     @Override
     public void createUser(UserDetails userDetails) {
         if (userDetails instanceof User user) {
-            storageFacade.insertUser(user, user.getAccount(), "");
+            storageFacade.insertUser(user, user.getAccount(), null);
             return;
         }
         throw new IllegalArgumentException("UserDetails must be an instance of User");

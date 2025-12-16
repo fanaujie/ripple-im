@@ -34,6 +34,8 @@ public interface RippleStorageFacade {
 
     Messages getMessages(String conversationId, long beforeMessageId, int pageSize);
 
+    Message getMessages(String conversationId, long messageId) throws NotMessageException;
+
     void markLastReadMessageId(String conversationId, long ownerId, long readMessageId);
 
     boolean existsByConversationId(String conversationId, long ownerId);
@@ -41,11 +43,19 @@ public interface RippleStorageFacade {
     void createSingeMessageConversation(String conversationId, long ownerId, long peerId)
             throws NotFoundUserProfileException;
 
-    void saveTextSingleMessage(
+    void saveTextMessage(
             String conversationId,
             long messageId,
             long senderId,
             long receiverId,
+            long timestamp,
+            SingleMessageContent content);
+
+    void saveGroupTextMessage(
+            String conversationId,
+            long messageId,
+            long senderId,
+            long groupId,
             long timestamp,
             SingleMessageContent content);
 
@@ -88,18 +98,47 @@ public interface RippleStorageFacade {
 
     List<Long> getGroupMemberIds(long groupId) throws NotFoundGroupException;
 
-    GroupInfo getGroupInfo(long groupId) throws NotFoundGroupException;
+    List<GroupMemberInfo> getGroupMembersInfo(long groupId) throws NotFoundGroupException;
+
+    PagedGroupMemberResult getGroupMembersPaged(long groupId, String nextPageToken, int pageSize)
+            throws NotFoundGroupException;
 
     List<Long> getUserGroupIds(long userId);
 
-    void createGroup(long groupId, String groupName, String groupAvatar, List<UserProfile> members);
+    List<UserGroup> getUserGroups(long userId);
+
+    PagedUserGroupResult getUserGroupsPaged(long userId, String nextPageToken, int pageSize);
+
+    String getLatestUserGroupVersion(long userId);
+
+    List<GroupVersionChange> getGroupChanges(long groupId, String afterVersion, int limit)
+            throws InvalidVersionException;
+
+    String getLatestGroupVersion(long groupId);
+
+    void createGroup(long groupId, List<UserProfile> members, long version);
 
     void createUserGroupAndConversation(
-            long userId, long groupId, String groupName, String groupAvatar);
+            long userId, long groupId, String groupName, String groupAvatar, long version);
 
-    void createGroupMembersProfile(long groupId, List<UserProfile> members);
+    void createGroupMembersProfile(long groupId, List<UserProfile> members, long version);
 
-    void updateGroupMemberProfile(long groupId, long userId, String nickname, String avatar);
+    void updateGroupMemberName(long groupId, long userId, String name, long version);
+
+    void updateGroupMemberAvatar(long groupId, long userId, String avatar, long version);
+
+    void removeUserGroup(long userId, long groupId, long version);
+
+    void updateUserGroupName(long userId, long groupId, String groupName, long version);
+
+    void updateUserGroupAvatar(long userId, long groupId, String groupAvatar, long version);
+
+    List<UserGroupVersionChange> getUserGroupChanges(long userId, String afterVersion, int limit)
+            throws InvalidVersionException;
+
+    void removeGroupMember(long groupId, long userId, long version);
+
+    void removeGroupConversation(long userId, long groupId);
 
     void saveGroupCommandMessage(
             String conversationId,

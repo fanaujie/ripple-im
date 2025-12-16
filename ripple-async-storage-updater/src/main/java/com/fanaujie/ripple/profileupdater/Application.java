@@ -1,0 +1,190 @@
+package com.fanaujie.ripple.profileupdater;
+
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
+import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericProducer;
+import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFactory;
+import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
+import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
+import com.fanaujie.ripple.protobuf.push.PushMessage;
+import com.fanaujie.ripple.profileupdater.consumer.ProfileUpdateConsumer;
+
+import com.fanaujie.ripple.profileupdater.consumer.processor.FriendProfileUpdatePayloadProcessor;
+import com.fanaujie.ripple.profileupdater.consumer.processor.GroupInfoBatchUpdateProcessor;
+import com.fanaujie.ripple.profileupdater.consumer.processor.GroupMemberBatchInsertProcessor;
+import com.fanaujie.ripple.profileupdater.consumer.processor.UserGroupBatchUpdateProcessor;
+import com.fanaujie.ripple.profileupdater.consumer.processor.RelationBatchUpdateProcessor;
+import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
+import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
+import com.fanaujie.ripple.storage.driver.CassandraDriver;
+import com.fanaujie.ripple.storage.driver.RedisDriver;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class Application {
+    private static final Logger logger = LoggerFactory.getLogger(Application.class);
+
+    private void run() throws InterruptedException {
+        Config config = ConfigFactory.load();
+        String redisHost = config.getString("redis.host");
+        int redisPort = config.getInt("redis.port");
+        List<String> cassandraContacts = config.getStringList("cassandra.contact.points");
+        String cassandraKeyspace = config.getString("cassandra.keyspace.name");
+        String localDatacenter = config.getString("cassandra.local.datacenter");
+
+        String profileUpdateTopic = config.getString("broker.topic.profile-updates");
+        String pushTopic = config.getString("broker.topic.push");
+        String brokerServer = config.getString("broker.server");
+        String consumerGroupId = config.getString("ripple.topic.profile-updates.consumer.group.id");
+        String consumerClientId =
+                config.getString("ripple.topic.profile-updates.consumer.client.id");
+
+        int kafkaMaxPollRecords = config.getInt("kafka.consumer.max-poll-records");
+        int kafkaFetchMinBytes = config.getInt("kafka.consumer.fetch-min-bytes");
+        int kafkaFetchMaxWaitMs = config.getInt("kafka.consumer.fetch-max-wait-ms");
+
+        int processorThreadPoolSize = config.getInt("processor.thread.pool.size");
+        logger.info("Configuration - Redis Host: {}, Redis Port: {}", redisHost, redisPort);
+        logger.info("Configuration - Broker Server: {}", brokerServer);
+        logger.info("Starting Profile Update Consumer...");
+        logger.info("Profile Update Topic: {}", profileUpdateTopic);
+        logger.info("Push Topic: {}", pushTopic);
+        logger.info("Consumer Group ID: {}", consumerGroupId);
+        logger.info("Consumer Client ID: {}", consumerClientId);
+
+        CqlSession cqlSession =
+                createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
+
+        CassandraStorageFacadeBuilder storageBuilder = new CassandraStorageFacadeBuilder();
+        storageBuilder.cqlSession(cqlSession);
+        CassandraStorageFacade storageFacade = storageBuilder.build();
+        int cpuSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executorService =
+                createExecutorService(cpuSize, cpuSize * 2, processorThreadPoolSize);
+
+        GenericProducer<String, PushMessage> pushMessageProducer =
+                createPushMessageProducer(brokerServer);
+
+        CachingUserProfileStorage userProfileCache =
+                new CachingUserProfileStorage(
+                        RedisDriver.createRedissonClient(redisHost, redisPort), storageFacade);
+
+        ProfileUpdateConsumer profileUpdateConsumer =
+                new ProfileUpdateConsumer(
+                        createProcessorDispatcher(
+                                storageFacade,
+                                executorService,
+                                pushMessageProducer,
+                                pushTopic,
+                                userProfileCache));
+
+        GenericConsumer<String, ProfileUpdatePayload> kafkaConsumer =
+                createProfileUpdateTopicConsumer(
+                        profileUpdateTopic,
+                        brokerServer,
+                        consumerGroupId,
+                        consumerClientId,
+                        kafkaMaxPollRecords,
+                        kafkaFetchMinBytes,
+                        kafkaFetchMaxWaitMs,
+                        profileUpdateConsumer);
+
+        Thread consumerThread = new Thread(kafkaConsumer);
+        consumerThread.start();
+        consumerThread.join();
+    }
+
+    public static void main(String[] args) {
+        Application app = new Application();
+        try {
+            app.run();
+        } catch (Exception e) {
+            logger.error("Application encountered an error: ", e);
+        }
+    }
+
+    private GenericConsumer<String, ProfileUpdatePayload> createProfileUpdateTopicConsumer(
+            String topic,
+            String brokerServer,
+            String groupId,
+            String clientId,
+            int maxPollRecords,
+            int fetchMinBytes,
+            int fetchMaxWaitMs,
+            ProfileUpdateConsumer profileUpdateConsumer) {
+        GenericConsumer<String, ProfileUpdatePayload> consumer =
+                new KafkaGenericConsumer<>(
+                        KafkaConsumerConfigFactory.createProfileUpdatePayloadConsumerConfig(
+                                topic,
+                                brokerServer,
+                                groupId,
+                                clientId,
+                                maxPollRecords,
+                                fetchMinBytes,
+                                fetchMaxWaitMs));
+        consumer.subscribe(profileUpdateConsumer::consumeBatch);
+        return consumer;
+    }
+
+    private ProcessorDispatcher<ProfileUpdatePayload.PayloadCase, ProfileUpdatePayload, Void>
+            createProcessorDispatcher(
+                    CassandraStorageFacade storageFacade,
+                    ExecutorService executorService,
+                    GenericProducer<String, PushMessage> pushMessageProducer,
+                    String pushTopic,
+                    CachingUserProfileStorage userProfileCache) {
+        ProcessorDispatcher<ProfileUpdatePayload.PayloadCase, ProfileUpdatePayload, Void>
+                processor = new DefaultProcessorDispatcher<>();
+        processor.RegisterProcessor(
+                ProfileUpdatePayload.PayloadCase.FRIEND_PROFILE_UPDATE_DATA,
+                new FriendProfileUpdatePayloadProcessor(storageFacade));
+        processor.RegisterProcessor(
+                ProfileUpdatePayload.PayloadCase.RELATION_BATCH_UPDATE_DATA,
+                new RelationBatchUpdateProcessor(storageFacade, executorService));
+        processor.RegisterProcessor(
+                ProfileUpdatePayload.PayloadCase.USER_GROUP_BATCH_UPDATE_DATA,
+                new UserGroupBatchUpdateProcessor(storageFacade, executorService));
+        processor.RegisterProcessor(
+                ProfileUpdatePayload.PayloadCase.GROUP_MEMBER_BATCH_INSERT_DATA,
+                new GroupMemberBatchInsertProcessor(
+                        storageFacade,
+                        executorService,
+                        pushMessageProducer,
+                        pushTopic,
+                        userProfileCache));
+        processor.RegisterProcessor(
+                ProfileUpdatePayload.PayloadCase.GROUP_INFO_BATCH_UPDATE_DATA,
+                new GroupInfoBatchUpdateProcessor(
+                        storageFacade, executorService, pushMessageProducer, pushTopic));
+        return processor;
+    }
+
+    private CqlSession createCQLSession(
+            List<String> cassandraContacts, String cassandraKeyspace, String localDatacenter) {
+        return CassandraDriver.createCqlSession(
+                cassandraContacts, cassandraKeyspace, localDatacenter);
+    }
+
+    private ExecutorService createExecutorService(int coreSize, int maxSize, int queueCapacity) {
+        return new ThreadPoolExecutor(
+                coreSize, maxSize, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(queueCapacity));
+    }
+
+    private GenericProducer<String, PushMessage> createPushMessageProducer(String brokerServer) {
+        return new KafkaGenericProducer<>(
+                KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
+    }
+}

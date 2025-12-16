@@ -5,7 +5,8 @@ import lombok.Getter;
 @Getter
 public enum CachePrefixKey {
     FRIEND_IDS("FRIEND_IDS:"),
-    USER_PROFILE("USER_PROFILE:");
+    USER_PROFILE("USER_PROFILE:"),
+    CONVERSATION_UNREAD("unread_");
     private final String value;
 
     CachePrefixKey(String value) {

@@ -10,4 +10,12 @@ import lombok.NoArgsConstructor;
 public class CommonResponse {
     private int code;
     private String message;
+
+    public static CommonResponse success() {
+        return new CommonResponse(200, "success");
+    }
+
+    public static CommonResponse error(int code, String message) {
+        return new CommonResponse(code, message);
+    }
 }

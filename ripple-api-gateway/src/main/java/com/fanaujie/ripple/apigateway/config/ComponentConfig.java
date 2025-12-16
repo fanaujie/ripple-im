@@ -8,8 +8,14 @@ import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 
+import com.fanaujie.ripple.storage.driver.RedisDriver;
+import com.fanaujie.ripple.storage.service.ConversationStateFacade;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.impl.CachingConversationStorage;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCalculator;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +36,7 @@ public class ComponentConfig {
 
     @Bean
     RippleStorageFacade userStorageAggregator(CqlSession cqlSession) {
-        CassandraUserStorageFacadeBuilder b = new CassandraUserStorageFacadeBuilder();
+        CassandraStorageFacadeBuilder b = new CassandraStorageFacadeBuilder();
         b.cqlSession(cqlSession);
         return b.build();
     }
@@ -65,5 +71,30 @@ public class ComponentConfig {
             @Value("${snowflakeId.server.host}") String host,
             @Value("${snowflakeId.server.port}") int port) {
         return new SnowflakeIdClient(host, port);
+    }
+
+    @Bean
+    public RedissonClient redissonClient(
+            @Value("${redis.host}") String host, @Value("${redis.port}") int port) {
+        return RedisDriver.createRedissonClient(host, port);
+    }
+
+    @Bean
+    public CassandraUnreadCountCalculator cassandraUnreadCountCalculator(CqlSession cqlSession) {
+        return new CassandraUnreadCountCalculator(cqlSession);
+    }
+
+    @Bean
+    public CassandraLastMessageCalculator cassandraLastMessageCalculator(CqlSession cqlSession) {
+        return new CassandraLastMessageCalculator(cqlSession);
+    }
+
+    @Bean
+    public ConversationStateFacade conversationStorage(
+            RedissonClient redissonClient,
+            CassandraUnreadCountCalculator cassandraUnreadCountCalculator,
+            CassandraLastMessageCalculator cassandraLastMessageCalculator) {
+        return new CachingConversationStorage(
+                redissonClient, cassandraUnreadCountCalculator, cassandraLastMessageCalculator);
     }
 }

@@ -13,7 +13,7 @@ message SingleMessageContent {
 }
 
 message GroupCommandMessageContent {
-  int64  command_type = 1;
+  int32  command_type = 1;
   string text = 2;
 }
 
@@ -85,11 +85,13 @@ message GroupCreateCommand {
 }
 
 message  GroupInviteCommand {
-  repeated int64 new_member_ids = 2;
+  repeated int64 new_member_ids = 1;
+  string group_name = 2;
+  string group_avatar = 3;
 }
 
 message GroupQuitCommand {
-  int64 user_id = 2;
+  int64 user_id = 1;
 }
 
 message GroupUpdateInfoCommand {

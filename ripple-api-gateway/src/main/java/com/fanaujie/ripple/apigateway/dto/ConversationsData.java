@@ -13,4 +13,5 @@ public class ConversationsData {
     private List<ConversationItem> conversations;
     private String nextPageToken;
     private boolean hasMore;
+    private String lastVersion;
 }

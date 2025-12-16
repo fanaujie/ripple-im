@@ -19,8 +19,8 @@ public class ConversationCqlStatement {
     private final PreparedStatement selectConversationChangesStmt;
     private final PreparedStatement selectLatestVersionStmt;
     private final PreparedStatement selectMessagesStmt;
-    private final PreparedStatement selectConversationUnreadCountStmt;
-    private final PreparedStatement selectLatestMessageStmt;
+    private final PreparedStatement selectMessageByIdStmt;
+    private final PreparedStatement deleteConversationStmt;
 
     public ConversationCqlStatement(CqlSession session) {
         this.existsConversationStmt =
@@ -105,15 +105,16 @@ public class ConversationCqlStatement {
                                 + "WHERE conversation_id = ? AND message_id < ? "
                                 + "ORDER BY message_id LIMIT ?");
 
-        this.selectConversationUnreadCountStmt =
+        this.selectMessageByIdStmt =
                 session.prepare(
-                        "SELECT message_id, receiver_id, send_timestamp, text "
+                        "SELECT conversation_id, message_id, sender_id, receiver_id, group_id, "
+                                + "send_timestamp, message_type, text, file_url, file_name, command_type, command_data "
                                 + "FROM ripple.user_messages "
-                                + "WHERE conversation_id = ? AND message_id > ?");
-        this.selectLatestMessageStmt =
+                                + "WHERE conversation_id = ? AND message_id = ?");
+
+        this.deleteConversationStmt =
                 session.prepare(
-                        "SELECT message_id,send_timestamp, text "
-                                + "FROM ripple.user_messages "
-                                + "WHERE conversation_id = ? ORDER BY message_id DESC LIMIT 1");
+                        "DELETE FROM ripple.user_conversations "
+                                + "WHERE owner_id = ? AND conversation_id = ?");
     }
 }

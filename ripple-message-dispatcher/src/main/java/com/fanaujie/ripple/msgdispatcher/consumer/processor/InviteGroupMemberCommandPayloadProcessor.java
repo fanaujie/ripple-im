@@ -1,12 +1,11 @@
 package com.fanaujie.ripple.msgdispatcher.consumer.processor;
 
 import com.fanaujie.ripple.communication.processor.Processor;
-import com.fanaujie.ripple.msgdispatcher.consumer.processor.utils.GroupNotificationHelper;
+import com.fanaujie.ripple.msgdispatcher.consumer.processor.utils.GroupHelper;
 import com.fanaujie.ripple.protobuf.msgapiserver.GroupInviteCommand;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
-import com.fanaujie.ripple.storage.cache.UserProfileRedissonKvCache;
-import com.fanaujie.ripple.storage.model.GroupInfo;
+import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
@@ -14,8 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND;
 
@@ -23,13 +20,13 @@ public class InviteGroupMemberCommandPayloadProcessor implements Processor<Group
     private final Logger logger =
             LoggerFactory.getLogger(InviteGroupMemberCommandPayloadProcessor.class);
     private final RippleStorageFacade storageFacade;
-    private final UserProfileRedissonKvCache userProfileCache;
-    private final GroupNotificationHelper groupNotificationHelper;
+    private final CachingUserProfileStorage userProfileCache;
+    private final GroupHelper groupNotificationHelper;
 
     public InviteGroupMemberCommandPayloadProcessor(
             RippleStorageFacade storageFacade,
-            UserProfileRedissonKvCache userProfileCache,
-            GroupNotificationHelper groupNotificationHelper) {
+            CachingUserProfileStorage userProfileCache,
+            GroupHelper groupNotificationHelper) {
         this.storageFacade = storageFacade;
         this.userProfileCache = userProfileCache;
         this.groupNotificationHelper = groupNotificationHelper;
@@ -49,8 +46,8 @@ public class InviteGroupMemberCommandPayloadProcessor implements Processor<Group
     private void updateGroupStorage(SendGroupCommandReq sendGroupCommandReq) throws Exception {
         GroupInviteCommand groupInviteCommand = sendGroupCommandReq.getGroupInviteCommand();
         long groupId = sendGroupCommandReq.getGroupId();
+        long version = sendGroupCommandReq.getSendTimestamp();
 
-        GroupInfo groupInfo = this.storageFacade.getGroupInfo(groupId);
         List<UserProfile> newMembers = new ArrayList<>();
         for (long newMemberId : groupInviteCommand.getNewMemberIdsList()) {
             UserProfile userProfile = this.userProfileCache.get(newMemberId);
@@ -61,22 +58,18 @@ public class InviteGroupMemberCommandPayloadProcessor implements Processor<Group
             }
         }
 
-        this.storageFacade.createGroupMembersProfile(groupId, newMembers);
+        this.storageFacade.createGroupMembersProfile(groupId, newMembers, version);
 
-        List<Long> allRecipientIds =
-                Stream.concat(
-                                groupInfo.getMemberIds().stream(),
-                                newMembers.stream().map(UserProfile::getUserId))
-                        .distinct()
-                        .collect(Collectors.toList());
+        this.groupNotificationHelper.writeJoinGroupCommandMessage(
+                sendGroupCommandReq, groupId, newMembers);
         this.groupNotificationHelper.sendBatchedProfileUpdates(
                 groupId,
-                groupInfo.getGroupName(),
-                groupInfo.getGroupAvatar(),
+                groupInviteCommand.getGroupName(),
+                groupInviteCommand.getGroupAvatar(),
                 newMembers,
+                sendGroupCommandReq.getSenderId(),
+                sendGroupCommandReq.getSendTimestamp(),
+                sendGroupCommandReq.getMessageId(),
                 sendGroupCommandReq.getSenderId());
-
-        this.groupNotificationHelper.writeJoinGroupCommandMessageAndPush(
-                sendGroupCommandReq, groupId, newMembers, allRecipientIds);
     }
 }

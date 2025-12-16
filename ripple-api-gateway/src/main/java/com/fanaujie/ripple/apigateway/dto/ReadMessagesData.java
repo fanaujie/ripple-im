@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.apigateway.dto;
 
-import com.fanaujie.ripple.storage.model.Message;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,5 +10,5 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReadMessagesData {
-    private List<Message> messages;
+    private List<MessageItem> messages;
 }

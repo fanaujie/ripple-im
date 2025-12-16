@@ -38,9 +38,7 @@ public class SelfInfoUpdateEventProcessor implements Processor<SendEventReq, Sen
         EventData.Builder b = EventData.newBuilder().setSendUserId(userId).setData(request);
         b.addReceiveUserIds(userId); // notify self for multi-device sync
         MessagePayload messageData = MessagePayload.newBuilder().setEventData(b.build()).build();
-        this.executorService
-                .submit(() -> this.producer.send(this.topicName, String.valueOf(userId), messageData))
-                .get();
+        this.producer.send(this.topicName, String.valueOf(userId), messageData);
         return SendEventResp.newBuilder().build();
     }
 }

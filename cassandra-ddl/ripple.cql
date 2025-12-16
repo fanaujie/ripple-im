@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_messages"
     "receiver_id"     bigint,
     "group_id"        bigint,
     "send_timestamp"  bigint,
-    "message_type"    tinyint, -- 1: TEXT, 2: FILE, 3: GROUP_COMMAND
+    "message_type"    tinyint, -- 1: TEXT, 2: GROUP_COMMAND
     "text"            text,
     "file_url"        text,
     "file_name"       text,
@@ -101,17 +101,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_messages"
 );
 
 
-CREATE TABLE IF NOT EXISTS "ripple"."groups"
-(
-    "group_id"     bigint,
-    "group_name"   text,
-    "group_avatar" text,
-    "member_ids"   set<bigint>,
-    "version"      bigint,
-    primary key (group_id)
-);
-
-CREATE TABLE IF NOT EXISTS "ripple"."group_members_info"
+CREATE TABLE IF NOT EXISTS "ripple"."group_members"
 (
     "group_id" bigint,
     "user_id"  bigint,
@@ -120,12 +110,40 @@ CREATE TABLE IF NOT EXISTS "ripple"."group_members_info"
     primary key (group_id, user_id)
 );
 
+CREATE TYPE IF NOT EXISTS "ripple"."group_change_detail"
+    (
+        "operation"    tinyint, -- 1:create_group, 2:delete_group, 3:member_join, 4:member_quit, 5:member_update_name, 6:member_update_avatar
+        "user_id"      bigint,
+        "name"         text,
+        "avatar"       text
+    );
 
-CREATE TABLE IF NOT EXISTS "ripple"."user_groups"
+CREATE TABLE IF NOT EXISTS "ripple"."group_members_version"
 (
-    "user_id"  bigint,
     "group_id" bigint,
+    "version"  bigint,
+    "changes"  list<frozen<group_change_detail>>, -- List of changes for this version
+    primary key (group_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS "ripple"."user_group"
+(
+    "user_id"      bigint,
+    "group_id"     bigint,
+    "group_name"   text,
+    "group_avatar" text,
     primary key ( user_id, group_id)
+);
+
+CREATE TABLE IF NOT EXISTS "ripple"."user_group_version"
+(
+    "user_id"      bigint,
+    "version"      bigint,
+    "group_id"     bigint,
+    "operation"    tinyint, -- 1:join, 2:quit, 3:update_group_name, 4:update_group_avatar
+    "group_name"   text,
+    "group_avatar" text,
+    primary key ( user_id, version )
 );
 
 

@@ -90,16 +90,17 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                 if (reverseRelation != null
                         && RelationFlags.FRIEND.isSet(reverseRelation.getRelationFlags())) {
                     UserProfile userProfile = storageFacade.getUserProfile(event.getUserId());
-                    FriendProfileUpdateData friendProfileUpdateData =
+                    FriendProfileUpdateData.Builder friendProfileBuilder =
                             FriendProfileUpdateData.newBuilder()
                                     .setUserId(event.getTargetUserId())
                                     .setFriendId(event.getUserId())
-                                    .setFriendNickname(userProfile.getNickName())
-                                    .setFriendAvatar(userProfile.getAvatar())
-                                    .build();
+                                    .setFriendNickname(userProfile.getNickName());
+                    if (userProfile.getAvatar() != null) {
+                        friendProfileBuilder.setFriendAvatar(userProfile.getAvatar());
+                    }
                     ProfileUpdatePayload profileUpdatePayload =
                             ProfileUpdatePayload.newBuilder()
-                                    .setFriendProfileUpdateData(friendProfileUpdateData)
+                                    .setFriendProfileUpdateData(friendProfileBuilder.build())
                                     .build();
                     profileUpdateProducer.send(
                             profileUpdateTopic,

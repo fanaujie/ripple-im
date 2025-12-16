@@ -12,7 +12,7 @@ import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgdispatcher.consumer.MessageConsumer;
 import com.fanaujie.ripple.msgdispatcher.consumer.DefaultKeyedPayloadHandler;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.*;
-import com.fanaujie.ripple.msgdispatcher.consumer.processor.utils.GroupNotificationHelper;
+import com.fanaujie.ripple.msgdispatcher.consumer.processor.utils.GroupHelper;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
@@ -21,18 +21,19 @@ import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.profileupdater.ProfileUpdatePayload;
-import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
-import com.fanaujie.ripple.storage.cache.UserProfileRedissonKvCache;
+import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.model.UserProfile;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.storage.service.impl.CachingConversationStorage;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCalculator;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import org.redisson.api.RedissonClient;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import org.redisson.Redisson;
-import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,13 +82,25 @@ public class Application {
         CqlSession cqlSession =
                 createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
 
-        CassandraUserStorageFacadeBuilder userStorageFacadeBuilder =
-                new CassandraUserStorageFacadeBuilder();
+        CassandraStorageFacadeBuilder userStorageFacadeBuilder =
+                new CassandraStorageFacadeBuilder();
         userStorageFacadeBuilder.cqlSession(cqlSession);
-        CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
-        UserProfileRedissonKvCache userProfileCache =
-                new UserProfileRedissonKvCache(
-                        RedisDriver.createRedissonClient(redisHost, redisPort), userStorageFacade);
+        CassandraStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
+        RedissonClient redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
+        CachingUserProfileStorage userProfileCache =
+                new CachingUserProfileStorage(redissonClient, userStorageFacade);
+
+        // Create Cassandra calculators for fallback
+        CassandraUnreadCountCalculator cassandraUnreadCalculator =
+                new CassandraUnreadCountCalculator(cqlSession);
+        CassandraLastMessageCalculator cassandraLastMsgCalculator =
+                new CassandraLastMessageCalculator(cqlSession);
+
+        // Create ConversationStorage facade with simplified constructor
+        ConversationStateFacade conversationStorage =
+                new CachingConversationStorage(
+                        redissonClient, cassandraUnreadCalculator, cassandraLastMsgCalculator);
+
         DefaultKeyedPayloadHandler payloadRouter =
                 createKeyedPayloadHandler(
                         pushTopic,
@@ -95,7 +108,8 @@ public class Application {
                         createPushMessageProducer(brokerServer),
                         createProfileUpdateProducer(brokerServer),
                         userStorageFacade,
-                        userProfileCache);
+                        userProfileCache,
+                        conversationStorage);
         MessageConsumer msgProcessor = new MessageConsumer(payloadRouter);
         GenericConsumer<String, MessagePayload> messageTopicConsumer =
                 createMessageTopicConsumer(
@@ -162,15 +176,16 @@ public class Application {
             String profileUpdateTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             GenericProducer<String, ProfileUpdatePayload> profileUpdateProducer,
-            CassandraUserStorageFacade userStorageFacade,
-            UserProfileRedissonKvCache userProfileCache) {
+            CassandraStorageFacade userStorageFacade,
+            CachingUserProfileStorage userProfileCache,
+            ConversationStateFacade conversationStorage) {
 
         ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher =
                 new DefaultProcessorDispatcher<>();
         messageDispatcher.RegisterProcessor(
                 SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
                 new SingleMessagePayloadProcessor(
-                        userStorageFacade, pushMessageProducer, pushTopic));
+                        userStorageFacade, conversationStorage, pushMessageProducer, pushTopic));
 
         ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher =
                 new DefaultProcessorDispatcher<>();
@@ -191,13 +206,12 @@ public class Application {
                         pushMessageProducer,
                         pushTopic));
 
-        GroupNotificationHelper groupNotificationHelper =
-                new GroupNotificationHelper(
+        GroupHelper groupNotificationHelper =
+                new GroupHelper(
                         profileUpdateProducer,
                         profileUpdateTopic,
-                        pushMessageProducer,
-                        pushTopic,
-                        userStorageFacade);
+                        userStorageFacade,
+                        conversationStorage);
 
         ProcessorDispatcher<SendGroupCommandReq.CommandContentCase, GroupCommandData, Void>
                 groupCommandDispatcher = new DefaultProcessorDispatcher<>();
@@ -207,14 +221,20 @@ public class Application {
                         userStorageFacade, userProfileCache, groupNotificationHelper));
         groupCommandDispatcher.RegisterProcessor(
                 SendGroupCommandReq.CommandContentCase.GROUP_UPDATE_INFO_COMMAND,
-                new UpdateGroupInfoCommandPayloadProcessor(userStorageFacade));
+                new UpdateGroupInfoCommandPayloadProcessor(
+                        userStorageFacade,
+                        profileUpdateProducer,
+                        profileUpdateTopic,
+                        conversationStorage,
+                        userProfileCache));
         groupCommandDispatcher.RegisterProcessor(
                 SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND,
                 new InviteGroupMemberCommandPayloadProcessor(
                         userStorageFacade, userProfileCache, groupNotificationHelper));
         groupCommandDispatcher.RegisterProcessor(
                 SendGroupCommandReq.CommandContentCase.GROUP_QUIT_COMMAND,
-                new QuitGroupCommandPayloadProcessor(userStorageFacade));
+                new QuitGroupCommandPayloadProcessor(
+                        userStorageFacade, conversationStorage, pushMessageProducer, pushTopic));
         return new DefaultKeyedPayloadHandler(
                 eventDispatcher, messageDispatcher, groupCommandDispatcher);
     }

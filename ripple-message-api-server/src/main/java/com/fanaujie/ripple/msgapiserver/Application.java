@@ -12,9 +12,8 @@ import com.fanaujie.ripple.protobuf.msgapiserver.*;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUserStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -52,10 +51,10 @@ public class Application {
         CqlSession cqlSession =
                 CassandraDriver.createCqlSession(
                         cassandraContacts, cassandraKeyspace, localDatacenter);
-        CassandraUserStorageFacadeBuilder userStorageFacadeBuilder =
-                new CassandraUserStorageFacadeBuilder();
+        CassandraStorageFacadeBuilder userStorageFacadeBuilder =
+                new CassandraStorageFacadeBuilder();
         userStorageFacadeBuilder.cqlSession(cqlSession);
-        CassandraUserStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
+        CassandraStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
         GrpcServer grpcServer =
                 new GrpcServer(
                         grpcPort,
@@ -93,7 +92,7 @@ public class Application {
     private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
             createMessageDispatcher(
                     String topic,
-                    CassandraUserStorageFacade userStorageFacade,
+                    CassandraStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
@@ -108,7 +107,7 @@ public class Application {
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
             createEventDispatcher(
                     String messageTopic,
-                    CassandraUserStorageFacade userStorageFacade,
+                    CassandraStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> messageProducer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
@@ -130,7 +129,7 @@ public class Application {
                     SendGroupCommandResp>
             createGroupDispatcher(
                     String topic,
-                    CassandraUserStorageFacade userStorageFacade,
+                    CassandraStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<

@@ -7,16 +7,11 @@ import lombok.Data;
 @Data
 public class SendMessageRequest {
     @NotNull(message = "senderId is required")
-    @Positive(message = "senderId must be positive")
     private String senderId;
 
-    @NotNull(message = "conversationId is required")
     private String conversationId;
-
-    @NotNull(message = "receiverId is required")
-    @Positive(message = "receiverId must be positive")
     private String receiverId;
-
+    private String groupId;
     private String textContent;
     private String fileUrl;
     private String fileName;

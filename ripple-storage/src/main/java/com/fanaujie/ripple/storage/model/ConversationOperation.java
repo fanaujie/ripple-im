@@ -8,7 +8,8 @@ public enum ConversationOperation {
     READ_MESSAGES(2),
     UPDATE_CONVERSATION_NAME(3),
     UPDATE_CONVERSATION_AVATAR(4),
-    UPDATE_CONVERSATION_NAME_AVATAR(5);
+    UPDATE_CONVERSATION_NAME_AVATAR(5),
+    REMOVE_CONVERSATION(6);
 
     private final byte value;
 

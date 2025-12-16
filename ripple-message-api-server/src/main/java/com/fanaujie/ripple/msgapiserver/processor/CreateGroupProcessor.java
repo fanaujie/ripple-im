@@ -39,14 +39,7 @@ public class CreateGroupProcessor implements Processor<SendGroupCommandReq, Send
         b.addAllReceiveUserIds(request.getGroupCreateCommand().getMemberIdsList());
         MessagePayload messagePayload =
                 MessagePayload.newBuilder().setGroupCommandData(b.build()).build();
-        this.executorService
-                .submit(
-                        () ->
-                                this.producer.send(
-                                        this.topicName,
-                                        String.valueOf(request.getSenderId()),
-                                        messagePayload))
-                .get();
+        this.producer.send(this.topicName, String.valueOf(request.getSenderId()), messagePayload);
         return SendGroupCommandResp.newBuilder().build();
     }
 }

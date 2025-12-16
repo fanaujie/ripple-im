@@ -11,11 +11,11 @@ public class ConversationItem {
     private String conversationId;
     private String peerId; // nullable for group chats
     private String groupId; // nullable for single chats
-    private String lastMessageId;
-    private String lastMessage;
-    private long lastMessageTimestamp;
     private String lastReadMessageId;
     private int unreadCount;
     private String name;
     private String avatar;
+    private String lastMessageText;
+    private long lastMessageTimestamp;
+    private String lastMessageId;
 }

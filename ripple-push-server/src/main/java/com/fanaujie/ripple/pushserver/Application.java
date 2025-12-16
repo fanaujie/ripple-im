@@ -1,18 +1,27 @@
 package com.fanaujie.ripple.pushserver;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.communication.batch.Config;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.pushserver.service.PushService;
+import com.fanaujie.ripple.storage.driver.CassandraDriver;
+import com.fanaujie.ripple.storage.driver.RedisDriver;
+import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.storage.service.impl.CachingConversationStorage;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCalculator;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.typesafe.config.ConfigFactory;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class Application {
 
@@ -39,6 +48,16 @@ public class Application {
         int kafkaMaxPollRecords = config.getInt("kafka.consumer.max-poll-records");
         int kafkaFetchMinBytes = config.getInt("kafka.consumer.fetch-min-bytes");
         int kafkaFetchMaxWaitMs = config.getInt("kafka.consumer.fetch-max-wait-ms");
+
+        // Load Redis configuration
+        String redisHost = config.getString("redis.host");
+        int redisPort = config.getInt("redis.port");
+
+        // Load Cassandra configuration
+        List<String> cassandraContacts = config.getStringList("cassandra.contact.points");
+        String cassandraKeyspace = config.getString("cassandra.keyspace.name");
+        String localDatacenter = config.getString("cassandra.local.datacenter");
+
         logger.info("Broker Config - Server: {}, Push Topic: {}", brokerServer, pushTopic);
         logger.info(
                 "Ripple Config - Push Group ID: {}, Push Client ID: {}",
@@ -60,20 +79,50 @@ public class Application {
                 kafkaMaxPollRecords,
                 kafkaFetchMinBytes,
                 kafkaFetchMaxWaitMs);
+        logger.info("Redis Config - Host: {}, Port: {}", redisHost, redisPort);
+        logger.info(
+                "Cassandra Config - Contacts: {}, Keyspace: {}, Datacenter: {}",
+                cassandraContacts,
+                cassandraKeyspace,
+                localDatacenter);
 
         Config batchConfig =
                 new Config(batchQueueSize, batchWorkerSize, batchMaxSize, batchTimeoutMs);
 
         MessageGatewayClientManager messageGatewayManager = null;
         PushService pushService = null;
+        CqlSession cqlSession = null;
+        RedissonClient redissonClient = null;
+        ConversationStateFacade conversationStorage = null;
         try {
+            // Initialize Cassandra and Redis clients
+            cqlSession =
+                    CassandraDriver.createCqlSession(
+                            cassandraContacts, cassandraKeyspace, localDatacenter);
+            redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
+
+            // Create conversation storage with cache-aside pattern
+            CassandraUnreadCountCalculator unreadCountCalculator =
+                    new CassandraUnreadCountCalculator(cqlSession);
+            CassandraLastMessageCalculator lastMessageCalculator =
+                    new CassandraLastMessageCalculator(cqlSession);
+            conversationStorage =
+                    new CachingConversationStorage(
+                            redissonClient, unreadCountCalculator, lastMessageCalculator);
+            logger.info("ConversationStorage initialized successfully");
+
             // Initialize MessageGatewayClientManager
             messageGatewayManager =
                     new MessageGatewayClientManager(zookeeperAddress, messageGatewayDiscoveryPath);
             messageGatewayManager.start();
             logger.info("MessageGatewayClientManager initialized successfully");
 
-            pushService = createPushService(userPresenceServer, messageGatewayManager, batchConfig);
+            pushService =
+                    createPushService(
+                            userPresenceServer,
+                            messageGatewayManager,
+                            batchConfig,
+                            conversationStorage);
 
             GenericConsumer<String, PushMessage> pushTopicConsumer =
                     createPushTopicConsumer(
@@ -91,6 +140,8 @@ public class Application {
             // Add shutdown hook for graceful cleanup
             final MessageGatewayClientManager finalManager = messageGatewayManager;
             final PushService finalPushService = pushService;
+            final CqlSession finalCqlSession = cqlSession;
+            final RedissonClient finalRedissonClient = redissonClient;
             Runtime.getRuntime()
                     .addShutdownHook(
                             new Thread(
@@ -99,6 +150,12 @@ public class Application {
                                         try {
                                             finalPushService.close();
                                             finalManager.close();
+                                            if (finalRedissonClient != null) {
+                                                finalRedissonClient.shutdown();
+                                            }
+                                            if (finalCqlSession != null) {
+                                                finalCqlSession.close();
+                                            }
                                         } catch (Exception e) {
                                             logger.error("Error during shutdown cleanup", e);
                                         }
@@ -116,6 +173,12 @@ public class Application {
                 if (messageGatewayManager != null) {
                     messageGatewayManager.close();
                 }
+                if (redissonClient != null) {
+                    redissonClient.shutdown();
+                }
+                if (cqlSession != null) {
+                    cqlSession.close();
+                }
             } catch (Exception closeException) {
                 logger.error("Error closing", closeException);
             }
@@ -130,10 +193,12 @@ public class Application {
     private PushService createPushService(
             String userPresenceServer,
             MessageGatewayClientManager messageGatewayManager,
-            Config batchConfig) {
+            Config batchConfig,
+            ConversationStateFacade conversationStorage) {
         GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClient =
                 new GrpcClient<>(userPresenceServer, UserPresenceGrpc::newBlockingStub);
-        return new PushService(userPresenceClient, messageGatewayManager, batchConfig);
+        return new PushService(
+                userPresenceClient, messageGatewayManager, batchConfig, conversationStorage);
     }
 
     private GenericConsumer<String, PushMessage> createPushTopicConsumer(

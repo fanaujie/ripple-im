@@ -40,7 +40,7 @@ public class UserService {
         newUser.setAccount(account);
         newUser.setPassword(this.passwordEncoder.encode(password));
         newUser.setRole(User.DEFAULT_ROLE_USER);
-        this.storageFacade.insertUser(newUser, account, "");
+        this.storageFacade.insertUser(newUser, account, null);
         return ResponseEntity.ok().body(new CommonResponse(200, "success"));
     }
 

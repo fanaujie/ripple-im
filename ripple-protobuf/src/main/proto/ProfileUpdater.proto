@@ -10,6 +10,7 @@ message FriendProfileUpdateData {
   int64 friend_id = 2;
   string friend_nickname = 3;
   string friend_avatar = 4;
+  int64 send_timestamp = 5;
 }
 
 message GroupMemberBatchInsertData {
@@ -20,6 +21,9 @@ message GroupMemberBatchInsertData {
   int32 batch_index = 5;
   int32 total_batches = 6;
   int64 creator_user_id = 7;
+  int64 send_timestamp = 8;
+  int64 message_id = 9;
+  int64 sender_id = 10;
 }
 
 message RelationBatchUpdateData {
@@ -36,9 +40,10 @@ message RelationBatchUpdateData {
   int32 batch_index = 5;
   int32 total_batches = 6;
   UpdateType update_type = 7;
+  int64 send_timestamp = 8;
 }
 
-message GroupMemberBatchUpdateData {
+message UserGroupBatchUpdateData {
   enum UpdateType {
     UNSPECIFIED = 0;
     UPDATE_NICKNAME = 1;
@@ -52,6 +57,25 @@ message GroupMemberBatchUpdateData {
   int32 batch_index = 5;
   int32 total_batches = 6;
   UpdateType update_type = 7;
+  int64 send_timestamp = 8;
+}
+
+message GroupInfoBatchUpdateData {
+  enum UpdateType {
+    UNSPECIFIED = 0;
+    UPDATE_NAME = 1;
+    UPDATE_AVATAR = 2;
+  }
+  int64 group_id = 1;
+  string group_name = 2;
+  string group_avatar = 3;
+  repeated int64 member_ids = 4;
+  int32 batch_index = 5;
+  int32 total_batches = 6;
+  int64 send_timestamp = 7;
+  UpdateType update_type = 8;
+  int64 message_id = 9;
+  int64 sender_id = 10;
 }
 
 message ProfileUpdatePayload {
@@ -59,6 +83,7 @@ message ProfileUpdatePayload {
     FriendProfileUpdateData friend_profile_update_data = 1;
     GroupMemberBatchInsertData group_member_batch_insert_data = 2;
     RelationBatchUpdateData relation_batch_update_data = 3;
-    GroupMemberBatchUpdateData group_member_batch_update_data = 4;
+    UserGroupBatchUpdateData user_group_batch_update_data = 4;
+    GroupInfoBatchUpdateData group_info_batch_update_data = 5;
   }
 }
