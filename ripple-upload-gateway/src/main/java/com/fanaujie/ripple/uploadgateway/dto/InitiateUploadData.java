@@ -60,8 +60,11 @@ public class InitiateUploadData {
                 .build();
     }
 
-    public static InitiateUploadData singleMode() {
-        return InitiateUploadData.builder().uploadMode(UploadMode.SINGLE.getCode()).build();
+    public static InitiateUploadData singleMode(String objectName) {
+        return InitiateUploadData.builder()
+                .uploadMode(UploadMode.SINGLE.getCode())
+                .objectName(objectName)
+                .build();
     }
 
     public static InitiateUploadData chunkMode(

@@ -106,15 +106,14 @@ public class MinioStorageService {
         }
     }
 
-    public int checkAlreadyUploadedParts(BucketType bucketType, String objectName, int totalParts) {
-        int uploadedParts = 0;
+    public int checkStartUploadPart(BucketType bucketType, String objectName, int totalParts) {
         for (int i = 1; i <= totalParts; i++) {
             String partObjectName = objectName + "-part-" + i;
-            if (objectExists(bucketType, partObjectName)) {
-                uploadedParts++;
+            if (!objectExists(bucketType, partObjectName)) {
+                return i;
             }
         }
-        return uploadedParts;
+        return totalParts + 1;
     }
 
     public String chunkPartObjectName(String objectName, int partNumber) {

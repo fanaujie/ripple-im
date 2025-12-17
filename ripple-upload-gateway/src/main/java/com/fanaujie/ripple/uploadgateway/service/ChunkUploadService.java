@@ -28,13 +28,13 @@ public class ChunkUploadService {
         // Determine upload mode based on file size
         long chunkSize = attachmentProperties.getChunkSize().toBytes();
         if (request.getFileSize() < chunkSize) {
-            return InitiateUploadData.singleMode();
+            return InitiateUploadData.singleMode(objectName);
         }
 
         // Initiate chunked upload
         int totalChunks = (int) Math.ceil((double) request.getFileSize() / chunkSize);
         int startPartNumber =
-                minioStorageService.checkAlreadyUploadedParts(
+                minioStorageService.checkStartUploadPart(
                         MinioStorageService.BucketType.MESSAGE_ATTACHMENT, objectName, totalChunks);
         return InitiateUploadData.chunkMode(objectName, chunkSize, startPartNumber, totalChunks);
     }

@@ -15,11 +15,15 @@ import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCa
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.utils.FileUtils;
+import jakarta.servlet.MultipartConfigElement;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.MultipartConfigFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.multipart.MultipartResolver;
 
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
