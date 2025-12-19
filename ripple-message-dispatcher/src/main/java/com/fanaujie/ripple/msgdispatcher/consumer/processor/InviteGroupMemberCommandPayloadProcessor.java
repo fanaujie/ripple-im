@@ -1,35 +1,39 @@
 package com.fanaujie.ripple.msgdispatcher.consumer.processor;
 
+import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.utils.GroupHelper;
 import com.fanaujie.ripple.protobuf.msgapiserver.GroupInviteCommand;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
-import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND;
+import static com.fanaujie.ripple.storage.model.GroupCommandType.GROUP_COMMAND_TYPE_MEMBER_JOIN;
 
 public class InviteGroupMemberCommandPayloadProcessor implements Processor<GroupCommandData, Void> {
     private final Logger logger =
             LoggerFactory.getLogger(InviteGroupMemberCommandPayloadProcessor.class);
     private final RippleStorageFacade storageFacade;
-    private final CachingUserProfileStorage userProfileCache;
-    private final GroupHelper groupNotificationHelper;
+    private final RedisUserProfileStorage userProfileCache;
+    private final GroupHelper groupHelper;
 
     public InviteGroupMemberCommandPayloadProcessor(
             RippleStorageFacade storageFacade,
-            CachingUserProfileStorage userProfileCache,
-            GroupHelper groupNotificationHelper) {
+            RedisUserProfileStorage userProfileCache,
+            GroupHelper groupHelper) {
         this.storageFacade = storageFacade;
         this.userProfileCache = userProfileCache;
-        this.groupNotificationHelper = groupNotificationHelper;
+        this.groupHelper = groupHelper;
     }
 
     @Override
@@ -59,10 +63,26 @@ public class InviteGroupMemberCommandPayloadProcessor implements Processor<Group
         }
 
         this.storageFacade.createGroupMembersProfile(groupId, newMembers, version);
+        String commandText = this.groupHelper.getJoinGroupCommandMessage(newMembers);
+        String conversationId = ConversationUtils.generateGroupConversationId(groupId);
+        this.groupHelper.writeGroupCommandMessage(
+                conversationId,
+                sendGroupCommandReq.getMessageId(),
+                sendGroupCommandReq.getSenderId(),
+                sendGroupCommandReq.getGroupId(),
+                sendGroupCommandReq.getSendTimestamp(),
+                GROUP_COMMAND_TYPE_MEMBER_JOIN.getValue(),
+                commandText);
+        List<Long> allMemberIds = this.storageFacade.getGroupMemberIds(groupId);
+        this.groupHelper.updateGroupUnreadCount(
+                sendGroupCommandReq.getSenderId(),
+                allMemberIds,
+                conversationId,
+                commandText,
+                sendGroupCommandReq.getSendTimestamp(),
+                sendGroupCommandReq.getMessageId());
 
-        this.groupNotificationHelper.writeJoinGroupCommandMessage(
-                sendGroupCommandReq, groupId, newMembers);
-        this.groupNotificationHelper.sendBatchedStorageUpdates(
+        this.groupHelper.sendBatchedStorageUpdates(
                 groupId,
                 groupInviteCommand.getGroupName(),
                 groupInviteCommand.getGroupAvatar(),

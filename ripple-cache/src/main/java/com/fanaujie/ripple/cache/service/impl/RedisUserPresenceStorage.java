@@ -1,11 +1,11 @@
-package com.fanaujie.ripple.storage.service.impl.redis;
+package com.fanaujie.ripple.cache.service.impl;
 
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineReq;
 import com.fanaujie.ripple.protobuf.userpresence.QueryUserOnlineResp;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineReq;
-import com.fanaujie.ripple.storage.service.UserPresenceStorage;
-import com.fanaujie.ripple.storage.service.utils.LuaUtils;
+import com.fanaujie.ripple.cache.service.UserPresenceStorage;
+import com.fanaujie.ripple.cache.utils.LuaUtils;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;

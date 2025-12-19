@@ -2,13 +2,11 @@ package com.fanaujie.ripple.apigateway.service;
 
 import com.fanaujie.ripple.apigateway.dto.*;
 import com.fanaujie.ripple.storage.exception.InvalidVersionException;
-import com.fanaujie.ripple.storage.model.Conversation;
-import com.fanaujie.ripple.storage.model.ConversationState;
-import com.fanaujie.ripple.storage.model.ConversationVersionChange;
-import com.fanaujie.ripple.storage.model.LastMessageInfo;
-import com.fanaujie.ripple.storage.model.PagedConversationResult;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.storage.model.*;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.storage.model.ConversationSummaryInfo;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -25,12 +23,16 @@ public class ConversationService {
     private static final int MAX_PAGE_SIZE = 200;
     private static final int MAX_SYNC_CHANGES = 200;
     private final RippleStorageFacade storageFacade;
-    private final ConversationStateFacade conversationStorage;
+    private final UserProfileStorage userProfileStorage;
+    private final ConversationSummaryStorage cachingConversationStorage;
 
     public ConversationService(
-            RippleStorageFacade storageFacade, ConversationStateFacade conversationStorage) {
+            RippleStorageFacade storageFacade,
+            UserProfileStorage userProfileStorage,
+            ConversationSummaryStorage cachingConversationStorage) {
         this.storageFacade = storageFacade;
-        this.conversationStorage = conversationStorage;
+        this.userProfileStorage = userProfileStorage;
+        this.cachingConversationStorage = cachingConversationStorage;
     }
 
     public ResponseEntity<ConversationsResponse> getConversations(
@@ -49,13 +51,14 @@ public class ConversationService {
                         .map(Conversation::getConversationId)
                         .collect(Collectors.toList());
 
-        Map<String, ConversationState> conversationStates =
-                conversationStorage.batchGetConversationState(currentUserId, conversationIds);
+        Map<String, ConversationSummaryInfo> conversationStates =
+                cachingConversationStorage.batchGetConversationSummary(
+                        currentUserId, conversationIds);
 
         List<ConversationItem> conversations = new ArrayList<>();
         for (Conversation conversation : conversationList) {
             String convId = conversation.getConversationId();
-            ConversationState state = conversationStates.get(convId);
+            ConversationSummaryInfo state = conversationStates.get(convId);
             Integer unreadCount = state != null ? state.getUnreadCount() : null;
             LastMessageInfo lastMsg = state != null ? state.getLastMessage() : null;
             conversation.setUnreadCount(unreadCount != null ? unreadCount : 0);
@@ -109,24 +112,16 @@ public class ConversationService {
             return ResponseEntity.ok(new ConversationSummaryResponse(200, "success", data));
         }
 
-        Map<String, ConversationState> conversationStates =
-                conversationStorage.batchGetConversationState(currentUserId, conversationIds);
+        Map<String, ConversationSummaryInfo> conversationSummaries =
+                cachingConversationStorage.batchGetConversationSummary(
+                        currentUserId, conversationIds);
 
         List<ConversationSummary> summaries = new ArrayList<>();
         for (String conversationId : conversationIds) {
-            ConversationState state = conversationStates.get(conversationId);
-            Integer unreadCount = state != null ? state.getUnreadCount() : null;
-            LastMessageInfo lastMsg = state != null ? state.getLastMessage() : null;
-
             summaries.add(
-                    new ConversationSummary(
-                            conversationId,
-                            unreadCount != null ? unreadCount : 0,
-                            lastMsg != null ? lastMsg.getText() : null,
-                            lastMsg != null ? lastMsg.getTimestamp() : 0L,
-                            lastMsg != null ? lastMsg.getMessageId() : null));
+                    toConversationSummary(
+                            conversationId, conversationSummaries.get(conversationId)));
         }
-
         ConversationSummaryData data = new ConversationSummaryData(summaries);
         return ResponseEntity.ok(new ConversationSummaryResponse(200, "success", data));
     }
@@ -143,6 +138,18 @@ public class ConversationService {
                 conversation.getUnreadCount(),
                 conversation.getName(),
                 conversation.getAvatar(),
+                lastMsg != null ? lastMsg.getText() : null,
+                lastMsg != null ? lastMsg.getTimestamp() : 0L,
+                lastMsg != null ? lastMsg.getMessageId() : null);
+    }
+
+    private ConversationSummary toConversationSummary(
+            String conversationId, ConversationSummaryInfo summary) {
+        Integer unreadCount = summary != null ? summary.getUnreadCount() : null;
+        LastMessageInfo lastMsg = summary != null ? summary.getLastMessage() : null;
+        return new ConversationSummary(
+                conversationId,
+                unreadCount != null ? unreadCount : 0,
                 lastMsg != null ? lastMsg.getText() : null,
                 lastMsg != null ? lastMsg.getTimestamp() : 0L,
                 lastMsg != null ? lastMsg.getMessageId() : null);

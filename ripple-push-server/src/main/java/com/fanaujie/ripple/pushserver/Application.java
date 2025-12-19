@@ -1,6 +1,9 @@
 package com.fanaujie.ripple.pushserver;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.batch.Config;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
@@ -11,10 +14,9 @@ import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.pushserver.service.PushService;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
-import com.fanaujie.ripple.storage.service.impl.CachingConversationStorage;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCalculator;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.typesafe.config.ConfigFactory;
 import org.redisson.api.RedissonClient;
@@ -93,7 +95,7 @@ public class Application {
         PushService pushService = null;
         CqlSession cqlSession = null;
         RedissonClient redissonClient = null;
-        ConversationStateFacade conversationStorage = null;
+        ConversationSummaryStorage conversationStorage = null;
         try {
             // Initialize Cassandra and Redis clients
             cqlSession =
@@ -101,14 +103,21 @@ public class Application {
                             cassandraContacts, cassandraKeyspace, localDatacenter);
             redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
 
+            // Create storage facade for user profile lookup
+            CassandraStorageFacadeBuilder storageFacadeBuilder =
+                    new CassandraStorageFacadeBuilder();
+            storageFacadeBuilder.cqlSession(cqlSession);
+            RippleStorageFacade storageFacade = storageFacadeBuilder.build();
+
+            // Create cached user profile storage
+            RedisUserProfileStorage userProfileStorage =
+                    new RedisUserProfileStorage(redissonClient, storageFacade);
+
             // Create conversation storage with cache-aside pattern
             CassandraUnreadCountCalculator unreadCountCalculator =
                     new CassandraUnreadCountCalculator(cqlSession);
-            CassandraLastMessageCalculator lastMessageCalculator =
-                    new CassandraLastMessageCalculator(cqlSession);
             conversationStorage =
-                    new CachingConversationStorage(
-                            redissonClient, unreadCountCalculator, lastMessageCalculator);
+                    new RedisConversationSummaryStorage(redissonClient, unreadCountCalculator);
             logger.info("ConversationStorage initialized successfully");
 
             // Initialize MessageGatewayClientManager
@@ -194,7 +203,7 @@ public class Application {
             String userPresenceServer,
             MessageGatewayClientManager messageGatewayManager,
             Config batchConfig,
-            ConversationStateFacade conversationStorage) {
+            ConversationSummaryStorage conversationStorage) {
         GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClient =
                 new GrpcClient<>(userPresenceServer, UserPresenceGrpc::newBlockingStub);
         return new PushService(

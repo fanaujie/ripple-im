@@ -7,13 +7,12 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT;
 
@@ -21,17 +20,17 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
 
     private final Logger logger = LoggerFactory.getLogger(SingleMessagePayloadProcessor.class);
     private final RippleStorageFacade storageFacade;
-    private final ConversationStateFacade conversationStorage;
+    private final ConversationSummaryStorage cachingConversationStateFacade;
     private final GenericProducer<String, PushMessage> pushMessageGenericProducer;
     private final String pushTopic;
 
     public SingleMessagePayloadProcessor(
             RippleStorageFacade storageFacade,
-            ConversationStateFacade conversationStorage,
+            ConversationSummaryStorage cachingConversationStateFacade,
             GenericProducer<String, PushMessage> pushMessageProducer,
             String pushTopic) {
         this.storageFacade = storageFacade;
-        this.conversationStorage = conversationStorage;
+        this.cachingConversationStateFacade = cachingConversationStateFacade;
         this.pushMessageGenericProducer = pushMessageProducer;
         this.pushTopic = pushTopic;
     }
@@ -87,15 +86,16 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                 sendMessageReq.getSenderId(),
                 sendMessageReq.getReceiverId(),
                 sendMessageReq.getSendTimestamp(),
-                sendMessageReq.getSingleMessageContent());
+                sendMessageReq.getSingleMessageContent().getText(),
+                sendMessageReq.getSingleMessageContent().getFileUrl(),
+                sendMessageReq.getSingleMessageContent().getFileName());
 
-        conversationStorage.updateConversation(
+        cachingConversationStateFacade.updateConversationSummary(
                 sendMessageReq.getReceiverId(),
                 sendMessageReq.getConversationId(),
                 sendMessageReq.getSingleMessageContent().getText(),
                 sendMessageReq.getSendTimestamp(),
-                String.valueOf(sendMessageReq.getMessageId()),
-                sendMessageReq.getSenderId() != sendMessageReq.getReceiverId());
+                sendMessageReq.getMessageId());
     }
 
     private void updateGroupConversationStorage(
@@ -103,39 +103,24 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
         long senderId = sendMessageReq.getSenderId();
         long groupId = sendMessageReq.getGroupId();
         String conversationId = sendMessageReq.getConversationId();
-        String messageText = sendMessageReq.getSingleMessageContent().getText();
         long timestamp = sendMessageReq.getSendTimestamp();
-        String messageId = String.valueOf(sendMessageReq.getMessageId());
-
         this.storageFacade.saveGroupTextMessage(
                 conversationId,
                 sendMessageReq.getMessageId(),
                 senderId,
                 groupId,
                 timestamp,
-                sendMessageReq.getSingleMessageContent());
+                sendMessageReq.getSingleMessageContent().getText(),
+                sendMessageReq.getSingleMessageContent().getFileUrl(),
+                sendMessageReq.getSingleMessageContent().getFileName());
 
-        List<Long> allRecipients = messageData.getReceiveUserIdsList();
-
-        List<Long> recipientsForUnread =
-                allRecipients.stream()
-                        .filter(userId -> userId != senderId)
-                        .collect(Collectors.toList());
-
-        conversationStorage.batchUpdateConversation(
-                recipientsForUnread,
-                conversationId,
-                messageText,
-                timestamp,
-                messageId,
-                true); // incrementUnread = true for recipients
-
-        conversationStorage.updateConversation(
+        List<Long> allReceiversId = messageData.getReceiveUserIdsList();
+        cachingConversationStateFacade.updateGroupConversationSummary(
                 senderId,
+                allReceiversId,
                 conversationId,
-                messageText,
+                sendMessageReq.getSingleMessageContent().getText(),
                 timestamp,
-                messageId,
-                false); // incrementUnread = false for sender
+                sendMessageReq.getMessageId());
     }
 }

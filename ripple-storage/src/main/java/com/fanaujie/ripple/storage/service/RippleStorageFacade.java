@@ -49,7 +49,9 @@ public interface RippleStorageFacade {
             long senderId,
             long receiverId,
             long timestamp,
-            SingleMessageContent content);
+            String messageText,
+            String fileUrl,
+            String fileName);
 
     void saveGroupTextMessage(
             String conversationId,
@@ -57,7 +59,9 @@ public interface RippleStorageFacade {
             long senderId,
             long groupId,
             long timestamp,
-            SingleMessageContent content);
+            String messageText,
+            String fileUrl,
+            String fileName);
 
     PagedConversationResult getConversations(long userId, String nextPageToken, int pageSize);
 

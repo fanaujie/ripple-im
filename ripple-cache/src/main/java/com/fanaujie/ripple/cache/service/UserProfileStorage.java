@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.storage.service;
+package com.fanaujie.ripple.cache.service;
 
 import com.fanaujie.ripple.storage.model.UserProfile;
 

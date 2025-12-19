@@ -1,8 +1,8 @@
 package com.fanaujie.ripple.userpresence;
 
-import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.service.UserPresenceStorage;
-import com.fanaujie.ripple.storage.service.impl.redis.RedisUserPresenceStorage;
+import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.UserPresenceStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisUserPresenceStorage;
 import com.fanaujie.ripple.userpresence.server.GrpcServer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;

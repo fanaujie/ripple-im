@@ -10,6 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>ripple-storage</module>
+        <module>ripple-cache</module>
         <module>ripple-authorization-server</module>
         <module>ripple-message-dispatcher</module>
         <module>ripple-async-storage-updater</module>

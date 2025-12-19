@@ -11,10 +11,4 @@ public class LastMessageInfo {
     private String text;
     private long timestamp;
     private String messageId;
-
-    public LastMessageInfo(String text, long timestamp) {
-        this.text = text;
-        this.timestamp = timestamp;
-        this.messageId = null;
-    }
 }

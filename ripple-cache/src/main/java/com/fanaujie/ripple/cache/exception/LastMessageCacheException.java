@@ -1,4 +1,6 @@
-package com.fanaujie.ripple.storage.exception;
+package com.fanaujie.ripple.cache.exception;
+
+import com.fanaujie.ripple.storage.exception.LastMessageStorageException;
 
 /**
  * Exception thrown when Redis cache operations fail for last message.

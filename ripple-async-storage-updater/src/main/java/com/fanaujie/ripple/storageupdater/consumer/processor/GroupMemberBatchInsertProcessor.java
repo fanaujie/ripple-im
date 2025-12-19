@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.storageupdater.consumer.processor;
 
+import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.GroupCommandMessageContent;
@@ -9,7 +10,6 @@ import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.MessageType;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.push.PushMessageData;
-import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.model.Message;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
@@ -31,19 +31,16 @@ public class GroupMemberBatchInsertProcessor implements Processor<StorageUpdateP
     private final ExecutorService executorService;
     private final GenericProducer<String, PushMessage> pushMessageProducer;
     private final String pushTopic;
-    private final CachingUserProfileStorage userProfileCache;
 
     public GroupMemberBatchInsertProcessor(
             RippleStorageFacade storageFacade,
             ExecutorService executorService,
             GenericProducer<String, PushMessage> pushMessageProducer,
-            String pushTopic,
-            CachingUserProfileStorage userProfileCache) {
+            String pushTopic) {
         this.storageFacade = storageFacade;
         this.executorService = executorService;
         this.pushMessageProducer = pushMessageProducer;
         this.pushTopic = pushTopic;
-        this.userProfileCache = userProfileCache;
     }
 
     @Override

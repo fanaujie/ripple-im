@@ -2,7 +2,7 @@ package com.fanaujie.ripple.userpresence.server;
 
 import com.fanaujie.ripple.communication.grpc.client.GrpcClientPool;
 import com.fanaujie.ripple.protobuf.userpresence.*;
-import com.fanaujie.ripple.storage.service.UserPresenceStorage;
+import com.fanaujie.ripple.cache.service.UserPresenceStorage;
 import org.junit.jupiter.api.*;
 import org.mockito.ArgumentCaptor;
 

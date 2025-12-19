@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.apigateway.dto;
 
+import com.fanaujie.ripple.apigateway.service.utils.FileTypeUtils;
 import com.fanaujie.ripple.protobuf.msgapiserver.SingleMessageContent;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -21,6 +22,14 @@ public class SendMessageRequest {
         builder.setText(this.textContent != null ? this.textContent : "");
         builder.setFileUrl(this.fileUrl != null ? this.fileUrl : "");
         builder.setFileName(this.fileName != null ? this.fileName : "");
+        builder.setText(getSummaryText(builder.getText(), builder.getFileName(), this.senderId));
         return builder.build();
+    }
+
+    private String getSummaryText(String text, String fileName, String senderId) {
+        if (!fileName.isEmpty()) {
+            return FileTypeUtils.generateFilePreviewText(senderId, fileName);
+        }
+        return text;
     }
 }

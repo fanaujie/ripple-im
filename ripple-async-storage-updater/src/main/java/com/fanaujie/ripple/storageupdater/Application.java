@@ -1,6 +1,8 @@
 package com.fanaujie.ripple.storageupdater;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
@@ -18,9 +20,7 @@ import com.fanaujie.ripple.storageupdater.consumer.processor.GroupMemberBatchIns
 import com.fanaujie.ripple.storageupdater.consumer.processor.UserGroupBatchUpdateProcessor;
 import com.fanaujie.ripple.storageupdater.consumer.processor.RelationBatchUpdateProcessor;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
-import com.fanaujie.ripple.storage.service.impl.CachingUserProfileStorage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.driver.RedisDriver;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import com.typesafe.config.Config;
@@ -78,8 +78,8 @@ public class Application {
         GenericProducer<String, PushMessage> pushMessageProducer =
                 createPushMessageProducer(brokerServer);
 
-        CachingUserProfileStorage userProfileCache =
-                new CachingUserProfileStorage(
+        RedisUserProfileStorage userProfileCache =
+                new RedisUserProfileStorage(
                         RedisDriver.createRedissonClient(redisHost, redisPort), storageFacade);
 
         StorageUpdateConsumer storageUpdateConsumer =
@@ -145,7 +145,7 @@ public class Application {
                     ExecutorService executorService,
                     GenericProducer<String, PushMessage> pushMessageProducer,
                     String pushTopic,
-                    CachingUserProfileStorage userProfileCache) {
+                    RedisUserProfileStorage userProfileCache) {
         ProcessorDispatcher<StorageUpdatePayload.PayloadCase, StorageUpdatePayload, Void>
                 processor = new DefaultProcessorDispatcher<>();
         processor.RegisterProcessor(
@@ -160,11 +160,7 @@ public class Application {
         processor.RegisterProcessor(
                 StorageUpdatePayload.PayloadCase.GROUP_MEMBER_BATCH_INSERT_DATA,
                 new GroupMemberBatchInsertProcessor(
-                        storageFacade,
-                        executorService,
-                        pushMessageProducer,
-                        pushTopic,
-                        userProfileCache));
+                        storageFacade, executorService, pushMessageProducer, pushTopic));
         processor.RegisterProcessor(
                 StorageUpdatePayload.PayloadCase.GROUP_INFO_BATCH_UPDATE_DATA,
                 new GroupInfoBatchUpdateProcessor(

@@ -1,10 +1,9 @@
-package com.fanaujie.ripple.storage.service.impl;
+package com.fanaujie.ripple.cache.service.impl;
 
-import com.fanaujie.ripple.storage.cache.CachePrefixKey;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.UserProfileStorage;
+import com.fanaujie.ripple.cache.service.UserProfileStorage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.redisson.api.RBucket;
@@ -16,15 +15,17 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
-public class CachingUserProfileStorage implements UserProfileStorage {
-    private final Logger logger = LoggerFactory.getLogger(CachingUserProfileStorage.class);
+public class RedisUserProfileStorage implements UserProfileStorage {
+    private final Logger logger = LoggerFactory.getLogger(RedisUserProfileStorage.class);
+    private final String userProfilePrefixKey = "USER_PROFILE:";
+
     private final RedissonClient redissonClient;
     private final RippleStorageFacade storageFacade;
     private final RLocalCachedMap<String, byte[]> localCachedMap;
     private final Duration expireMinutes = Duration.ofMinutes(20);
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public CachingUserProfileStorage(
+    public RedisUserProfileStorage(
             RedissonClient redissonClient, RippleStorageFacade storageFacade1) {
         this.redissonClient = redissonClient;
         this.storageFacade = storageFacade1;
@@ -41,7 +42,7 @@ public class CachingUserProfileStorage implements UserProfileStorage {
 
     @Override
     public UserProfile get(long key) throws Exception {
-        String cacheKey = CachePrefixKey.USER_PROFILE.withSuffix(String.valueOf(key));
+        String cacheKey = userProfilePrefixKey + key;
         byte[] result = localCachedMap.get(cacheKey);
         if (result == null) {
 

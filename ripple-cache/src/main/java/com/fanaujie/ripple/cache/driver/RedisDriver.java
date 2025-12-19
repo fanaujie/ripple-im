@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.storage.driver;
+package com.fanaujie.ripple.cache.driver;
 
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;

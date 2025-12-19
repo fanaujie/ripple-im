@@ -97,9 +97,8 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_messages"
     "file_name"       text,
     "command_type"    tinyint, -- 1: MEMBER_JOIN, 2: MEMBER_QUIT
     "command_data"    text,
-    primary key ( conversation_id, message_id )
+    primary key ( conversation_id, message_id)
 );
-
 
 CREATE TABLE IF NOT EXISTS "ripple"."group_members"
 (
@@ -112,10 +111,10 @@ CREATE TABLE IF NOT EXISTS "ripple"."group_members"
 
 CREATE TYPE IF NOT EXISTS "ripple"."group_change_detail"
     (
-        "operation"    tinyint, -- 1:create_group, 2:delete_group, 3:member_join, 4:member_quit, 5:member_update_name, 6:member_update_avatar
-        "user_id"      bigint,
-        "name"         text,
-        "avatar"       text
+        "operation" tinyint, -- 1:create_group, 2:delete_group, 3:member_join, 4:member_quit, 5:member_update_name, 6:member_update_avatar
+        "user_id"   bigint,
+        "name"      text,
+        "avatar"    text
     );
 
 CREATE TABLE IF NOT EXISTS "ripple"."group_members_version"

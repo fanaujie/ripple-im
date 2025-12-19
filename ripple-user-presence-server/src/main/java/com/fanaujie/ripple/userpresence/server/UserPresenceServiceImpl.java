@@ -1,8 +1,7 @@
 package com.fanaujie.ripple.userpresence.server;
 
 import com.fanaujie.ripple.protobuf.userpresence.*;
-import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.UserPresenceStorage;
+import com.fanaujie.ripple.cache.service.UserPresenceStorage;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

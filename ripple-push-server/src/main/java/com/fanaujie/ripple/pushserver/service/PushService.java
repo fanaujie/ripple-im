@@ -12,7 +12,7 @@ import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.batch.GatewayPushBatchProcessorFactory;
 import com.fanaujie.ripple.pushserver.service.batch.GatewayPushTask;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,7 @@ public class PushService {
             GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClientPool,
             MessageGatewayClientManager messageGatewayManager,
             Config batchConfig,
-            ConversationStateFacade conversationStorage) {
+            ConversationSummaryStorage conversationStorage) {
         this.userPresenceClient = userPresenceClientPool;
         this.batchExecutor =
                 new BatchExecutorService<>(

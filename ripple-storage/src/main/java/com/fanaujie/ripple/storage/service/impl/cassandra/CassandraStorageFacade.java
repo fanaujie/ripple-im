@@ -391,7 +391,9 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             long senderId,
             long receiverId,
             long timestamp,
-            SingleMessageContent content) {
+            String messageText,
+            String fileUrl,
+            String fileName) {
         session.execute(
                 conversationCqlStatement
                         .getInsertMessageStmt()
@@ -403,9 +405,9 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                 null,
                                 timestamp,
                                 MessageType.MESSAGE_TYPE_TEXT.getValue(),
-                                content.getText(),
-                                content.getFileUrl(),
-                                content.getFileName()));
+                                messageText,
+                                fileUrl,
+                                fileName));
     }
 
     @Override
@@ -415,7 +417,9 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             long senderId,
             long groupId,
             long timestamp,
-            SingleMessageContent content) {
+            String messageText,
+            String fileUrl,
+            String fileName) {
         session.execute(
                 conversationCqlStatement
                         .getInsertMessageStmt()
@@ -427,9 +431,9 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                 groupId,
                                 timestamp,
                                 MessageType.MESSAGE_TYPE_TEXT.getValue(),
-                                content.getText(),
-                                content.getFileUrl(),
-                                content.getFileName()));
+                                messageText,
+                                fileUrl,
+                                fileName));
     }
 
     @Override
@@ -1554,7 +1558,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 conversationId,
                                                 null, // peer_id
                                                 groupId,
-                                                ConversationOperation.UPDATE_CONVERSATION_NAME.getValue(),
+                                                ConversationOperation.UPDATE_CONVERSATION_NAME
+                                                        .getValue(),
                                                 null, // last_read_message_id
                                                 groupName,
                                                 null)) // avatar
@@ -1595,7 +1600,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 conversationId,
                                                 null, // peer_id
                                                 groupId,
-                                                ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
+                                                ConversationOperation.UPDATE_CONVERSATION_AVATAR
+                                                        .getValue(),
                                                 null, // last_read_message_id
                                                 null, // name
                                                 groupAvatar))
@@ -1675,7 +1681,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 conversationId,
                                                 null, // peer_id is null for group conversation
                                                 groupId,
-                                                ConversationOperation.REMOVE_CONVERSATION.getValue(),
+                                                ConversationOperation.REMOVE_CONVERSATION
+                                                        .getValue(),
                                                 null, // last_read_message_id
                                                 null, // name
                                                 null)) // avatar

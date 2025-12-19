@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.userpresence.server;
 
-import com.fanaujie.ripple.storage.service.UserPresenceStorage;
+import com.fanaujie.ripple.cache.service.UserPresenceStorage;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;

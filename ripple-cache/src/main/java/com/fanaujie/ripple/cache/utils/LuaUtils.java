@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.storage.service.utils;
+package com.fanaujie.ripple.cache.utils;
 
 import java.io.IOException;
 import java.io.InputStream;

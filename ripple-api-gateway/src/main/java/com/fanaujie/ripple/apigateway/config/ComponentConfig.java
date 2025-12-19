@@ -1,18 +1,18 @@
 package com.fanaujie.ripple.apigateway.config;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
-
-import com.fanaujie.ripple.storage.driver.RedisDriver;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.CachingConversationStorage;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraLastMessageCalculator;
+import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import org.redisson.api.RedissonClient;
@@ -85,16 +85,15 @@ public class ComponentConfig {
     }
 
     @Bean
-    public CassandraLastMessageCalculator cassandraLastMessageCalculator(CqlSession cqlSession) {
-        return new CassandraLastMessageCalculator(cqlSession);
+    public UserProfileStorage userProfileStorage(
+            RedissonClient redissonClient, RippleStorageFacade storageFacade) {
+        return new RedisUserProfileStorage(redissonClient, storageFacade);
     }
 
     @Bean
-    public ConversationStateFacade conversationStorage(
+    public ConversationSummaryStorage conversationStorage(
             RedissonClient redissonClient,
-            CassandraUnreadCountCalculator cassandraUnreadCountCalculator,
-            CassandraLastMessageCalculator cassandraLastMessageCalculator) {
-        return new CachingConversationStorage(
-                redissonClient, cassandraUnreadCountCalculator, cassandraLastMessageCalculator);
+            CassandraUnreadCountCalculator cassandraUnreadCountCalculator) {
+        return new RedisConversationSummaryStorage(redissonClient, cassandraUnreadCountCalculator);
     }
 }

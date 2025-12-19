@@ -6,7 +6,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.model.Messages;
-import com.fanaujie.ripple.storage.service.ConversationStateFacade;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +24,13 @@ public class MessageService {
     private final MessageAPISender messageAPISender;
     private final SnowflakeIdClient snowflakeIdClient;
     private final RippleStorageFacade storageFacade;
-    private final ConversationStateFacade conversationStorage;
+    private final ConversationSummaryStorage conversationStorage;
 
     public MessageService(
             MessageAPISender messageAPISender,
             SnowflakeIdClient snowflakeIdClient,
             RippleStorageFacade storageFacade,
-            ConversationStateFacade conversationStorage) {
+            ConversationSummaryStorage conversationStorage) {
         this.messageAPISender = messageAPISender;
         this.snowflakeIdClient = snowflakeIdClient;
         this.storageFacade = storageFacade;
@@ -86,13 +86,7 @@ public class MessageService {
             String conversationId, long messageId, long currentUserId) {
         try {
             this.storageFacade.markLastReadMessageId(conversationId, currentUserId, messageId);
-            // Reset unread count in Redis
-            try {
-                this.conversationStorage.resetUnreadCount(currentUserId, conversationId);
-            } catch (Exception redisEx) {
-                log.warn("Failed to reset unread count in Redis: {}", redisEx.getMessage());
-                // Continue - Redis failure should not block read position update
-            }
+            this.conversationStorage.resetUnreadCount(currentUserId, conversationId);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
             log.error("readMessages: Error reading messages", e);
@@ -131,8 +125,7 @@ public class MessageService {
             // Group message
             long groupId = Long.parseLong(request.getGroupId());
             if (request.getConversationId() == null || request.getConversationId().isEmpty()) {
-                request.setConversationId(
-                        ConversationUtils.generateGroupConversationId(groupId));
+                request.setConversationId(ConversationUtils.generateGroupConversationId(groupId));
             }
             builder.setConversationId(request.getConversationId()).setGroupId(groupId);
         } else {
