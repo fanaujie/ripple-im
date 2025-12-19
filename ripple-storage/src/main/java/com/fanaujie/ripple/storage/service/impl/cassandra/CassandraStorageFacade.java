@@ -785,7 +785,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                     conversationId,
                                     targetUserId,
                                     null,
-                                    ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
+                                    ConversationOperation.UPDATE_CONVERSATION_NAME.getValue(),
                                     null,
                                     nickName,
                                     null));
