@@ -125,9 +125,6 @@ docker-compose up -d
 ```bash
 # Build all modules
 mvn clean install -DskipTests
-
-# Build with tests
-mvn clean install
 ```
 
 ### 3. Start Services

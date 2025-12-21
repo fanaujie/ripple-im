@@ -558,9 +558,6 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                 friendIds.add(row.getLong("relation_user_id"));
             }
         }
-        if (friendIds.isEmpty()) {
-            return null;
-        }
         UserIds.Builder b = UserIds.newBuilder();
         b.addAllUserIds(friendIds);
         return b.build();
