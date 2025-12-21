@@ -120,14 +120,21 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 docker-compose up -d
 ```
 
-### 2. Build the Project
+### 2. Configure Google OAuth (Required for Authorization Server)
+
+Before starting the Authorization Server, you need to configure Google OAuth credentials:
+
+**⚠️ Important**: The default client-id and client-secret in the code are placeholders and **will not work**. You must
+replace them with your own valid Google OAuth credentials.
+
+### 3. Build the Project
 
 ```bash
 # Build all modules
 mvn clean install -DskipTests
 ```
 
-### 3. Start Services
+### 4. Start Services
 
 Start services in the following order:
 
