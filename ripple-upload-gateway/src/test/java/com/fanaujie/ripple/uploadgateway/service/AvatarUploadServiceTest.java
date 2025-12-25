@@ -1,16 +1,21 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendEventReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import io.minio.MinioClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +55,16 @@ class AvatarUploadServiceTest {
     @MockitoBean private SnowflakeIdClient snowflakeIdClient;
 
     @MockitoBean private RippleStorageFacade storageFacade;
+
+    @MockitoBean private CqlSession cqlSession;
+
+    @MockitoBean private RedissonClient redissonClient;
+
+    @MockitoBean private CassandraUnreadCountCalculator cassandraUnreadCountCalculator;
+
+    @MockitoBean private UserProfileStorage userProfileStorage;
+
+    @MockitoBean private ConversationSummaryStorage conversationSummaryStorage;
 
     @Autowired private AvatarUploadService avatarUploadService;
 

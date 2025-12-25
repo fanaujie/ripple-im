@@ -7,33 +7,23 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SnowflakeIdServerIntegrationTest {
 
-    private static final int ZOOKEEPER_PORT = 2181;
     private static final int SERVER_PORT = 8082;
     private static final String LOCALHOST = "127.0.0.1";
-
-    @Container
-    static GenericContainer<?> zookeeper =
-            new GenericContainer<>("zookeeper:3.9.3-jre-17").withExposedPorts(ZOOKEEPER_PORT);
 
     private SnowflakeIdService service;
     private SnowflakeIdClient client;
 
     @BeforeAll
     void setUp() throws InterruptedException {
-        zookeeper.start();
         service = new SnowflakeIdService(1, SERVER_PORT);
 
         Thread serverThread = new Thread(() -> service.start());
@@ -53,7 +43,6 @@ public class SnowflakeIdServerIntegrationTest {
         if (service != null) {
             service.stop();
         }
-        zookeeper.stop();
     }
 
     @Test

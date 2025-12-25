@@ -1,13 +1,18 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.config.MessageAttachmentProperties;
 import com.fanaujie.ripple.uploadgateway.dto.*;
 import io.minio.MinioClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -44,6 +49,16 @@ class ChunkUploadServiceTest {
     @MockitoBean private SnowflakeIdClient snowflakeIdClient;
 
     @MockitoBean private RippleStorageFacade storageFacade;
+
+    @MockitoBean private CqlSession cqlSession;
+
+    @MockitoBean private RedissonClient redissonClient;
+
+    @MockitoBean private CassandraUnreadCountCalculator cassandraUnreadCountCalculator;
+
+    @MockitoBean private UserProfileStorage userProfileStorage;
+
+    @MockitoBean private ConversationSummaryStorage conversationSummaryStorage;
 
     @Autowired private ChunkUploadService chunkUploadService;
 
@@ -108,7 +123,7 @@ class ChunkUploadServiceTest {
         assertNotNull(response);
         assertEquals(InitiateUploadData.UploadMode.SINGLE.getCode(), response.getUploadMode());
         assertNull(response.getFileUrl());
-        assertNull(response.getObjectName());
+        assertEquals(objectName, response.getObjectName());
     }
 
     @Test
@@ -134,7 +149,7 @@ class ChunkUploadServiceTest {
         assertNotNull(response.getObjectName());
         assertTrue(response.getObjectName().contains(fileSha256));
         assertEquals(4, response.getTotalChunks()); // 3 full chunks + 1 partial
-        assertEquals(0, response.getStartChunkNumber()); // Starting from 0
+        assertEquals(1, response.getStartChunkNumber()); // Starting from 1 (1-based)
     }
 
     @Test
@@ -273,7 +288,7 @@ class ChunkUploadServiceTest {
         int fileSize = (int) (chunkSize * 2) + 1023; // Exactly 3 chunks
         String objectName = fileSha256 + ".pdf";
 
-        // Pre-upload first 2 chunks
+        // Pre-upload first 2 chunks (parts 1 and 2)
         generateAndUploadChunks(objectName, 3, 3);
 
         InitiateUploadRequest request = new InitiateUploadRequest();
@@ -287,7 +302,7 @@ class ChunkUploadServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals(InitiateUploadData.UploadMode.CHUNK.getCode(), response.getUploadMode());
-        assertEquals(2, response.getStartChunkNumber()); // Should resume from chunk 2
+        assertEquals(3, response.getStartChunkNumber()); // Should resume from chunk 3 (1-based)
         assertEquals(3, response.getTotalChunks());
     }
 }
