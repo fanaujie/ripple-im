@@ -497,6 +497,114 @@ class CassandraRelationStorageTest {
         assertThrows(NotFoundBlockException.class, () -> storageFacade.hideBlockedUser(event));
     }
 
+    // ==================== isBlocked Tests ====================
+
+    @Test
+    void isBlocked_shouldReturnTrue_whenUserBlocked()
+            throws NotFoundUserProfileException, RelationAlreadyExistsException,
+                    BlockAlreadyExistsException {
+        long userId = 1040L;
+        long friendId = 2040L;
+        createUserProfile(userId, "user40", "User Forty", "avatar1.png");
+        createUserProfile(friendId, "friend40", "Friend Forty", "avatar2.png");
+
+        // Add friend first
+        RelationEvent addEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.addFriend(addEvent);
+
+        // Block the friend
+        RelationEvent blockEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.blockFriend(blockEvent);
+
+        // userId blocked friendId, so isBlocked(userId, friendId) should return true
+        assertTrue(storageFacade.isBlocked(userId, friendId));
+    }
+
+    @Test
+    void isBlocked_shouldReturnFalse_whenNoRelation() {
+        long userId = 1041L;
+        long strangerId = 2041L;
+
+        // No relation exists between them
+        assertFalse(storageFacade.isBlocked(userId, strangerId));
+    }
+
+    @Test
+    void isBlocked_shouldReturnFalse_whenNotBlocked()
+            throws NotFoundUserProfileException, RelationAlreadyExistsException {
+        long userId = 1042L;
+        long friendId = 2042L;
+        createUserProfile(userId, "user42", "User FortyTwo", "avatar1.png");
+        createUserProfile(friendId, "friend42", "Friend FortyTwo", "avatar2.png");
+
+        // Add friend only (not blocked)
+        RelationEvent addEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.addFriend(addEvent);
+
+        // They are friends but not blocked
+        assertFalse(storageFacade.isBlocked(userId, friendId));
+    }
+
+    @Test
+    void isBlocked_shouldReturnFalse_afterUnblock()
+            throws NotFoundUserProfileException, RelationAlreadyExistsException,
+                    BlockAlreadyExistsException, NotFoundBlockException {
+        long userId = 1043L;
+        long friendId = 2043L;
+        createUserProfile(userId, "user43", "User FortyThree", "avatar1.png");
+        createUserProfile(friendId, "friend43", "Friend FortyThree", "avatar2.png");
+
+        // Add friend
+        RelationEvent addEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.addFriend(addEvent);
+
+        // Block
+        RelationEvent blockEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.blockFriend(blockEvent);
+
+        // Verify blocked
+        assertTrue(storageFacade.isBlocked(userId, friendId));
+
+        // Unblock
+        RelationEvent unblockEvent =
+                RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
+        storageFacade.unblockUser(unblockEvent);
+
+        // Verify not blocked anymore
+        assertFalse(storageFacade.isBlocked(userId, friendId));
+    }
+
+    @Test
+    void isBlocked_shouldCheckCorrectDirection()
+            throws NotFoundUserProfileException, RelationAlreadyExistsException,
+                    BlockAlreadyExistsException {
+        long aliceId = 1044L;
+        long bobId = 2044L;
+        createUserProfile(aliceId, "alice44", "Alice", "avatar1.png");
+        createUserProfile(bobId, "bob44", "Bob", "avatar2.png");
+
+        // Alice adds Bob as friend
+        RelationEvent addEvent =
+                RelationEvent.newBuilder().setUserId(aliceId).setTargetUserId(bobId).build();
+        storageFacade.addFriend(addEvent);
+
+        // Alice blocks Bob
+        RelationEvent blockEvent =
+                RelationEvent.newBuilder().setUserId(aliceId).setTargetUserId(bobId).build();
+        storageFacade.blockFriend(blockEvent);
+
+        // Alice blocked Bob: isBlocked(alice, bob) = true
+        assertTrue(storageFacade.isBlocked(aliceId, bobId));
+
+        // Bob did NOT block Alice: isBlocked(bob, alice) = false
+        assertFalse(storageFacade.isBlocked(bobId, aliceId));
+    }
+
     // ==================== getRelationChanges Tests ====================
 
     @Test

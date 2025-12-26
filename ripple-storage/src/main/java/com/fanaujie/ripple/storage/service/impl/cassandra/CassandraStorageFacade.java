@@ -1066,8 +1066,11 @@ public class CassandraStorageFacade implements RippleStorageFacade {
 
     @Override
     public boolean isBlocked(long userId, long targetUserId) {
-        // TODO : implement isBlocked
-        return false;
+        Relation relation = getRelationBetweenUser(userId, targetUserId);
+        if (relation == null) {
+            return false;
+        }
+        return RelationFlags.BLOCKED.isSet(relation.getRelationFlags());
     }
 
     @Override

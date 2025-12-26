@@ -46,7 +46,8 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
     private SendMessageResp handleSingleMessage(SendMessageReq request, long senderId)
             throws Exception {
         long receiverId = request.getReceiverId();
-        if (!this.storageFacade.isBlocked(senderId, receiverId)) {
+        // Check if receiver has blocked the sender
+        if (!this.storageFacade.isBlocked(receiverId, senderId)) {
             MessageData.Builder b = MessageData.newBuilder().setSendUserId(senderId);
             b.addReceiveUserIds(receiverId);
             b.addReceiveUserIds(senderId); // also notify self for multi-device sync
