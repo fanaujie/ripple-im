@@ -45,7 +45,7 @@
         </dependency>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-snowflakeid-server</artifactId>
+            <artifactId>ripple-snowflakeid-client</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
 

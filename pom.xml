@@ -15,6 +15,7 @@
         <module>ripple-message-dispatcher</module>
         <module>ripple-async-storage-updater</module>
         <module>ripple-message-gateway</module>
+        <module>ripple-snowflakeid-client</module>
         <module>ripple-snowflakeid-server</module>
         <module>ripple-protobuf</module>
         <module>ripple-upload-gateway</module>

@@ -235,9 +235,6 @@ public class CassandraStorageFacade implements RippleStorageFacade {
 
     @Override
     public Messages getMessages(String conversationId, long beforeMessageId, int pageSize) {
-        // Query pageSize + 1 to check if there are more records
-        int limit = pageSize + 1;
-
         // When beforeMessageId is 0, use Long.MAX_VALUE to get the latest messages
         long effectiveBeforeMessageId = (beforeMessageId == 0) ? Long.MAX_VALUE : beforeMessageId;
 
@@ -245,7 +242,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                 session.execute(
                         conversationCqlStatement
                                 .getSelectMessagesStmt()
-                                .bind(conversationId, effectiveBeforeMessageId, limit));
+                                .bind(conversationId, effectiveBeforeMessageId, pageSize));
 
         List<Message> messages = new ArrayList<>();
         for (Row row : resultSet) {
