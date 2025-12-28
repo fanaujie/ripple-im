@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-authorization-server
+  namespace: ripple
+  labels:
+    app: ripple-authorization-server
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ripple-authorization-server
+  template:
+    metadata:
+      labels:
+        app: ripple-authorization-server
+    spec:
+      containers:
+        - name: ripple-authorization-server
+          image: ripple-authorization-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10001
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "10001"
+            # MySQL config - must be defined before SPRING_DATASOURCE_URL
+            - name: MYSQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MYSQL_HOST
+            - name: MYSQL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MYSQL_PORT
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MYSQL_DATABASE
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://$(MYSQL_HOST):$(MYSQL_PORT)/$(MYSQL_DATABASE)?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: MYSQL_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: MYSQL_PASSWORD
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: OAUTH2_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: OAUTH2_CLIENT_ID
+            - name: OAUTH2_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: OAUTH2_CLIENT_SECRET
+            - name: OAUTH2_CLIENT_REDIRECT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: OAUTH2_CLIENT_REDIRECT_URI
+            - name: OAUTH2_JWK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: OAUTH2_JWK_SECRET
+            - name: SNOWFLAKEID_SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_HOST
+            - name: SNOWFLAKEID_SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_PORT
+            # Google OAuth2
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: GOOGLE_CLIENT_ID
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: GOOGLE_CLIENT_SECRET
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-authorization-server
+  namespace: ripple
+  labels:
+    app: ripple-authorization-server
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-authorization-server
+  ports:
+    - port: 10001
+      targetPort: 10001
+      name: http

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-message-api-server
+  namespace: ripple
+  labels:
+    app: ripple-message-api-server
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-message-api-server
+  template:
+    metadata:
+      labels:
+        app: ripple-message-api-server
+    spec:
+      containers:
+        - name: ripple-message-api-server
+          image: ripple-message-api-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10102
+              name: grpc
+          env:
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: SERVER_GRPC_PORT
+              value: "10102"
+            - name: BROKER_TOPIC_MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_MESSAGE
+            - name: BROKER_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_BROKER_SERVER
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-message-api-server
+  namespace: ripple
+  labels:
+    app: ripple-message-api-server
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-message-api-server
+  ports:
+    - port: 10102
+      targetPort: 10102
+      name: grpc

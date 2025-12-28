@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ripple-config
+  namespace: ripple
+  labels:
+    app.kubernetes.io/part-of: ripple-im
+data:
+  # Infrastructure endpoints - Docker container names (minikube connected to ripple-network)
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "ripple_im"
+
+  # Cassandra contact points (comma-separated for multiple nodes)
+  CASSANDRA_CONTACT_POINTS: "cassandra:9042"
+  CASSANDRA_KEYSPACE_NAME: "ripple"
+  CASSANDRA_LOCAL_DATACENTER: "datacenter1"
+
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  KAFKA_BROKER_SERVER: "kafka:9092"
+  KAFKA_TOPIC_MESSAGE: "ripple-messages"
+  KAFKA_TOPIC_PUSH: "ripple-push-notifications"
+  KAFKA_TOPIC_STORAGE_UPDATES: "ripple-storage-updates"
+
+  ZOOKEEPER_ADDRESS: "zookeeper:2181"
+  ZOOKEEPER_MESSAGE_GATEWAY_DISCOVERY_PATH: "/ripple/services/message-gateway"
+
+  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_BUCKET_NAME: "ripple-avatars"
+  MINIO_MESSAGE_BUCKET_NAME: "ripple-messages"
+
+  # Service discovery - internal K8s service names
+  SNOWFLAKEID_SERVER_HOST: "ripple-snowflakeid-server"
+  SNOWFLAKEID_SERVER_PORT: "10100"
+  USER_PRESENCE_SERVICE_ADDRESS: "ripple-user-presence-server:10101"
+  MESSAGE_API_SERVER_ADDRESS: "ripple-message-api-server:10102"
+
+  # OAuth2 settings
+  OAUTH2_CLIENT_ID: "ripple-im-desktop"
+  OAUTH2_CLIENT_REDIRECT_URI: "http://localhost:8000/callback"
+
+  # WebSocket settings
+  WEBSOCKET_PORT: "10200"
+  WEBSOCKET_PATH: "/ws"

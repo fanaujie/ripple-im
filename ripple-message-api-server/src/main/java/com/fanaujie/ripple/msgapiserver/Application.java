@@ -19,8 +19,10 @@ import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 public class Application {
 
@@ -30,7 +32,11 @@ public class Application {
         Config config = ConfigFactory.load();
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
-        List<String> cassandraContacts = config.getStringList("cassandra.contact.points");
+        String contactPointsStr = config.getString("cassandra.contact.points");
+        List<String> cassandraContacts = Arrays.stream(contactPointsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
         String cassandraKeyspace = config.getString("cassandra.keyspace.name");
         String localDatacenter = config.getString("cassandra.local.datacenter");
         String brokerTopic = config.getString("broker.topic.message");

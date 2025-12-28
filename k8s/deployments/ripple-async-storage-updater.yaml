@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-async-storage-updater
+  namespace: ripple
+  labels:
+    app: ripple-async-storage-updater
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-async-storage-updater
+  template:
+    metadata:
+      labels:
+        app: ripple-async-storage-updater
+    spec:
+      containers:
+        - name: ripple-async-storage-updater
+          image: ripple-async-storage-updater:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: BROKER_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_BROKER_SERVER
+            - name: BROKER_TOPIC_STORAGE_UPDATES
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_STORAGE_UPDATES
+            - name: BROKER_TOPIC_PUSH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_PUSH
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

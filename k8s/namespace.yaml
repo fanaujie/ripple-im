@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ripple
+  labels:
+    app.kubernetes.io/name: ripple-im
+    app.kubernetes.io/part-of: ripple-im

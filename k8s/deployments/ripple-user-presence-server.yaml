@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-user-presence-server
+  namespace: ripple
+  labels:
+    app: ripple-user-presence-server
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ripple-user-presence-server
+  template:
+    metadata:
+      labels:
+        app: ripple-user-presence-server
+    spec:
+      containers:
+        - name: ripple-user-presence-server
+          image: ripple-user-presence-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10101
+              name: grpc
+          env:
+            - name: SERVER_GRPC_PORT
+              value: "10101"
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-user-presence-server
+  namespace: ripple
+  labels:
+    app: ripple-user-presence-server
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-user-presence-server
+  ports:
+    - port: 10101
+      targetPort: 10101
+      name: grpc

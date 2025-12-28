@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-message-dispatcher
+  namespace: ripple
+  labels:
+    app: ripple-message-dispatcher
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-message-dispatcher
+  template:
+    metadata:
+      labels:
+        app: ripple-message-dispatcher
+    spec:
+      containers:
+        - name: ripple-message-dispatcher
+          image: ripple-message-dispatcher:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: BROKER_TOPIC_MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_MESSAGE
+            - name: BROKER_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_BROKER_SERVER
+            - name: BROKER_TOPIC_PUSH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_PUSH
+            - name: BROKER_TOPIC_STORAGE_UPDATES
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_STORAGE_UPDATES
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

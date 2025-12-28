@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-push-server
+  namespace: ripple
+  labels:
+    app: ripple-push-server
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ripple-push-server
+  template:
+    metadata:
+      labels:
+        app: ripple-push-server
+    spec:
+      containers:
+        - name: ripple-push-server
+          image: ripple-push-server:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: BROKER_TOPIC_PUSH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_TOPIC_PUSH
+            - name: BROKER_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_BROKER_SERVER
+            - name: USER_PRESENCE_SERVICE_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: USER_PRESENCE_SERVICE_ADDRESS
+            - name: ZOOKEEPER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: ZOOKEEPER_ADDRESS
+            - name: ZOOKEEPER_MESSAGE_GATEWAY_DISCOVERY_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: ZOOKEEPER_MESSAGE_GATEWAY_DISCOVERY_PATH
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

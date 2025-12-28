@@ -23,7 +23,9 @@ import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Application {
 
@@ -56,7 +58,11 @@ public class Application {
         int redisPort = config.getInt("redis.port");
 
         // Load Cassandra configuration
-        List<String> cassandraContacts = config.getStringList("cassandra.contact.points");
+        String contactPointsStr = config.getString("cassandra.contact.points");
+        List<String> cassandraContacts = Arrays.stream(contactPointsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
         String cassandraKeyspace = config.getString("cassandra.keyspace.name");
         String localDatacenter = config.getString("cassandra.local.datacenter");
 
