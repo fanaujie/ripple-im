@@ -57,9 +57,19 @@ public class Application {
 
         ZookeeperDiscoverService discoveryService =
                 new ZookeeperDiscoverService(zookeeperAddress, discoveryPath);
-        String localIp = InetAddress.getLocalHost().getHostAddress();
-        discoveryService.registerService(String.format("%s:%d", localIp, grpcPort));
-        String serverLocation = String.format("%s:%d", localIp, grpcPort);
+
+        // Use GATEWAY_GRPC_ADDRESS if configured (K8s StatefulSet), otherwise fallback to local IP
+        String configuredGrpcAddress = config.getString("server.gateway.grpc-address");
+        String serverLocation;
+        if (configuredGrpcAddress != null && !configuredGrpcAddress.isEmpty()) {
+            serverLocation = configuredGrpcAddress;
+            logger.info("Using configured gateway gRPC address: {}", serverLocation);
+        } else {
+            String localIp = InetAddress.getLocalHost().getHostAddress();
+            serverLocation = String.format("%s:%d", localIp, grpcPort);
+            logger.info("Using local IP for gateway gRPC address: {}", serverLocation);
+        }
+        discoveryService.registerService(serverLocation);
 
         // Initialize User Presence gRPC client (async stub for batch processing)
         GrpcClient<UserPresenceGrpc.UserPresenceStub> userPresenceGrpcClient =

@@ -1,0 +1,147 @@
+services:
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "mc", "ready", "local" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ripple-network
+
+  minio-init:
+    container_name: minio-init
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing myminio/ripple-avatars &&
+      mc mb --ignore-existing myminio/ripple-messages &&
+      mc anonymous set download myminio/ripple-avatars &&
+      mc anonymous set download myminio/ripple-messages &&
+      echo 'MinIO bucket initialization completed successfully!'"
+    restart: "no"
+    networks:
+      - ripple-network
+
+  mysql:
+    container_name: mysql
+    image: mysql:8.4.5
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ripple_im
+      MYSQL_ROOT: root
+      MYSQL_ROOT_PASSWORD: ripple
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ripple-network
+
+  zookeeper:
+    container_name: zookeeper
+    image: zookeeper:3.9.3-jre-17
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/data
+      - zookeeper_data_log:/datalog
+    networks:
+      - ripple-network
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ripple-network
+
+  cassandra:
+    container_name: cassandra
+    image: cassandra:5.0.5
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: ripple_cluster
+      CASSANDRA_USER: root
+      CASSANDRA_PASSWORD: ripple
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: [ "CMD-SHELL", "cqlsh -e 'DESCRIBE CLUSTER'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - ripple-network
+
+  cassandra-init:
+    container_name: cassandra-init
+    image: cassandra:5.0.5
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ../cassandra-ddl/ripple.cql:/ripple.cql
+    command: /bin/bash -c "
+      echo 'Cassandra is healthy, starting initialization...' &&
+      echo 'Loading cassandra keyspace...' &&
+      cqlsh cassandra -f /ripple.cql &&
+      echo 'Cassandra initialization completed successfully!'"
+    restart: "no"
+    networks:
+      - ripple-network
+
+  kafka:
+    image: apache/kafka:4.1.0
+    container_name: kafka-broker
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - ripple-network
+
+volumes:
+  minio_data:
+  mysql_data:
+  zookeeper_data:
+  zookeeper_data_log:
+  redis_data:
+  cassandra_data:
+  kafka_data:
+
+networks:
+  ripple-network:
+    name: ripple-network

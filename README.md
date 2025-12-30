@@ -113,28 +113,69 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 
 ## Getting Started
 
-### 1. Start Infrastructure Services
+### Prerequisites
+
+**Configure Google OAuth** (Required for Authorization Server):
+
+> **Warning**: The default client-id and client-secret in the code are placeholders and **will not work**. You must
+> replace them with your own valid Google OAuth credentials.
+
+### Option 1: Local Development with Docker Compose
+
+The project uses split Docker Compose files for flexibility:
+
+| File                                 | Contents                                                          | Use Case           |
+|--------------------------------------|-------------------------------------------------------------------|--------------------|
+| `deploy/docker-compose.infra.yml`    | Infrastructure (MySQL, Cassandra, Redis, Kafka, Zookeeper, MinIO) | Always needed      |
+| `deploy/docker-compose.services.yml` | All 10 application services                                       | Full stack testing |
+
+#### Start Infrastructure Only (for IDE debugging)
 
 ```bash
-# Start all infrastructure services with Docker Compose
-docker-compose up -d
+# Start infrastructure services
+docker compose -f deploy/docker-compose.infra.yml up -d
+
+# Run individual services from IDE with these environment variables:
+# KAFKA_BROKER: localhost:9094 (external listener)
+# Other services: localhost:<port>
 ```
 
-### 2. Configure Google OAuth (Required for Authorization Server)
+#### Start Full Stack
 
-Before starting the Authorization Server, you need to configure Google OAuth credentials:
+```bash
+# Start everything
+docker compose -f deploy/docker-compose.infra.yml -f deploy/docker-compose.services.yml up -d
 
-**⚠️ Important**: The default client-id and client-secret in the code are placeholders and **will not work**. You must
-replace them with your own valid Google OAuth credentials.
+# Or start specific services
+docker compose -f deploy/docker-compose.services.yml up -d ripple-api-gateway
+```
 
-### 3. Build the Project
+### Option 2: Kubernetes Deployment
+
+For production or staging environments, deploy to Kubernetes with external managed infrastructure.
+
+See [Deployment Guide](deploy/README.md) for detailed instructions.
+
+**Quick Start (Minikube):**
+
+```bash
+# Use the deployment scripts
+./deploy/01-start-infra.sh
+./deploy/02-connect-minikube.sh
+./deploy/03a-build-images.sh
+./deploy/04-deploy.sh
+```
+
+### Option 3: Manual JAR Execution
+
+#### Build the Project
 
 ```bash
 # Build all modules
 mvn clean install -DskipTests
 ```
 
-### 4. Start Services
+#### Start Services
 
 Start services in the following order:
 

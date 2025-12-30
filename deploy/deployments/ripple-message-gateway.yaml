@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ripple-message-gateway
+  namespace: ripple
+  labels:
+    app: ripple-message-gateway
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  serviceName: ripple-message-gateway-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-message-gateway
+  template:
+    metadata:
+      labels:
+        app: ripple-message-gateway
+    spec:
+      containers:
+        - name: ripple-message-gateway
+          image: ripple-message-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10200
+              name: websocket
+            - containerPort: 10103
+              name: grpc
+          env:
+            # Pod identity - for registering with Zookeeper
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            # Gateway address for service discovery registration
+            # Format: ripple-message-gateway-0.ripple-message-gateway-headless.ripple.svc.cluster.local:10103
+            - name: GATEWAY_GRPC_ADDRESS
+              value: "$(POD_NAME).ripple-message-gateway-headless.ripple.svc.cluster.local:10103"
+            - name: WEBSOCKET_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: WEBSOCKET_PORT
+            - name: WEBSOCKET_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: WEBSOCKET_PATH
+            - name: SERVER_GRPC_PORT
+              value: "10103"
+            - name: OAUTH2_JWK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: OAUTH2_JWK_SECRET
+            - name: ZOOKEEPER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: ZOOKEEPER_ADDRESS
+            - name: ZOOKEEPER_MESSAGE_GATEWAY_DISCOVERY_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: ZOOKEEPER_MESSAGE_GATEWAY_DISCOVERY_PATH
+            - name: USER_PRESENCE_SERVICE_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: USER_PRESENCE_SERVICE_ADDRESS
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+# Headless Service - for direct pod-to-pod communication (push-server -> specific gateway pod)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-message-gateway-headless
+  namespace: ripple
+  labels:
+    app: ripple-message-gateway
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: ripple-message-gateway
+  ports:
+    - port: 10103
+      targetPort: 10103
+      name: grpc
+---
+# Regular Service - for Ingress (WebSocket load balancing)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-message-gateway
+  namespace: ripple
+  labels:
+    app: ripple-message-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-message-gateway
+  ports:
+    - port: 10200
+      targetPort: 10200
+      name: websocket

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-snowflakeid-server
+  namespace: ripple
+  labels:
+    app: ripple-snowflakeid-server
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-snowflakeid-server
+  template:
+    metadata:
+      labels:
+        app: ripple-snowflakeid-server
+    spec:
+      containers:
+        - name: ripple-snowflakeid-server
+          image: ripple-snowflakeid-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10100
+              name: grpc
+          env:
+            - name: SERVER_GRPC_PORT
+              value: "10100"
+            - name: ZOOKEEPER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: ZOOKEEPER_ADDRESS
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-snowflakeid-server
+  namespace: ripple
+  labels:
+    app: ripple-snowflakeid-server
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-snowflakeid-server
+  ports:
+    - port: 10100
+      targetPort: 10100
+      name: grpc

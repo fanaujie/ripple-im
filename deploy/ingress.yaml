@@ -1,0 +1,69 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ripple-ingress
+  namespace: ripple
+  labels:
+    app.kubernetes.io/part-of: ripple-im
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # Upload gateway - must be before /api/* for priority matching
+          - path: /api/upload
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-upload-gateway
+                port:
+                  number: 10003
+
+          # API gateway
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-api-gateway
+                port:
+                  number: 10002
+
+          # Auth server - OAuth2 endpoints
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-authorization-server
+                port:
+                  number: 10001
+
+          # Auth server - login/signup pages
+          - path: /login
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-authorization-server
+                port:
+                  number: 10001
+
+          - path: /signup
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-authorization-server
+                port:
+                  number: 10001
+
+          # WebSocket - message gateway
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: ripple-message-gateway
+                port:
+                  number: 10200

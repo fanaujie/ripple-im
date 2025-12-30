@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-upload-gateway
+  namespace: ripple
+  labels:
+    app: ripple-upload-gateway
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-upload-gateway
+  template:
+    metadata:
+      labels:
+        app: ripple-upload-gateway
+    spec:
+      containers:
+        - name: ripple-upload-gateway
+          image: ripple-upload-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10003
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "10003"
+            - name: OAUTH2_JWK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: OAUTH2_JWK_SECRET
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: MINIO_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MINIO_ENDPOINT
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: MINIO_SECRET_KEY
+            - name: MINIO_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MINIO_BUCKET_NAME
+            - name: MINIO_MESSAGE_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MINIO_MESSAGE_BUCKET_NAME
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+            - name: SNOWFLAKEID_SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_HOST
+            - name: SNOWFLAKEID_SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_PORT
+            - name: MESSAGE_API_SERVER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MESSAGE_API_SERVER_ADDRESS
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-upload-gateway
+  namespace: ripple
+  labels:
+    app: ripple-upload-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-upload-gateway
+  ports:
+    - port: 10003
+      targetPort: 10003
+      name: http

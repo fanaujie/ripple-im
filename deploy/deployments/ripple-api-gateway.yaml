@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-api-gateway
+  namespace: ripple
+  labels:
+    app: ripple-api-gateway
+    app.kubernetes.io/part-of: ripple-im
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ripple-api-gateway
+  template:
+    metadata:
+      labels:
+        app: ripple-api-gateway
+    spec:
+      containers:
+        - name: ripple-api-gateway
+          image: ripple-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 10002
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "10002"
+            - name: SPRING_APPLICATION_NAME
+              value: "ripple-api-gateway"
+            - name: OAUTH2_JWK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ripple-secrets
+                  key: OAUTH2_JWK_SECRET
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: MESSAGE_API_SERVER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: MESSAGE_API_SERVER_ADDRESS
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_PORT
+            - name: SNOWFLAKEID_SERVER_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_HOST
+            - name: SNOWFLAKEID_SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: SNOWFLAKEID_SERVER_PORT
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ripple-api-gateway
+  namespace: ripple
+  labels:
+    app: ripple-api-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: ripple-api-gateway
+  ports:
+    - port: 10002
+      targetPort: 10002
+      name: http
