@@ -1,8 +1,9 @@
 services:
   ripple-user-presence-server:
     container_name: ripple-user-presence-server
+    image: ripple-user-presence-server
     build:
-      context: .
+      context: ..
       dockerfile: ripple-user-presence-server/Dockerfile
     ports:
       - "10101:10101"
@@ -15,8 +16,9 @@ services:
 
   ripple-snowflakeid-server:
     container_name: ripple-snowflakeid-server
+    image: ripple-snowflakeid-server
     build:
-      context: .
+      context: ..
       dockerfile: ripple-snowflakeid-server/Dockerfile
     ports:
       - "10100:10100"
@@ -28,8 +30,9 @@ services:
 
   ripple-message-dispatcher:
     container_name: ripple-message-dispatcher
+    image: ripple-message-dispatcher
     build:
-      context: .
+      context: ..
       dockerfile: ripple-message-dispatcher/Dockerfile
     environment:
       BROKER_TOPIC_MESSAGE: ripple-messages
@@ -45,8 +48,9 @@ services:
 
   ripple-message-api-server:
     container_name: ripple-message-api-server
+    image: ripple-message-api-server
     build:
-      context: .
+      context: ..
       dockerfile: ripple-message-api-server/Dockerfile
     ports:
       - "10102:10102"
@@ -64,8 +68,9 @@ services:
 
   ripple-message-gateway:
     container_name: ripple-message-gateway
+    image: ripple-message-gateway
     build:
-      context: .
+      context: ..
       dockerfile: ripple-message-gateway/Dockerfile
     ports:
       - "10200:10200"
@@ -83,8 +88,9 @@ services:
 
   ripple-push-server:
     container_name: ripple-push-server
+    image: ripple-push-server
     build:
-      context: .
+      context: ..
       dockerfile: ripple-push-server/Dockerfile
     environment:
       BROKER_TOPIC_PUSH: ripple-push-notifications
@@ -102,8 +108,9 @@ services:
 
   ripple-authorization-server:
     container_name: ripple-authorization-server
+    image: ripple-authorization-server
     build:
-      context: .
+      context: ..
       dockerfile: ripple-authorization-server/Dockerfile
     ports:
       - "10001:10001"
@@ -126,8 +133,9 @@ services:
 
   ripple-upload-gateway:
     container_name: ripple-upload-gateway
+    image: ripple-upload-gateway
     build:
-      context: .
+      context: ..
       dockerfile: ripple-upload-gateway/Dockerfile
     ports:
       - "10003:10003"
@@ -151,8 +159,9 @@ services:
 
   ripple-api-gateway:
     container_name: ripple-api-gateway
+    image: ripple-api-gateway
     build:
-      context: .
+      context: ..
       dockerfile: ripple-api-gateway/Dockerfile
     ports:
       - "10002:10002"
@@ -173,8 +182,9 @@ services:
 
   ripple-async-storage-updater:
     container_name: ripple-async-storage-updater
+    image: ripple-async-storage-updater
     build:
-      context: .
+      context: ..
       dockerfile: ripple-async-storage-updater/Dockerfile
     environment:
       CASSANDRA_CONTACT_POINTS: cassandra:9042

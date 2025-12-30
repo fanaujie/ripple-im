@@ -13,8 +13,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: ripple.local
-      http:
+    - http:
         paths:
           # Upload gateway - must be before /api/* for priority matching
           - path: /api/upload

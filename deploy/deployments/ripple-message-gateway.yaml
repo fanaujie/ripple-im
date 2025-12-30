@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: ripple-im
 spec:
   serviceName: ripple-message-gateway-headless
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: ripple-message-gateway

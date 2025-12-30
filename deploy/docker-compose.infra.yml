@@ -98,7 +98,7 @@ services:
       cassandra:
         condition: service_healthy
     volumes:
-      - ./cassandra-ddl/ripple.cql:/ripple.cql
+      - ../cassandra-ddl/ripple.cql:/ripple.cql
     command: /bin/bash -c "
       echo 'Cassandra is healthy, starting initialization...' &&
       echo 'Loading cassandra keyspace...' &&

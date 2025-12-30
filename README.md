@@ -113,20 +113,27 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 
 ## Getting Started
 
+### Prerequisites
+
+**Configure Google OAuth** (Required for Authorization Server):
+
+> **Warning**: The default client-id and client-secret in the code are placeholders and **will not work**. You must
+> replace them with your own valid Google OAuth credentials.
+
 ### Option 1: Local Development with Docker Compose
 
 The project uses split Docker Compose files for flexibility:
 
-| File | Contents | Use Case |
-|------|----------|----------|
-| `docker-compose.infra.yml` | Infrastructure (MySQL, Cassandra, Redis, Kafka, Zookeeper, MinIO) | Always needed |
-| `docker-compose.services.yml` | All 10 application services | Full stack testing |
+| File                                 | Contents                                                          | Use Case           |
+|--------------------------------------|-------------------------------------------------------------------|--------------------|
+| `deploy/docker-compose.infra.yml`    | Infrastructure (MySQL, Cassandra, Redis, Kafka, Zookeeper, MinIO) | Always needed      |
+| `deploy/docker-compose.services.yml` | All 10 application services                                       | Full stack testing |
 
 #### Start Infrastructure Only (for IDE debugging)
 
 ```bash
 # Start infrastructure services
-docker compose -f docker-compose.infra.yml up -d
+docker compose -f deploy/docker-compose.infra.yml up -d
 
 # Run individual services from IDE with these environment variables:
 # KAFKA_BROKER: localhost:9094 (external listener)
@@ -137,42 +144,29 @@ docker compose -f docker-compose.infra.yml up -d
 
 ```bash
 # Start everything
-docker compose -f docker-compose.infra.yml -f docker-compose.services.yml up -d
+docker compose -f deploy/docker-compose.infra.yml -f deploy/docker-compose.services.yml up -d
 
 # Or start specific services
-docker compose -f docker-compose.services.yml up -d ripple-api-gateway
+docker compose -f deploy/docker-compose.services.yml up -d ripple-api-gateway
 ```
 
 ### Option 2: Kubernetes Deployment
 
 For production or staging environments, deploy to Kubernetes with external managed infrastructure.
 
-See [Kubernetes Deployment Guide](k8s/README.md) for detailed instructions.
+See [Deployment Guide](deploy/README.md) for detailed instructions.
 
 **Quick Start (Minikube):**
 
 ```bash
-# Enable ingress
-minikube addons enable ingress
-echo "$(minikube ip) ripple.local" | sudo tee -a /etc/hosts
-
-# Deploy
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/configmaps/
-kubectl apply -f k8s/secrets/
-kubectl apply -f k8s/deployments/
-kubectl apply -f k8s/ingress.yaml
-
-# Access: http://ripple.local/api/...
+# Use the deployment scripts
+./deploy/01-start-infra.sh
+./deploy/02-connect-minikube.sh
+./deploy/03a-build-images.sh
+./deploy/04-deploy.sh
 ```
 
 ### Option 3: Manual JAR Execution
-
-#### Prerequisites
-
-**Configure Google OAuth** (Required for Authorization Server):
-
-> **Warning**: The default client-id and client-secret in the code are placeholders and **will not work**. You must replace them with your own valid Google OAuth credentials.
 
 #### Build the Project
 
