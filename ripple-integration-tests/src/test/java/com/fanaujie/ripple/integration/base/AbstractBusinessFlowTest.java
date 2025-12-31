@@ -14,7 +14,10 @@ import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
+import com.fanaujie.ripple.storage.model.BotConfig;
+import com.fanaujie.ripple.storage.model.BotUserToken;
 import com.fanaujie.ripple.storage.model.User;
+import com.fanaujie.ripple.storage.model.UserInstalledBot;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
@@ -26,6 +29,7 @@ import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -35,6 +39,7 @@ public abstract class AbstractBusinessFlowTest {
     protected static final String TOPIC_MESSAGES = "ripple-messages";
     protected static final String TOPIC_PUSH = "ripple-push-notifications";
     protected static final String TOPIC_STORAGE_UPDATES = "ripple-storage-updates";
+    protected static final String TOPIC_BOT_MESSAGES = "ripple-bot-messages";
 
     @Container
     protected static CassandraContainer<?> cassandraContainer =
@@ -119,7 +124,12 @@ public abstract class AbstractBusinessFlowTest {
 
         this.singleMessagePayloadProcessor =
                 new SingleMessagePayloadProcessor(
-                        storageFacade, conversationSummaryStorage, pushMessageProducer, TOPIC_PUSH);
+                        storageFacade,
+                        conversationSummaryStorage,
+                        pushMessageProducer,
+                        TOPIC_PUSH,
+                        messagePayloadProducer,
+                        "ripple-bot-messages");
     }
 
     @AfterEach
@@ -138,6 +148,10 @@ public abstract class AbstractBusinessFlowTest {
             session.execute("TRUNCATE ripple.group_members_version");
             session.execute("TRUNCATE ripple.user_group");
             session.execute("TRUNCATE ripple.user_group_version");
+            // Bot tables
+            session.execute("TRUNCATE ripple.bot_config");
+            session.execute("TRUNCATE ripple.user_installed_bots");
+            session.execute("TRUNCATE ripple.bot_user_tokens");
             session.close();
         }
 
@@ -441,5 +455,100 @@ public abstract class AbstractBusinessFlowTest {
     /** Generates a conversation ID for a group chat. */
     protected String generateGroupConversationId(long groupId) {
         return ConversationUtils.generateGroupConversationId(groupId);
+    }
+
+    // ==================== Bot Setup Methods ====================
+
+    /** Creates a test bot with default settings. */
+    protected void createBot(long botId, String name, String endpoint) {
+        createBot(botId, name, endpoint, "Test Category", false);
+    }
+
+    /** Creates a test bot with full configuration.
+     * Uses the new createBot method that creates both UserProfile (identity) and BotConfig (configuration).
+     */
+    protected void createBot(long botId, String name, String endpoint, String category, boolean requireAuth) {
+        BotConfig config = BotConfig.builder()
+                .botId(botId)
+                .endpoint(endpoint)
+                .description("Test bot: " + name)
+                .category(category)
+                .enabled(true)
+                .requireAuth(requireAuth)
+                .secret("test-secret-" + botId)
+                .build();
+        storageFacade.createBot(config, name, "bot-avatar-" + botId + ".png");
+    }
+
+    /** Creates a test bot that requires OAuth authentication. */
+    protected void createAuthRequiredBot(long botId, String name, String endpoint, String authConfig) {
+        BotConfig config = BotConfig.builder()
+                .botId(botId)
+                .endpoint(endpoint)
+                .description("Auth-required test bot: " + name)
+                .category("Auth Bots")
+                .enabled(true)
+                .requireAuth(true)
+                .authConfig(authConfig)
+                .secret("test-secret-" + botId)
+                .build();
+        storageFacade.createBot(config, name, "bot-avatar-" + botId + ".png");
+    }
+
+    /** Installs a bot for a user. */
+    protected void installBotForUser(long userId, long botId) {
+        UserInstalledBot installation = UserInstalledBot.builder()
+                .userId(userId)
+                .botId(botId)
+                .installedAt(new Date())
+                .build();
+        storageFacade.installBot(installation);
+    }
+
+    /** Uninstalls a bot for a user. */
+    protected void uninstallBotForUser(long userId, long botId) {
+        storageFacade.uninstallBot(userId, botId);
+    }
+
+    /** Stores a bot user token for testing auth flows. */
+    protected void storeBotUserToken(long botId, long userId, String accessToken, Date expiresAt) {
+        BotUserToken token = BotUserToken.builder()
+                .botId(botId)
+                .userId(userId)
+                .accessToken(accessToken)
+                .expiresAt(expiresAt)
+                .build();
+        storageFacade.saveBotUserToken(token);
+    }
+
+    /** Gets messages routed to bot topic. */
+    protected List<MockProducer.CapturedMessage<String, MessagePayload>> getBotTopicMessages() {
+        return messagePayloadProducer.getMessagesByTopic(TOPIC_BOT_MESSAGES);
+    }
+
+    /** Gets push messages sent to users. */
+    protected List<MockProducer.CapturedMessage<String, PushMessage>> getPushMessages() {
+        return pushMessageProducer.getCapturedMessages();
+    }
+
+    /** Generates a conversation ID for a user-bot chat. */
+    protected String generateBotConversationId(long userId, long botId) {
+        return ConversationUtils.generateConversationId(userId, botId);
+    }
+
+    /** Creates a send message request to a bot. */
+    protected SendMessageReq createSendBotMessageRequest(
+            long senderId, long botId, String conversationId, long messageId, String text) {
+        SingleMessageContent content = SingleMessageContent.newBuilder().setText(text).build();
+        return SendMessageReq.newBuilder()
+                .setSenderId(senderId)
+                .setReceiverId(botId)
+                .setConversationId(conversationId)
+                .setMessageId(messageId)
+                .setSendTimestamp(System.currentTimeMillis())
+                .setSingleMessageContent(content)
+                .setSenderType(UserType.USER)
+                .setReceiverType(UserType.BOT)
+                .build();
     }
 }

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ripple-bot-executor
+  namespace: ripple
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ripple-bot-executor
+  template:
+    metadata:
+      labels:
+        app: ripple-bot-executor
+    spec:
+      containers:
+        - name: ripple-bot-executor
+          image: ripple-bot-executor:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9090
+          env:
+            - name: BROKER_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: KAFKA_BROKER_URL
+            - name: BROKER_TOPIC_PUSH_MESSAGES
+              value: "ripple-push-messages"
+            - name: CASSANDRA_CONTACT_POINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_CONTACT_POINTS
+            - name: CASSANDRA_KEYSPACE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_KEYSPACE_NAME
+            - name: CASSANDRA_LOCAL_DATACENTER
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: CASSANDRA_LOCAL_DATACENTER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ripple-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              value: "6379"
+            - name: BOT_EXECUTOR_WEBHOOK_MAX_RETRIES
+              value: "3"
+            - name: BOT_EXECUTOR_WEBHOOK_RETRY_BASE_DELAY_MS
+              value: "1000"
+            - name: BOT_EXECUTOR_WEBHOOK_RETRY_MULTIPLIER
+              value: "2.0"
+            - name: BOT_EXECUTOR_SSE_TIMEOUT_SECONDS
+              value: "300"
+            - name: BOT_EXECUTOR_PENDING_MESSAGE_TTL_SECONDS
+              value: "600"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

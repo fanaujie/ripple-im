@@ -47,5 +47,26 @@ message PushMessage {
   oneof payload {
     PushEventData event_data = 1;
     PushMessageData message_data = 2;
+    StreamingMessageChunk streaming_chunk = 3;
+    BotAuthRequiredEvent auth_required = 4;
   }
+}
+
+// Streaming message chunk for SSE bot responses
+message StreamingMessageChunk {
+  int64 bot_id = 1;
+  int64 user_id = 2;
+  string conversation_id = 3;
+  int64 message_id = 4;
+  string chunk = 5;
+  bool is_final = 6;
+  string full_content = 7;  // Only set when is_final=true
+}
+
+// Event sent when a bot requires authentication
+message BotAuthRequiredEvent {
+  int64 bot_id = 1;
+  int64 user_id = 2;
+  string bot_name = 3;
+  string auth_url = 4;
 }

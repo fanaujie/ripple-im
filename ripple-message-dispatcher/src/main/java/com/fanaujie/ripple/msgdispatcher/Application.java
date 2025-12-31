@@ -62,57 +62,40 @@ public class Application {
         String topicMessageClientId = config.getString("ripple.topic.message.consumer.client.id");
         String pushTopic = config.getString("broker.topic.push");
         String storageUpdateTopic = config.getString("broker.topic.storage-updates");
+        String botTopic = config.getString("broker.topic.bot-messages");
+
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
-        // Load Kafka consumer batch configuration
+        
         int kafkaMaxPollRecords = config.getInt("kafka.consumer.max-poll-records");
         int kafkaFetchMinBytes = config.getInt("kafka.consumer.fetch-min-bytes");
         int kafkaFetchMaxWaitMs = config.getInt("kafka.consumer.fetch-max-wait-ms");
 
-        // Load processor configuration
-        logger.info("Configuration - Redis Host: {}, Redis Port: {}", redisHost, redisPort);
-        logger.info("Configuration - Broker Server: {}", brokerServer);
-        logger.info("Starting Message Dispatcher...");
+        logger.info("Starting Message Dispatcher Service...");
         logger.info("Message Topic: {}", messageTopic);
-        logger.info("Push Topic: {}", pushTopic);
-        logger.info("Storage Update Topic: {}", storageUpdateTopic);
-        logger.info("Message Topic Consumer Group ID: {}", topicMessageGroupId);
-        logger.info("Message Topic Consumer Client ID: {}", topicMessageClientId);
-        logger.info(
-                "Kafka Consumer Batch Config - Max Poll Records: {}, Fetch Min Bytes: {}, Fetch Max Wait (ms): {}",
-                kafkaMaxPollRecords,
-                kafkaFetchMinBytes,
-                kafkaFetchMaxWaitMs);
 
         CqlSession cqlSession =
                 createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
 
-        CassandraStorageFacadeBuilder userStorageFacadeBuilder =
-                new CassandraStorageFacadeBuilder();
-        userStorageFacadeBuilder.cqlSession(cqlSession);
-        CassandraStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
+        CassandraStorageFacade storageFacade = new CassandraStorageFacadeBuilder().cqlSession(cqlSession).build();
+        
         RedissonClient redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
-        RedisUserProfileStorage userProfileCache =
-                new RedisUserProfileStorage(redissonClient, userStorageFacade);
+        RedisUserProfileStorage userProfileCache = new RedisUserProfileStorage(redissonClient, storageFacade);
+        ConversationSummaryStorage conversationStorage = new RedisConversationSummaryStorage(redissonClient, new CassandraUnreadCountCalculator(cqlSession));
 
-        // Create Cassandra calculators for fallback
-        CassandraUnreadCountCalculator cassandraUnreadCalculator =
-                new CassandraUnreadCountCalculator(cqlSession);
-        // Create ConversationStorage facade with simplified constructor
-        ConversationSummaryStorage conversationStorage =
-                new RedisConversationSummaryStorage(redissonClient, cassandraUnreadCalculator);
-
-        DefaultKeyedPayloadHandler payloadRouter =
-                createKeyedPayloadHandler(
+        DefaultKeyedPayloadHandler mainPayloadRouter =
+                createMainPayloadHandler(
                         pushTopic,
                         storageUpdateTopic,
+                        botTopic,
                         createPushMessageProducer(brokerServer),
                         createStorageUpdateProducer(brokerServer),
-                        userStorageFacade,
+                        createMessagePayloadProducer(brokerServer),
+                        storageFacade,
                         userProfileCache,
                         conversationStorage);
-        MessageConsumer msgProcessor = new MessageConsumer(payloadRouter);
-        GenericConsumer<String, MessagePayload> messageTopicConsumer =
+        
+        GenericConsumer<String, MessagePayload> mainConsumer =
                 createMessageTopicConsumer(
                         messageTopic,
                         brokerServer,
@@ -121,11 +104,11 @@ public class Application {
                         kafkaMaxPollRecords,
                         kafkaFetchMinBytes,
                         kafkaFetchMaxWaitMs,
-                        msgProcessor);
+                        new MessageConsumer(mainPayloadRouter));
 
-        Thread messageConsumerThread = new Thread(messageTopicConsumer);
-        messageConsumerThread.start();
-        messageConsumerThread.join();
+        Thread mainThread = new Thread(mainConsumer);
+        mainThread.start();
+        mainThread.join();
     }
 
     public static void main(String[] args) {
@@ -147,111 +130,60 @@ public class Application {
             int fetchMaxWaitMs,
             MessageConsumer msgProcessor) {
 
-        GenericConsumer<String, MessagePayload> c =
-                new KafkaGenericConsumer<>(
-                        KafkaConsumerConfigFactory.createMessagePayloadConsumerConfig(
-                                topic,
-                                brokerServer,
-                                groupId,
-                                clientId,
-                                maxPollRecords,
-                                fetchMinBytes,
-                                fetchMaxWaitMs));
-        c.subscribe(msgProcessor::consumeBatch);
-        return c;
+        return new KafkaGenericConsumer<>(
+                KafkaConsumerConfigFactory.createMessagePayloadConsumerConfig(
+                        topic, brokerServer, groupId, clientId, maxPollRecords, fetchMinBytes, fetchMaxWaitMs));
     }
 
     private GenericProducer<String, PushMessage> createPushMessageProducer(String brokerServer) {
-        return new KafkaGenericProducer<String, PushMessage>(
+        return new KafkaGenericProducer<>(
                 KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
     }
 
     private GenericProducer<String, StorageUpdatePayload> createStorageUpdateProducer(
             String brokerServer) {
-        return new KafkaGenericProducer<String, StorageUpdatePayload>(
+        return new KafkaGenericProducer<>(
                 KafkaProducerConfigFactory.createStorageUpdatePayloadProducerConfig(brokerServer));
     }
 
-    private DefaultKeyedPayloadHandler createKeyedPayloadHandler(
+    private GenericProducer<String, MessagePayload> createMessagePayloadProducer(
+            String brokerServer) {
+        return new KafkaGenericProducer<>(
+                KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
+    }
+
+    private DefaultKeyedPayloadHandler createMainPayloadHandler(
             String pushTopic,
             String storageUpdateTopic,
+            String botTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
-            CassandraStorageFacade userStorageFacade,
+            GenericProducer<String, MessagePayload> botMessageProducer,
+            CassandraStorageFacade storageFacade,
             RedisUserProfileStorage userProfileCache,
             ConversationSummaryStorage conversationStorage) {
 
-        ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher =
-                new DefaultProcessorDispatcher<>();
+        ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher = new DefaultProcessorDispatcher<>();
         messageDispatcher.RegisterProcessor(
                 SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
                 new SingleMessagePayloadProcessor(
-                        userStorageFacade, conversationStorage, pushMessageProducer, pushTopic));
+                        storageFacade, conversationStorage, pushMessageProducer, pushTopic, botMessageProducer, botTopic));
 
-        ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher =
-                new DefaultProcessorDispatcher<>();
-        eventDispatcher.RegisterProcessor(
-                SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT,
-                new SelfInfoUpdateEventPayloadProcessor(
-                        userStorageFacade,
-                        storageUpdateProducer,
-                        storageUpdateTopic,
-                        pushMessageProducer,
-                        pushTopic));
-        eventDispatcher.RegisterProcessor(
-                SendEventReq.EventCase.RELATION_EVENT,
-                new RelationUpdateEventPayloadProcessor(
-                        userStorageFacade,
-                        storageUpdateProducer,
-                        storageUpdateTopic,
-                        pushMessageProducer,
-                        pushTopic));
-
-        GroupHelper groupNotificationHelper =
-                new GroupHelper(
-                        storageUpdateProducer,
-                        storageUpdateTopic,
-                        userStorageFacade,
-                        conversationStorage);
-
-        ProcessorDispatcher<SendGroupCommandReq.CommandContentCase, GroupCommandData, Void>
-                groupCommandDispatcher = new DefaultProcessorDispatcher<>();
-        groupCommandDispatcher.RegisterProcessor(
-                SendGroupCommandReq.CommandContentCase.GROUP_CREATE_COMMAND,
-                new CreateGroupCommandPayloadProcessor(
-                        userStorageFacade, userProfileCache, groupNotificationHelper));
-        groupCommandDispatcher.RegisterProcessor(
-                SendGroupCommandReq.CommandContentCase.GROUP_UPDATE_INFO_COMMAND,
-                new UpdateGroupInfoCommandPayloadProcessor(
-                        userStorageFacade, userProfileCache, groupNotificationHelper));
-        groupCommandDispatcher.RegisterProcessor(
-                SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND,
-                new InviteGroupMemberCommandPayloadProcessor(
-                        userStorageFacade, userProfileCache, groupNotificationHelper));
-        groupCommandDispatcher.RegisterProcessor(
-                SendGroupCommandReq.CommandContentCase.GROUP_QUIT_COMMAND,
-                new QuitGroupCommandPayloadProcessor(
-                        userStorageFacade,
-                        groupNotificationHelper,
-                        pushMessageProducer,
-                        pushTopic));
-        return new DefaultKeyedPayloadHandler(
-                eventDispatcher, messageDispatcher, groupCommandDispatcher);
+        // ... (rest of the handler creation)
+        ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher = new DefaultProcessorDispatcher<>();
+        eventDispatcher.RegisterProcessor( SendEventReq.EventCase.SELF_INFO_UPDATE_EVENT, new SelfInfoUpdateEventPayloadProcessor(storageFacade, storageUpdateProducer, storageUpdateTopic, pushMessageProducer, pushTopic));
+        eventDispatcher.RegisterProcessor( SendEventReq.EventCase.RELATION_EVENT, new RelationUpdateEventPayloadProcessor(storageFacade, storageUpdateProducer, storageUpdateTopic, pushMessageProducer, pushTopic));
+        GroupHelper groupNotificationHelper = new GroupHelper(storageUpdateProducer, storageUpdateTopic, storageFacade, conversationStorage);
+        ProcessorDispatcher<SendGroupCommandReq.CommandContentCase, GroupCommandData, Void> groupCommandDispatcher = new DefaultProcessorDispatcher<>();
+        groupCommandDispatcher.RegisterProcessor(SendGroupCommandReq.CommandContentCase.GROUP_CREATE_COMMAND, new CreateGroupCommandPayloadProcessor(storageFacade, userProfileCache, groupNotificationHelper));
+        groupCommandDispatcher.RegisterProcessor(SendGroupCommandReq.CommandContentCase.GROUP_UPDATE_INFO_COMMAND, new UpdateGroupInfoCommandPayloadProcessor(storageFacade, userProfileCache, groupNotificationHelper));
+        groupCommandDispatcher.RegisterProcessor(SendGroupCommandReq.CommandContentCase.GROUP_INVITE_COMMAND, new InviteGroupMemberCommandPayloadProcessor(storageFacade, userProfileCache, groupNotificationHelper));
+        groupCommandDispatcher.RegisterProcessor(SendGroupCommandReq.CommandContentCase.GROUP_QUIT_COMMAND, new QuitGroupCommandPayloadProcessor(storageFacade, groupNotificationHelper, pushMessageProducer, pushTopic));
+        return new DefaultKeyedPayloadHandler(eventDispatcher, messageDispatcher, groupCommandDispatcher);
     }
 
     private CqlSession createCQLSession(
             List<String> cassandraContacts, String cassandraKeyspace, String localDatacenter) {
-        return CassandraDriver.createCqlSession(
-                cassandraContacts, cassandraKeyspace, localDatacenter);
-    }
-
-    private ExecutorService createExecutorService(
-            int executorServiceCoreSize, int executorServiceMaxSize, int queueCapacity) {
-        return new ThreadPoolExecutor(
-                executorServiceCoreSize,
-                executorServiceMaxSize,
-                60,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(queueCapacity));
+        return CassandraDriver.createCqlSession(cassandraContacts, cassandraKeyspace, localDatacenter);
     }
 }

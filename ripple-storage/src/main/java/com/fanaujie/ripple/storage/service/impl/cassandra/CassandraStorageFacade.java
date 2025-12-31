@@ -16,6 +16,7 @@ import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.time.Instant;
 import java.util.*;
 
 public class CassandraStorageFacade implements RippleStorageFacade {
@@ -26,6 +27,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     private final RelationCqlStatement relationCqlStatement;
     private final ConversationCqlStatement conversationCqlStatement;
     private final GroupCqlStatement groupCqlStatement;
+    private final BotCqlStatement botCqlStatement;
 
     public CassandraStorageFacade(CassandraStorageFacadeBuilder builder) {
         this.session = builder.getSession();
@@ -33,6 +35,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         this.relationCqlStatement = new RelationCqlStatement(this.session);
         this.conversationCqlStatement = new ConversationCqlStatement(this.session);
         this.groupCqlStatement = new GroupCqlStatement(this.session);
+        this.botCqlStatement = new BotCqlStatement(this.session);
     }
 
     @Override
@@ -87,11 +90,15 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         if (row == null) {
             throw new NotFoundUserProfileException("User profile not found for userId: " + userId);
         }
-        return new UserProfile(
+        UserProfile profile = new UserProfile(
                 row.getLong("user_id"),
                 row.getString("account"),
                 row.getString("nick_name"),
                 row.getString("avatar"));
+        // Handle null user_type (defaults to USER for backward compatibility)
+        Byte userType = row.isNull("user_type") ? null : row.getByte("user_type");
+        profile.setUserType(userType != null ? userType : UserProfile.USER_TYPE_USER);
+        return profile;
     }
 
     @Override
@@ -1760,6 +1767,163 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             return String.valueOf(version);
         }
         return null;
+    }
+
+    @Override
+    public void createBot(BotConfig config, String name, String avatar) {
+        // Insert bot profile (user_type=1)
+        BoundStatement profileBound =
+                userCqlStatement.getInsertBotProfileStmt().bind(
+                        config.getBotId(),
+                        "bot_" + config.getBotId(), // account for bot
+                        name,
+                        avatar);
+        // Insert bot config
+        BoundStatement configBound =
+                botCqlStatement.getInsertBotConfigStmt().bind(
+                        config.getBotId(),
+                        config.getEndpoint(),
+                        config.getSecret(),
+                        config.isRequireAuth(),
+                        config.getAuthConfig(),
+                        config.isEnabled(),
+                        config.getCategory(),
+                        config.getDescription(),
+                        config.getDeveloperName(),
+                        config.getCreatedAt() != null ? config.getCreatedAt().toInstant() : null);
+        // Execute as batch
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(profileBound)
+                        .addStatement(configBound)
+                        .build();
+        session.execute(batch);
+    }
+
+    @Override
+    public BotInfo getBot(long botId) {
+        // Get config
+        Row configRow = session.execute(botCqlStatement.getSelectBotConfigStmt().bind(botId)).one();
+        if (configRow == null) return null;
+        BotConfig config = mapRowToBotConfig(configRow);
+        // Get profile
+        try {
+            UserProfile profile = getUserProfile(botId);
+            return BotInfo.from(profile, config);
+        } catch (NotFoundUserProfileException e) {
+            logger.warn("Bot config exists but profile not found for botId: {}", botId);
+            return null;
+        }
+    }
+
+    @Override
+    public BotConfig getBotConfig(long botId) {
+        Row row = session.execute(botCqlStatement.getSelectBotConfigStmt().bind(botId)).one();
+        if (row == null) return null;
+        return mapRowToBotConfig(row);
+    }
+
+    @Override
+    public List<BotInfo> getAllBots() {
+        ResultSet rs = session.execute(botCqlStatement.getSelectAllBotConfigsStmt().bind());
+        List<BotInfo> bots = new ArrayList<>();
+        for (Row row : rs) {
+            BotConfig config = mapRowToBotConfig(row);
+            try {
+                UserProfile profile = getUserProfile(config.getBotId());
+                bots.add(BotInfo.from(profile, config));
+            } catch (NotFoundUserProfileException e) {
+                logger.warn("Bot config exists but profile not found for botId: {}", config.getBotId());
+            }
+        }
+        return bots;
+    }
+
+    @Override
+    public List<BotInfo> getBotsByCategory(String category) {
+        // Note: Cassandra doesn't support LIKE queries efficiently on non-partition keys.
+        // For now, filter in application layer. For production, consider secondary index or materialized view.
+        List<BotInfo> allBots = getAllBots();
+        List<BotInfo> filtered = new ArrayList<>();
+        for (BotInfo bot : allBots) {
+            if (category.equalsIgnoreCase(bot.getCategory())) {
+                filtered.add(bot);
+            }
+        }
+        return filtered;
+    }
+
+    @Override
+    public void installBot(UserInstalledBot userInstalledBot) {
+        session.execute(
+                botCqlStatement.getInsertUserBotStmt().bind(
+                        userInstalledBot.getUserId(),
+                        userInstalledBot.getBotId(),
+                        userInstalledBot.getInstalledAt() != null ? userInstalledBot.getInstalledAt().toInstant() : null,
+                        userInstalledBot.getSettings()
+                )
+        );
+    }
+
+    @Override
+    public void uninstallBot(long userId, long botId) {
+        session.execute(botCqlStatement.getDeleteUserBotStmt().bind(userId, botId));
+    }
+
+    @Override
+    public List<UserInstalledBot> getUserInstalledBots(long userId) {
+        ResultSet rs = session.execute(botCqlStatement.getSelectUserBotsStmt().bind(userId));
+        List<UserInstalledBot> list = new ArrayList<>();
+        for (Row row : rs) {
+            list.add(UserInstalledBot.builder()
+                    .userId(row.getLong("user_id"))
+                    .botId(row.getLong("bot_id"))
+                    .installedAt(row.getInstant("installed_at") != null ? Date.from(row.getInstant("installed_at")) : null)
+                    .settings(row.getString("settings"))
+                    .build());
+        }
+        return list;
+    }
+
+    @Override
+    public void saveBotUserToken(BotUserToken token) {
+        session.execute(
+                botCqlStatement.getInsertBotTokenStmt().bind(
+                        token.getBotId(),
+                        token.getUserId(),
+                        token.getAccessToken(),
+                        token.getRefreshToken(),
+                        token.getExpiresAt() != null ? token.getExpiresAt().toInstant() : null
+                )
+        );
+    }
+
+    @Override
+    public BotUserToken getBotUserToken(long botId, long userId) {
+        Row row = session.execute(botCqlStatement.getSelectBotTokenStmt().bind(botId, userId)).one();
+        if (row == null) return null;
+        return BotUserToken.builder()
+                .botId(row.getLong("bot_id"))
+                .userId(row.getLong("user_id"))
+                .accessToken(row.getString("access_token"))
+                .refreshToken(row.getString("refresh_token"))
+                .expiresAt(row.getInstant("expires_at") != null ? Date.from(row.getInstant("expires_at")) : null)
+                .build();
+    }
+
+    private BotConfig mapRowToBotConfig(Row row) {
+        return BotConfig.builder()
+                .botId(row.getLong("bot_id"))
+                .endpoint(row.getString("endpoint"))
+                .secret(row.getString("secret"))
+                .requireAuth(row.getBoolean("require_auth"))
+                .authConfig(row.getString("auth_config"))
+                .enabled(row.getBoolean("enabled"))
+                .category(row.getString("category"))
+                .description(row.getString("description"))
+                .developerName(row.getString("developer_name"))
+                .createdAt(row.getInstant("created_at") != null ? Date.from(row.getInstant("created_at")) : null)
+                .build();
     }
 
     private UserDefinedType buildGroupChangeDetailType() {

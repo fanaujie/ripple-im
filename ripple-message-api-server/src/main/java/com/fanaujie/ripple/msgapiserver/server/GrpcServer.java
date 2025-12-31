@@ -26,6 +26,7 @@ public class GrpcServer {
                     SendGroupCommandReq,
                     SendGroupCommandResp>
             groupCommandDispatcher;
+    private final BotManagementServiceImpl botManagementService;
     private Server server;
 
     public GrpcServer(
@@ -38,11 +39,13 @@ public class GrpcServer {
                             SendGroupCommandReq.CommandContentCase,
                             SendGroupCommandReq,
                             SendGroupCommandResp>
-                    groupCommandDispatcher) {
+                    groupCommandDispatcher,
+            BotManagementServiceImpl botManagementService) {
         this.port = port;
         this.messageDispatcher = messageDispatcher;
         this.eventDispatcher = eventDispatcher;
         this.groupCommandDispatcher = groupCommandDispatcher;
+        this.botManagementService = botManagementService;
     }
 
     public CompletableFuture<Void> startAsync() {
@@ -58,6 +61,7 @@ public class GrpcServer {
                         server =
                                 ServerBuilder.forPort(port)
                                         .addService(messageDispatcherService)
+                                        .addService(botManagementService)
                                         .addService(ProtoReflectionService.newInstance())
                                         .build()
                                         .start();

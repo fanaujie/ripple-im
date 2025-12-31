@@ -4,7 +4,9 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.uitls.MessageConverter;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
+import com.fanaujie.ripple.protobuf.msgapiserver.UserType;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
@@ -23,16 +25,22 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
     private final ConversationSummaryStorage cachingConversationStateFacade;
     private final GenericProducer<String, PushMessage> pushMessageGenericProducer;
     private final String pushTopic;
+    private final GenericProducer<String, MessagePayload> botMessageGenericProducer;
+    private final String botTopic;
 
     public SingleMessagePayloadProcessor(
             RippleStorageFacade storageFacade,
             ConversationSummaryStorage cachingConversationStateFacade,
             GenericProducer<String, PushMessage> pushMessageProducer,
-            String pushTopic) {
+            String pushTopic,
+            GenericProducer<String, MessagePayload> botMessageGenericProducer,
+            String botTopic) {
         this.storageFacade = storageFacade;
         this.cachingConversationStateFacade = cachingConversationStateFacade;
         this.pushMessageGenericProducer = pushMessageProducer;
         this.pushTopic = pushTopic;
+        this.botMessageGenericProducer = botMessageGenericProducer;
+        this.botTopic = botTopic;
     }
 
     @Override
@@ -42,13 +50,26 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
             long groupId = sendMessageReq.getGroupId();
             if (groupId > 0) {
                 this.updateGroupConversationStorage(sendMessageReq, messageData);
+                this.pushMessageGenericProducer.send(
+                        this.pushTopic,
+                        String.valueOf(messageData.getSendUserId()),
+                        MessageConverter.toPushMessage(messageData));
             } else {
                 this.updateSingleConversationStorage(sendMessageReq);
+                
+                if (sendMessageReq.getReceiverType() == UserType.BOT) {
+                    MessagePayload payload = MessagePayload.newBuilder().setMessageData(messageData).build();
+                    this.botMessageGenericProducer.send(
+                            this.botTopic,
+                            String.valueOf(messageData.getSendUserId()),
+                            payload);
+                } else {
+                    this.pushMessageGenericProducer.send(
+                            this.pushTopic,
+                            String.valueOf(messageData.getSendUserId()),
+                            MessageConverter.toPushMessage(messageData));
+                }
             }
-            this.pushMessageGenericProducer.send(
-                    this.pushTopic,
-                    String.valueOf(messageData.getSendUserId()),
-                    MessageConverter.toPushMessage(messageData));
             return null;
         }
         throw new IllegalArgumentException(

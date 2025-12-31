@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_profile"
     "account"   text,
     "nick_name" text,
     "avatar"    text,
+    "user_type" tinyint,  -- 0: USER (default), 1: BOT
     primary key ( user_id )
 );
 
@@ -146,3 +147,37 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_group_version"
 );
 
 
+-- Bot configuration (identity info is in user_profile)
+CREATE TABLE IF NOT EXISTS "ripple"."bot_config"
+(
+    "bot_id"         bigint,        -- Same as user_id in user_profile
+    "endpoint"       text,
+    "secret"         text,
+    "require_auth"   boolean,
+    "auth_config"    text,          -- JSON OAuth config
+    "enabled"        boolean,
+    "category"       text,
+    "description"    text,
+    "developer_name" text,
+    "created_at"     timestamp,
+    primary key ( bot_id )
+);
+
+CREATE TABLE IF NOT EXISTS "ripple"."user_installed_bots"
+(
+    "user_id"      bigint,
+    "bot_id"       bigint,
+    "installed_at" timestamp,
+    "settings"     text,
+    primary key ( user_id, bot_id )
+);
+
+CREATE TABLE IF NOT EXISTS "ripple"."bot_user_tokens"
+(
+    "bot_id"        bigint,
+    "user_id"       bigint,
+    "access_token"  text,
+    "refresh_token" text,
+    "expires_at"    timestamp,
+    primary key ( bot_id, user_id )
+);

@@ -17,6 +17,12 @@ message GroupCommandMessageContent {
   string text = 2;
 }
 
+enum UserType {
+  USER = 0;
+  BOT = 1;
+  SYSTEM = 2;
+}
+
 message SendMessageReq {
   int64 sender_id = 1;
   string conversation_id = 2;
@@ -28,6 +34,8 @@ message SendMessageReq {
     SingleMessageContent single_message_content = 7;
     GroupCommandMessageContent group_command_message_content = 8;
   };
+  UserType sender_type = 9;
+  UserType receiver_type = 10;
 }
 
 message SendMessageResp {
@@ -75,6 +83,8 @@ message SendEventReq {
 }
 
 message SendEventResp {
+  bool success = 1;
+  string error_message = 2;
 }
 
 

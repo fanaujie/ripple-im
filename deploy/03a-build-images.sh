@@ -32,6 +32,7 @@ service_modules=(
     ripple-message-dispatcher
     ripple-push-server
     ripple-async-storage-updater
+    ripple-bot-executor
 )
 
 for module in "${service_modules[@]}"; do

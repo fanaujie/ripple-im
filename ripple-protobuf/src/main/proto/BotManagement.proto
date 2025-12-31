@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.msgapiserver";
+
+message Bot {
+  int64 bot_id = 1;
+  string name = 2;
+  string description = 3;
+  string icon_url = 4;
+  string category = 5;
+  string developer_name = 6;
+  string endpoint = 7;
+  bool require_auth = 8;
+  bool enabled = 9;
+}
+
+message InstallBotReq {
+  int64 user_id = 1;
+  int64 bot_id = 2;
+}
+
+message InstallBotResp {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message UninstallBotReq {
+  int64 user_id = 1;
+  int64 bot_id = 2;
+}
+
+message UninstallBotResp {
+  bool success = 1;
+  string error_message = 2;
+}
+
+service BotManagementService {
+  rpc InstallBot(InstallBotReq) returns (InstallBotResp);
+  rpc UninstallBot(UninstallBotReq) returns (UninstallBotResp);
+}

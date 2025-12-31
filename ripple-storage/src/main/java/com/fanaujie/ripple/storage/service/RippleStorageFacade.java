@@ -152,4 +152,44 @@ public interface RippleStorageFacade {
             long timestamp,
             byte commandType,
             String commandData);
+
+    // Bot Management
+    /**
+     * Creates a bot by inserting both UserProfile (identity) and BotConfig (configuration).
+     * @param config Bot configuration
+     * @param name Bot display name (stored in user_profile)
+     * @param avatar Bot avatar URL (stored in user_profile)
+     */
+    void createBot(BotConfig config, String name, String avatar);
+
+    /**
+     * Gets bot info by joining user_profile and bot_config.
+     * @return BotInfo combining identity and configuration, or null if not found
+     */
+    BotInfo getBot(long botId);
+
+    /**
+     * Gets all bots by joining user_profile and bot_config.
+     */
+    List<BotInfo> getAllBots();
+
+    /**
+     * Gets bots by category, joining user_profile and bot_config.
+     */
+    List<BotInfo> getBotsByCategory(String category);
+
+    /**
+     * Gets bot configuration only (without identity info).
+     */
+    BotConfig getBotConfig(long botId);
+
+    void installBot(UserInstalledBot userInstalledBot);
+
+    void uninstallBot(long userId, long botId);
+
+    List<UserInstalledBot> getUserInstalledBots(long userId);
+
+    void saveBotUserToken(BotUserToken token);
+
+    BotUserToken getBotUserToken(long botId, long userId);
 }

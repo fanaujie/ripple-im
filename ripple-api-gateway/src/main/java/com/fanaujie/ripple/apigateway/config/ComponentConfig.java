@@ -7,6 +7,7 @@ import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
+import com.fanaujie.ripple.protobuf.msgapiserver.BotManagementServiceGrpc;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
@@ -57,6 +58,12 @@ public class ComponentConfig {
     public GrpcClient<MessageAPIGrpc.MessageAPIBlockingStub> messageDispatcherClient(
             @Value("${message-api.server.address}") String serverAddress) {
         return new GrpcClient<>(serverAddress, MessageAPIGrpc::newBlockingStub);
+    }
+
+    @Bean
+    public GrpcClient<BotManagementServiceGrpc.BotManagementServiceBlockingStub> botManagementClient(
+            @Value("${message-api.server.address}") String serverAddress) {
+        return new GrpcClient<>(serverAddress, BotManagementServiceGrpc::newBlockingStub);
     }
 
     @Bean

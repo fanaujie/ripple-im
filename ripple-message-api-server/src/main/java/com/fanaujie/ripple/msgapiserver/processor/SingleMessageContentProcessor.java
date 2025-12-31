@@ -4,6 +4,7 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageResp;
+import com.fanaujie.ripple.protobuf.msgapiserver.UserType;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
@@ -46,8 +47,10 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
     private SendMessageResp handleSingleMessage(SendMessageReq request, long senderId)
             throws Exception {
         long receiverId = request.getReceiverId();
-        // Check if receiver has blocked the sender
-        if (!this.storageFacade.isBlocked(receiverId, senderId)) {
+        // Skip blocking check for bot receivers (bots don't participate in relation system)
+        boolean isReceiverBot = request.getReceiverType() == UserType.BOT;
+        boolean isBlocked = !isReceiverBot && this.storageFacade.isBlocked(receiverId, senderId);
+        if (!isBlocked) {
             MessageData.Builder b = MessageData.newBuilder().setSendUserId(senderId);
             b.addReceiveUserIds(receiverId);
             b.addReceiveUserIds(senderId); // also notify self for multi-device sync

@@ -11,6 +11,7 @@ A high-performance, scalable instant messaging system built with microservices a
 - **Message Persistence**: Reliable message storage with Apache Cassandra
 - **High Availability**: Kafka-based message queuing for reliable delivery
 - **User Presence**: Real-time online status tracking
+- **Unread Count**: Per-conversation unread message counting with Redis cache
 - **File Upload**: Avatar and attachment support with MinIO object storage
 - **Distributed ID Generation**: Snowflake algorithm for globally unique IDs
 
@@ -50,6 +51,7 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 | **ripple-message-gateway**       | WebSocket server for real-time communication                      | 10200 / 10103 | WS / gRPC |
 | **ripple-message-api-server**    | Core message processing and routing logic                         | 10102         | gRPC      |
 | **ripple-message-dispatcher**    | Kafka consumer for message routing and persistence                | -             | Kafka     |
+| **ripple-bot-executor**          | Kafka consumer for executing bot webhooks (async)                 | -             | Kafka     |
 | **ripple-push-server**           | Push notification service for online users                        | -             | Kafka     |
 | **ripple-upload-gateway**        | File upload service with MinIO integration                        | 10003         | HTTP      |
 | **ripple-user-presence-server**  | User online status management                                     | 10101         | gRPC      |

@@ -7,6 +7,7 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFacto
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgapiserver.processor.*;
 import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
+import com.fanaujie.ripple.msgapiserver.server.BotManagementServiceImpl;
 import com.fanaujie.ripple.msgapiserver.server.GrpcServer;
 import com.fanaujie.ripple.protobuf.msgapiserver.*;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
@@ -61,6 +62,9 @@ public class Application {
                 new CassandraStorageFacadeBuilder();
         userStorageFacadeBuilder.cqlSession(cqlSession);
         CassandraStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
+        
+        BotManagementServiceImpl botManagementService = new BotManagementServiceImpl(userStorageFacade);
+        
         GrpcServer grpcServer =
                 new GrpcServer(
                         grpcPort,
@@ -69,7 +73,8 @@ public class Application {
                         createEventDispatcher(
                                 brokerTopic, userStorageFacade, producer, executorService),
                         createGroupDispatcher(
-                                brokerTopic, userStorageFacade, producer, executorService));
+                                brokerTopic, userStorageFacade, producer, executorService),
+                        botManagementService);
         CompletableFuture<Void> grpcFuture = grpcServer.startAsync();
         logger.info("Starting Message Publisher server...");
         grpcFuture.join();

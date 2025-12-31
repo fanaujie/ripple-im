@@ -10,6 +10,7 @@ public class UserCqlStatement {
     private final PreparedStatement selectAccountStmt;
     private final PreparedStatement insertUserStmt;
     private final PreparedStatement insertUserProfileStmt;
+    private final PreparedStatement insertBotProfileStmt;
     private final PreparedStatement selectUserIdStmt;
     private final PreparedStatement selectUserProfileStmt;
     private final PreparedStatement updateAvatarStmt;
@@ -24,14 +25,19 @@ public class UserCqlStatement {
         this.insertUserStmt =
                 session.prepare(
                         "INSERT INTO ripple.user (user_id, account, password, role, status) VALUES (?, ?, ?, ?, ?)");
+        // Insert user profile with default user_type=0 (USER)
         this.insertUserProfileStmt =
                 session.prepare(
-                        "INSERT INTO ripple.user_profile (user_id, account, nick_name, avatar) VALUES (?, ?, ?, ?)");
+                        "INSERT INTO ripple.user_profile (user_id, account, nick_name, avatar, user_type) VALUES (?, ?, ?, ?, 0)");
+        // Insert bot profile with user_type=1 (BOT)
+        this.insertBotProfileStmt =
+                session.prepare(
+                        "INSERT INTO ripple.user_profile (user_id, account, nick_name, avatar, user_type) VALUES (?, ?, ?, ?, 1)");
         this.selectUserIdStmt =
                 session.prepare("SELECT user_id FROM ripple.user_profile WHERE user_id = ?");
         this.selectUserProfileStmt =
                 session.prepare(
-                        "SELECT user_id, account, nick_name, avatar FROM ripple.user_profile WHERE user_id = ?");
+                        "SELECT user_id, account, nick_name, avatar, user_type FROM ripple.user_profile WHERE user_id = ?");
         this.updateAvatarStmt =
                 session.prepare("UPDATE ripple.user_profile SET avatar = ? WHERE user_id = ?");
         this.updateNickNameStmt =
