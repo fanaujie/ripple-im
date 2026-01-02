@@ -34,5 +34,13 @@ build/
 ### Mac OS ###
 .DS_Store
 
+### Service Scripts ###
+logs/
+pids/
+
 ### Maven ###
 dependency-reduced-pom.xml
+
+openspec/
+AGENTS.md
+CLAUDE.md

@@ -177,35 +177,31 @@ mvn clean install -DskipTests
 
 #### Start Services
 
-Start services in the following order:
+```bash
+# Start all services (in correct order)
+./start-services.sh
+```
+
+The script will:
+- Start all 9 services in the correct dependency order
+- Save PIDs to `pids/` directory for management
+- Save logs to `logs/` directory
+
+#### Stop Services
 
 ```bash
-# 1. Start SnowflakeID Server (required for ID generation)
-java -jar ripple-snowflakeid-server/target/ripple-snowflakeid-server.jar
+# Stop all services
+./stop-services.sh
+```
 
-# 2. Start Authorization Server
-java -jar ripple-authorization-server/target/ripple-authorization-server.jar
+#### View Logs
 
-# 3. Start User Presence Server
-java -jar ripple-user-presence-server/target/ripple-user-presence-server.jar
+```bash
+# View logs for a specific service
+tail -f logs/<service-name>.log
 
-# 4. Start Message API Server
-java -jar ripple-message-api-server/target/ripple-message-api-server.jar
-
-# 5. Start Message Dispatcher
-java -jar ripple-message-dispatcher/target/ripple-message-dispatcher.jar
-
-# 6. Start Push Server
-java -jar ripple-push-server/target/ripple-push-server.jar
-
-# 7. Start Message Gateway
-java -jar ripple-message-gateway/target/ripple-message-gateway.jar
-
-# 8. Start API Gateway
-java -jar ripple-api-gateway/target/ripple-api-gateway.jar
-
-# 9. Start Upload Gateway
-java -jar ripple-upload-gateway/target/ripple-upload-gateway.jar
+# Example: view API Gateway logs
+tail -f logs/ripple-api-gateway.log
 ```
 
 ## API Documentation
