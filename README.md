@@ -2,6 +2,27 @@
 
 A high-performance, scalable instant messaging system built with microservices architecture.
 
+## Why Ripple-IM?
+
+Building a reliable instant messaging system involves solving several complex distributed systems challenges:
+
+- **Real-time Delivery**: Messages must be delivered instantly across distributed servers while maintaining order and consistency
+- **Scalability**: The system must handle millions of concurrent connections and messages without degradation
+- **Reliability**: No message should be lost, even during server failures or network partitions
+- **Presence Management**: Tracking user online status across multiple devices and gateway instances
+- **Horizontal Scaling**: Each component should scale independently based on load
+
+Ripple-IM addresses these challenges through:
+
+| Challenge | Solution |
+|-----------|----------|
+| Real-time delivery | WebSocket connections with Netty for low-latency push |
+| Message reliability | Kafka message queue ensures at-least-once delivery |
+| Data consistency | Cassandra for write-heavy message storage with tunable consistency |
+| Service discovery | ZooKeeper for dynamic gateway instance registration |
+| Horizontal scaling | Stateless microservices with gRPC for efficient inter-service communication |
+| ID generation | Snowflake algorithm for globally unique, time-ordered message IDs |
+
 ## Features
 
 - **Real-time Messaging**: WebSocket-based real-time communication with low latency
@@ -183,7 +204,7 @@ mvn clean install -DskipTests
 ```
 
 The script will:
-- Start all 9 services in the correct dependency order
+- Start all 10 services in the correct dependency order
 - Save PIDs to `pids/` directory for management
 - Save logs to `logs/` directory
 
@@ -203,6 +224,35 @@ tail -f logs/<service-name>.log
 # Example: view API Gateway logs
 tail -f logs/ripple-api-gateway.log
 ```
+
+## Observability
+
+The project includes OpenTelemetry instrumentation for metrics collection and Grafana dashboards.
+
+### Components
+
+| Component       | Port | Description                          |
+|-----------------|------|--------------------------------------|
+| OTel Collector  | 4317/4318 | Receives OTLP metrics (gRPC/HTTP) |
+| Prometheus      | 9090 | Metrics storage and querying        |
+| Grafana         | 3000 | Dashboards and visualization        |
+
+### Start with Monitoring
+
+```bash
+# Docker Compose (includes OTel Collector, Prometheus, Grafana)
+docker compose -f deploy/docker-compose.infra.yml up -d
+
+# Local JAR with OTel Agent
+./start-services.sh --with-agent
+```
+
+### Dashboards
+
+Access Grafana at http://localhost:3000 (anonymous access enabled):
+
+- **Ripple Service Metrics (OTel)**: JVM, HTTP, gRPC, Kafka metrics for all services
+- **Ripple Snowflake ID Server**: ID generation rate and latency metrics
 
 ## API Documentation
 
@@ -227,6 +277,7 @@ Headers:
 ### Message Format (Protocol Buffers)
 
 ```protobuf
+// Main WebSocket message wrapper
 message WsMessage {
   oneof message_type {
     HeartbeatRequest heartbeat_request = 1;
@@ -235,17 +286,53 @@ message WsMessage {
   }
 }
 
+// Client → Server: Heartbeat to maintain connection
 message HeartbeatRequest {
   string user_id = 1;
   int64 timestamp = 2;
 }
 
+// Server → Client: Heartbeat acknowledgment
+message HeartbeatResponse {
+  string user_id = 1;
+  int64 client_timestamp = 2;
+  int64 server_timestamp = 3;
+}
+
+// Server → Client: Push message or event notification
 message PushMessageRequest {
-  int64 message_id = 1;
-  int64 sender_id = 2;
-  string conversation_id = 3;
-  string text = 4;
-  int64 timestamp = 5;
+  string send_user_id = 1;
+  string receive_user_id = 2;
+  string receive_device_id = 3;
+  oneof payload {
+    PushEventPayload event_payload = 4;
+    PushMessagePayload message_payload = 5;
+  }
+}
+
+message PushMessagePayload {
+  PushMessageType message_type = 1;  // SINGLE or GROUP
+  SendMessageReq message_data = 2;
+  int32 unread_count = 3;
+}
+
+message SendMessageReq {
+  int64 sender_id = 1;
+  string conversation_id = 2;
+  int64 receiver_id = 3;
+  int64 group_id = 4;
+  int64 message_id = 5;
+  int64 send_timestamp = 6;
+  oneof message {
+    SingleMessageContent single_message_content = 7;
+    GroupCommandMessageContent group_command_message_content = 8;
+  }
+}
+
+message SingleMessageContent {
+  string text = 2;
+  string file_url = 3;
+  string file_name = 4;
 }
 ```
 

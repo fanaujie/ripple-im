@@ -12,6 +12,7 @@ SERVICES=(
     "ripple-api-gateway"
     "ripple-message-gateway"
     "ripple-push-server"
+    "ripple-async-storage-updater"
     "ripple-message-dispatcher"
     "ripple-message-api-server"
     "ripple-user-presence-server"

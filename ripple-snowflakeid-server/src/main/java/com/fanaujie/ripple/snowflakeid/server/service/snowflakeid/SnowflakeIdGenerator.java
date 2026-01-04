@@ -1,5 +1,10 @@
 package com.fanaujie.ripple.snowflakeid.server.service.snowflakeid;
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.LongHistogram;
+import io.opentelemetry.api.metrics.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,6 +12,11 @@ import java.time.Instant;
 
 public class SnowflakeIdGenerator {
     private static final Logger logger = LoggerFactory.getLogger(SnowflakeIdGenerator.class);
+
+    // OpenTelemetry metrics
+    private final LongCounter idGeneratedCounter;
+    private final LongCounter sequenceOverflowCounter;
+    private final LongHistogram generationDurationHistogram;
 
     // private static final int UNUSED_BITS = 1;
     private static final int TIMESTAMP_BITS = 41;
@@ -35,10 +45,28 @@ public class SnowflakeIdGenerator {
                     String.format("NodeId must be between %d and %d", 0, maxNodeId));
         }
         this.nodeId = nodeId;
+
+        // Initialize OpenTelemetry metrics
+        Meter meter = GlobalOpenTelemetry.getMeter("snowflakeid-server");
+        this.idGeneratedCounter = meter.counterBuilder("snowflake_id_generated")
+                .setDescription("Total number of snowflake IDs generated")
+                .setUnit("1")
+                .build();
+        this.sequenceOverflowCounter = meter.counterBuilder("snowflake_sequence_overflow")
+                .setDescription("Number of sequence overflow events")
+                .setUnit("1")
+                .build();
+        this.generationDurationHistogram = meter.histogramBuilder("snowflake_id_generation_duration")
+                .setDescription("Duration of ID generation in microseconds")
+                .setUnit("us")
+                .ofLongs()
+                .build();
+
         logger.debug("SnowflakeIdGenerator: Initialization complete for nodeId: {}", nodeId);
     }
 
     public synchronized long nextId() {
+        long startNanos = System.nanoTime();
         long currentTimestamp = timestamp();
         logger.debug(
                 "nextId: Current timestamp: {}, lastTimestamp: {}, sequence: {}",
@@ -64,6 +92,7 @@ public class SnowflakeIdGenerator {
             if (sequence == 0L) {
                 // Sequence overflow, wait for next millisecond
                 logger.debug("nextId: Sequence overflow detected, waiting for next millisecond");
+                sequenceOverflowCounter.add(1);
                 currentTimestamp = waitNextMillis(lastTimestamp);
                 logger.debug("nextId: Got next millisecond: {}", currentTimestamp);
             }
@@ -86,6 +115,12 @@ public class SnowflakeIdGenerator {
                 (adjustedTimestamp << (NODE_ID_BITS + SEQUENCE_BITS))
                         | (nodeId << SEQUENCE_BITS)
                         | sequence;
+
+        // Record metrics
+        long durationMicros = (System.nanoTime() - startNanos) / 1000;
+        idGeneratedCounter.add(1);
+        generationDurationHistogram.record(durationMicros);
+
         logger.debug(
                 "nextId: Generated snowflake ID: {} (timestamp: {}, nodeId: {}, sequence: {})",
                 id,

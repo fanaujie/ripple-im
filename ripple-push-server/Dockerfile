@@ -6,6 +6,9 @@ WORKDIR /build
 # Copy entire project for Maven to resolve all modules
 COPY . .
 
+# Download OTel Agent
+RUN curl -L -o opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+
 # Build the application
 RUN mvn clean package -pl ripple-push-server -am -DskipTests
 
@@ -16,6 +19,10 @@ WORKDIR /app
 
 # Copy the built jar
 COPY --from=builder /build/ripple-push-server/target/*.jar app.jar
+
+# Copy OTel Agent
+COPY --from=builder /build/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
+ENV JAVA_TOOL_OPTIONS="-javaagent:/app/opentelemetry-javaagent.jar"
 
 # Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
