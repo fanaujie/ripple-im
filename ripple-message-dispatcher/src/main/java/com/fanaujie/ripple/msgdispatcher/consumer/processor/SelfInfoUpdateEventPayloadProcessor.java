@@ -111,8 +111,11 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
         final String finalAvatar = avatar;
         final RelationBatchUpdateData.UpdateType finalRelationUpdateType = relationUpdateType;
         final UserGroupBatchUpdateData.UpdateType finalGroupUpdateType = groupUpdateType;
-        publishRelationBatchUpdates(userId, finalNickname, finalAvatar, finalRelationUpdateType);
-        publishUserGroupBatchUpdates(userId, finalNickname, finalAvatar, finalGroupUpdateType);
+        long version = sendEventReq.getSendTimestamp();
+        publishRelationBatchUpdates(
+                userId, finalNickname, finalAvatar, finalRelationUpdateType, version);
+        publishUserGroupBatchUpdates(
+                userId, finalNickname, finalAvatar, finalGroupUpdateType, version);
         return userNotificationBuilder.setNotification(multiNotificationsBuilder.build()).build();
     }
 
@@ -120,7 +123,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
             long userId,
             String nickname,
             String avatar,
-            RelationBatchUpdateData.UpdateType updateType) {
+            RelationBatchUpdateData.UpdateType updateType,
+            long version) {
 
         List<Long> friendIdList = storageFacade.getFriendIds(userId).getUserIdsList();
         if (friendIdList.isEmpty()) {
@@ -137,7 +141,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
                             .addAllFriendIds(batchFriendIds)
                             .setBatchIndex(i)
                             .setTotalBatches(totalBatches)
-                            .setUpdateType(updateType);
+                            .setUpdateType(updateType)
+                            .setSendTimestamp(version);
 
             if (nickname != null) {
                 batchBuilder.setNickname(nickname);
@@ -157,7 +162,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
             long userId,
             String nickname,
             String avatar,
-            UserGroupBatchUpdateData.UpdateType updateType) {
+            UserGroupBatchUpdateData.UpdateType updateType,
+            long version) {
 
         List<Long> groupIds = storageFacade.getUserGroupIds(userId);
 
@@ -176,7 +182,8 @@ public class SelfInfoUpdateEventPayloadProcessor implements Processor<EventData,
                             .addAllGroupIds(batchGroupIds)
                             .setBatchIndex(i)
                             .setTotalBatches(totalBatches)
-                            .setUpdateType(updateType);
+                            .setUpdateType(updateType)
+                            .setSendTimestamp(version);
 
             if (nickname != null) {
                 batchBuilder.setNickname(nickname);

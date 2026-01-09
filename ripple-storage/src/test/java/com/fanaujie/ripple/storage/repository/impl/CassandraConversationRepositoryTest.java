@@ -69,7 +69,7 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         ownerId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
 
         boolean exists = storageFacade.existsByConversationId(conversationId, ownerId);
         assertTrue(exists);
@@ -97,7 +97,7 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         ownerId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
 
         assertTrue(storageFacade.existsByConversationId(conversationId, ownerId));
     }
@@ -113,7 +113,7 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         ownerId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
 
         PagedConversationResult result = storageFacade.getConversations(ownerId, null, 10);
         assertEquals(1, result.getConversations().size());
@@ -132,10 +132,10 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         ownerId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
 
         long messageId = 5004L;
-        storageFacade.markLastReadMessageId(conversationId, ownerId, messageId);
+        storageFacade.markLastReadMessageId(conversationId, ownerId, messageId, System.currentTimeMillis());
 
         PagedConversationResult result = storageFacade.getConversations(ownerId, null, 10);
         assertEquals(1, result.getConversations().size());
@@ -265,13 +265,13 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         userId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, userId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
 
         Thread.sleep(10);
         UUID versionBefore = Uuids.timeBased();
         Thread.sleep(10);
 
-        storageFacade.markLastReadMessageId(conversationId, userId, 8001L);
+        storageFacade.markLastReadMessageId(conversationId, userId, 8001L, System.currentTimeMillis());
 
         String afterVersion = String.valueOf(Uuids.unixTimestamp(versionBefore));
 
@@ -294,7 +294,7 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         userId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, userId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
 
         Thread.sleep(10);
         UUID versionAfterAll = Uuids.timeBased();
@@ -347,11 +347,11 @@ class CassandraConversationRepositoryTest {
         String conversationId =
                 com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                         userId, peerId);
-        storageFacade.createSingeMessageConversation(conversationId, userId, peerId);
+        storageFacade.createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
 
         Thread.sleep(10);
         long messageId = 9001L;
-        storageFacade.markLastReadMessageId(conversationId, userId, messageId);
+        storageFacade.markLastReadMessageId(conversationId, userId, messageId, System.currentTimeMillis());
 
         String latestVersion = storageFacade.getLatestConversationVersion(userId);
 
@@ -456,7 +456,7 @@ class CassandraConversationRepositoryTest {
             String conversationId =
                     com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
                             userId, peerId);
-            storageFacade.createSingeMessageConversation(conversationId, userId, peerId);
+            storageFacade.createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
         }
     }
 }

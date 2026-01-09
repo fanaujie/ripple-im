@@ -63,7 +63,8 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                 this.storageFacade.createSingeMessageConversation(
                         sendMessageReq.getConversationId(),
                         sendMessageReq.getSenderId(),
-                        sendMessageReq.getReceiverId());
+                        sendMessageReq.getReceiverId(),
+                        sendMessageReq.getSendTimestamp());
             } catch (NotFoundUserProfileException e) {
                 logger.warn("Failed to create single message conversation: {}", e.getMessage());
             }
@@ -75,7 +76,8 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                 this.storageFacade.createSingeMessageConversation(
                         sendMessageReq.getConversationId(),
                         sendMessageReq.getReceiverId(),
-                        sendMessageReq.getSenderId());
+                        sendMessageReq.getSenderId(),
+                        sendMessageReq.getSendTimestamp());
             } catch (NotFoundUserProfileException e) {
                 logger.warn("Failed to create single message conversation: {}", e.getMessage());
             }

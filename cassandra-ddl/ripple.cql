@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_relations"
 CREATE TABLE IF NOT EXISTS "ripple"."user_relation_version"
 (
     "user_id"          bigint,
-    "version"          timeuuid,
+    "version"          bigint,
     "relation_user_id" bigint,
     "operation"        tinyint, -- 1: add 2:update, 3:delete
     "nick_name"        text,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_conversations"
 CREATE TABLE IF NOT EXISTS "ripple"."user_conversations_version"
 (
     "user_id"              bigint,
-    "version"              timeuuid,
+    "version"              bigint,
     "conversation_id"      text,
     "peer_id"              bigint,
     "group_id"             bigint,

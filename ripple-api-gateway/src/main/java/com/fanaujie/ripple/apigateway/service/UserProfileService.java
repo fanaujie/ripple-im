@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Service
 @Slf4j
 public class UserProfileService {
@@ -52,6 +54,7 @@ public class UserProfileService {
                                             .setUserId(userId)
                                             .setNickName(nickName)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
@@ -72,6 +75,7 @@ public class UserProfileService {
                                                     SelfInfoUpdateEvent.EventType.DELETE_AVATAR)
                                             .setUserId(userId)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));

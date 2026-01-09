@@ -53,13 +53,15 @@ public class RelationBatchUpdateProcessor implements Processor<StorageUpdatePayl
             switch (data.getUpdateType()) {
                 case UPDATE_NICKNAME:
                     storageFacade.updateFriendNickName(
-                            friendId, data.getUserId(), data.getNickname());
+                            friendId, data.getUserId(), data.getNickname(), data.getSendTimestamp());
                     break;
                 case UPDATE_AVATAR:
-                    storageFacade.updateFriendAvatar(friendId, data.getUserId(), data.getAvatar());
+                    storageFacade.updateFriendAvatar(
+                            friendId, data.getUserId(), data.getAvatar(), data.getSendTimestamp());
                     break;
                 case DELETE_AVATAR:
-                    storageFacade.updateFriendAvatar(friendId, data.getUserId(), null);
+                    storageFacade.updateFriendAvatar(
+                            friendId, data.getUserId(), null, data.getSendTimestamp());
                     break;
                 default:
                     logger.error("Unknown update type: {}", data.getUpdateType());

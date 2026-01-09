@@ -194,23 +194,26 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             throw new InvalidVersionException(
                     "afterVersion cannot be null or empty. Use version from previous sync or call with fullSync.");
         }
-        UUID afterVersionUuid = Uuids.endOf(Long.parseLong(afterVersion));
-        if (afterVersionUuid.version() != 1) {
-            throw new InvalidVersionException(
+        long afterVersionLong;
+        try {
+            afterVersionLong = Long.parseLong(afterVersion);
+        } catch (NumberFormatException e) {
+             throw new InvalidVersionException(
                     "Invalid version format: "
                             + afterVersion
-                            + ". Version must be a valid UUIDv1.");
+                            + ". Version must be a valid long.");
         }
+
         ResultSet resultSet =
                 session.execute(
                         relationCqlStatement
                                 .getSelectRelationChangesStmt()
-                                .bind(userId, afterVersionUuid, limit));
+                                .bind(userId, afterVersionLong, limit));
 
         List<RelationVersionChange> changes = new ArrayList<>();
         for (Row row : resultSet) {
             RelationVersionChange record = new RelationVersionChange();
-            record.setVersion(String.valueOf(Uuids.unixTimestamp(row.getUuid("version"))));
+            record.setVersion(String.valueOf(row.getLong("version")));
             record.setRelationUserId(row.getLong("relation_user_id"));
             record.setOperation(row.getByte("operation"));
             record.setNickName(row.getString("nick_name"));
@@ -230,7 +233,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         if (row == null) {
             return null;
         }
-        return String.valueOf(Uuids.unixTimestamp(row.getUuid("version")));
+        return String.valueOf(row.getLong("version"));
     }
 
     @Override
@@ -297,7 +300,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void markLastReadMessageId(String conversationId, long ownerId, long readMessageId) {
+    public void markLastReadMessageId(String conversationId, long ownerId, long readMessageId, long version) {
         BatchStatement batch =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
                         .addStatement(
@@ -309,6 +312,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 ownerId,
+                                                version,
                                                 conversationId,
                                                 null, // peer_id
                                                 null, // group_id
@@ -332,7 +336,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void createSingeMessageConversation(String conversationId, long ownerId, long peerId)
+    public void createSingeMessageConversation(String conversationId, long ownerId, long peerId, long version)
             throws NotFoundUserProfileException {
         String name = null;
         String avatar = null;
@@ -368,6 +372,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 ownerId,
+                                                version,
                                                 conversationId,
                                                 peerId,
                                                 null,
@@ -492,9 +497,9 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                     "afterVersion cannot be null or empty. Use version from previous sync or call with fullSync.");
         }
 
-        UUID afterVersionUuid;
+        long afterVersionLong;
         try {
-            afterVersionUuid = Uuids.endOf(Long.parseLong(afterVersion));
+            afterVersionLong = Long.parseLong(afterVersion);
         } catch (NumberFormatException e) {
             throw new InvalidVersionException(
                     "Invalid version format: "
@@ -502,23 +507,16 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                             + ". Version must be a valid timestamp.");
         }
 
-        if (afterVersionUuid.version() != 1) {
-            throw new InvalidVersionException(
-                    "Invalid version format: "
-                            + afterVersion
-                            + ". Version must be a valid UUIDv1.");
-        }
-
         ResultSet resultSet =
                 session.execute(
                         conversationCqlStatement
                                 .getSelectConversationChangesStmt()
-                                .bind(userId, afterVersionUuid, limit));
+                                .bind(userId, afterVersionLong, limit));
 
         List<ConversationVersionChange> changes = new ArrayList<>();
         for (Row row : resultSet) {
             ConversationVersionChange record = new ConversationVersionChange();
-            record.setVersion(String.valueOf(Uuids.unixTimestamp(row.getUuid("version"))));
+            record.setVersion(String.valueOf(row.getLong("version")));
             record.setConversationId(row.getString("conversation_id"));
             record.setPeerId(row.getLong("peer_id"));
             record.setGroupId(row.getLong("group_id"));
@@ -539,7 +537,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         if (row == null) {
             return null;
         }
-        return String.valueOf(Uuids.unixTimestamp(row.getUuid("version")));
+        return String.valueOf(row.getLong("version"));
     }
 
     @Override
@@ -561,7 +559,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void addFriend(RelationEvent event)
+    public void addFriend(RelationEvent event, long version)
             throws NotFoundUserProfileException, RelationAlreadyExistsException {
         // Check if relation already exists
         UserProfile friendProfile = this.getUserProfile(event.getTargetUserId());
@@ -601,6 +599,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 .getInsertRelationVersionStmt()
                                                 .bind(
                                                         initiatorId,
+                                                        version,
                                                         friendProfile.getUserId(),
                                                         RelationOperation.ADD_FRIEND.getValue(),
                                                         friendProfile.getNickName(),
@@ -631,6 +630,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 initiatorId,
+                                                version,
                                                 friendProfile.getUserId(),
                                                 RelationOperation.ADD_FRIEND.getValue(),
                                                 friendProfile.getNickName(),
@@ -642,7 +642,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void removeFriend(RelationEvent event) throws NotFoundRelationException {
+    public void removeFriend(RelationEvent event, long version) throws NotFoundRelationException {
         long initiatorId = event.getUserId();
         long friendId = event.getTargetUserId();
         // Check if friend relation exists
@@ -670,14 +670,19 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 initiatorId,
+                                                version,
                                                 friendId,
-                                                RelationOperation.DELETE_FRIEND.getValue()))
+                                                RelationOperation.DELETE_FRIEND.getValue(),
+                                                null,
+                                                null,
+                                                null,
+                                                null))
                         .build();
         session.execute(batch);
     }
 
     @Override
-    public UpdateFriendRemarkNameResult updateFriendRemarkName(RelationEvent event)
+    public UpdateFriendRemarkNameResult updateFriendRemarkName(RelationEvent event, long version)
             throws NotFoundRelationException {
         long sourceUserId = event.getUserId();
         long targetUserId = event.getTargetUserId();
@@ -695,6 +700,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 sourceUserId,
+                                                version,
                                                 targetUserId,
                                                 RelationOperation.UPDATE_FRIEND_REMARK_NAME
                                                         .getValue(),
@@ -718,6 +724,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                             .getInsertConversationVersionStmt()
                             .bind(
                                     sourceUserId,
+                                    version,
                                     conversationId,
                                     targetUserId,
                                     null,
@@ -733,7 +740,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
+    public void updateFriendNickName(long sourceUserId, long targetUserId, String nickName, long version)
             throws NotFoundRelationException {
         Relation relation = getRelationBetweenUser(sourceUserId, targetUserId);
         if (relation == null) {
@@ -751,6 +758,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 sourceUserId,
+                                                version,
                                                 targetUserId,
                                                 RelationOperation.UPDATE_FRIEND_NICK_NAME
                                                         .getValue(),
@@ -776,6 +784,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                             .getInsertConversationVersionStmt()
                             .bind(
                                     sourceUserId,
+                                    version,
                                     conversationId,
                                     targetUserId,
                                     null,
@@ -788,7 +797,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+    public void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar, long version)
             throws NotFoundRelationException {
         relationExits(sourceUserId, targetUserId);
         BatchStatementBuilder batchBuilder =
@@ -802,6 +811,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 sourceUserId,
+                                                version,
                                                 targetUserId,
                                                 RelationOperation.UPDATE_FRIEND_AVATAR.getValue(),
                                                 null,
@@ -824,6 +834,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                             .getInsertConversationVersionStmt()
                             .bind(
                                     sourceUserId,
+                                    version,
                                     conversationId,
                                     targetUserId,
                                     null,
@@ -836,7 +847,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void blockFriend(RelationEvent event) throws BlockAlreadyExistsException {
+    public void blockFriend(RelationEvent event, long version) throws BlockAlreadyExistsException {
         long userId = event.getUserId();
         long blockedUserId = event.getTargetUserId();
         Row initiatorRelation =
@@ -865,6 +876,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 .getInsertRelationVersionStmt()
                                                 .bind(
                                                         userId,
+                                                        version,
                                                         blockedUserId,
                                                         RelationOperation.ADD_BLOCK.getValue(),
                                                         null,
@@ -900,6 +912,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                             .getInsertRelationVersionStmt()
                                             .bind(
                                                     userId,
+                                                    version,
                                                     blockedUserId,
                                                     RelationOperation.ADD_BLOCK.getValue(),
                                                     null,
@@ -912,7 +925,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void blockStranger(RelationEvent event)
+    public void blockStranger(RelationEvent event, long version)
             throws StrangerHasRelationshipException, NotFoundUserProfileException {
         // Check if relation already exists
         UserProfile stranger = this.getUserProfile(event.getTargetUserId());
@@ -949,6 +962,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                             .getInsertRelationVersionStmt()
                                             .bind(
                                                     userId,
+                                                    version,
                                                     stranger.getUserId(),
                                                     RelationOperation.BLOCK_STRANGER.getValue(),
                                                     stranger.getNickName(),
@@ -961,7 +975,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void unblockUser(RelationEvent event) throws NotFoundBlockException {
+    public void unblockUser(RelationEvent event, long version) throws NotFoundBlockException {
         long userId = event.getUserId();
         long blockedUserId = event.getTargetUserId();
         Row initiatorRelation =
@@ -987,8 +1001,13 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                 .getInsertRelationVersionStmt()
                                 .bind(
                                         userId,
+                                        version,
                                         blockedUserId,
-                                        RelationOperation.DELETE_BLOCK.getValue()));
+                                        RelationOperation.DELETE_BLOCK.getValue(),
+                                        null,
+                                        null,
+                                        null,
+                                        null));
             } else if (RelationFlags.FRIEND.isSet(newFlags)) {
                 // still a friend, update flags
                 batchBuilder.addStatement(
@@ -1000,6 +1019,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                 .getInsertRelationVersionStmt()
                                 .bind(
                                         userId,
+                                        version,
                                         blockedUserId,
                                         RelationOperation.UNBLOCK_RESTORE_FRIEND.getValue(),
                                         null,
@@ -1015,7 +1035,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void hideBlockedUser(RelationEvent event) throws NotFoundBlockException {
+    public void hideBlockedUser(RelationEvent event, long version) throws NotFoundBlockException {
         long userId = event.getUserId();
         long blockedUserId = event.getTargetUserId();
         Row initiatorRelation =
@@ -1047,6 +1067,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                             .getInsertRelationVersionStmt()
                                             .bind(
                                                     userId,
+                                                    version,
                                                     blockedUserId,
                                                     RelationOperation.HIDE_BLOCK.getValue(),
                                                     null,
@@ -1071,7 +1092,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
+    public void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar, long version)
             throws NotFoundRelationException {
         Relation relation = getRelationBetweenUser(sourceUserId, targetUserId);
         if (relation == null) {
@@ -1089,6 +1110,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertRelationVersionStmt()
                                         .bind(
                                                 sourceUserId,
+                                                version,
                                                 targetUserId,
                                                 RelationOperation.UPDATE_FRIEND_INFO.getValue(),
                                                 nickName,
@@ -1107,6 +1129,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                             .getInsertConversationVersionStmt()
                             .bind(
                                     sourceUserId,
+                                    version,
                                     conversationId,
                                     targetUserId,
                                     null,
@@ -1225,6 +1248,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 userId,
+                                                version,
                                                 conversationId,
                                                 null,
                                                 groupId,
@@ -1552,6 +1576,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 userId,
+                                                version,
                                                 conversationId,
                                                 null, // peer_id
                                                 groupId,
@@ -1594,6 +1619,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 userId,
+                                                version,
                                                 conversationId,
                                                 null, // peer_id
                                                 groupId,
@@ -1662,7 +1688,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void removeGroupConversation(long userId, long groupId) {
+    public void removeGroupConversation(long userId, long groupId, long version) {
         String conversationId = ConversationUtils.generateGroupConversationId(groupId);
         BatchStatement batch =
                 new BatchStatementBuilder(DefaultBatchType.LOGGED)
@@ -1675,6 +1701,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                         .getInsertConversationVersionStmt()
                                         .bind(
                                                 userId,
+                                                version,
                                                 conversationId,
                                                 null, // peer_id is null for group conversation
                                                 groupId,

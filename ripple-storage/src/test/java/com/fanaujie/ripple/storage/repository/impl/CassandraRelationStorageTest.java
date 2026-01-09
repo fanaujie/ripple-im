@@ -71,7 +71,7 @@ class CassandraRelationStorageTest {
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
 
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNotNull(relation);
@@ -90,9 +90,9 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
-        assertThrows(RelationAlreadyExistsException.class, () -> storageFacade.addFriend(event));
+        assertThrows(RelationAlreadyExistsException.class, () -> storageFacade.addFriend(event, System.currentTimeMillis()));
     }
 
     @Test
@@ -105,7 +105,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNotNull(relation);
@@ -126,11 +126,11 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent removeEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.removeFriend(removeEvent);
+        storageFacade.removeFriend(removeEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNull(relation);
@@ -144,7 +144,7 @@ class CassandraRelationStorageTest {
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(notFriendId).build();
 
-        assertThrows(NotFoundRelationException.class, () -> storageFacade.removeFriend(event));
+        assertThrows(NotFoundRelationException.class, () -> storageFacade.removeFriend(event, System.currentTimeMillis()));
     }
 
     // ==================== getRelations Tests (Pagination) ====================
@@ -205,7 +205,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNotNull(relation);
@@ -239,8 +239,8 @@ class CassandraRelationStorageTest {
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId1).build();
         RelationEvent event2 =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId2).build();
-        storageFacade.addFriend(event1);
-        storageFacade.addFriend(event2);
+        storageFacade.addFriend(event1, System.currentTimeMillis());
+        storageFacade.addFriend(event2, System.currentTimeMillis());
 
         UserIds friendIds = storageFacade.getFriendIds(userId);
         assertNotNull(friendIds);
@@ -271,7 +271,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent updateEvent =
                 RelationEvent.newBuilder()
@@ -279,7 +279,7 @@ class CassandraRelationStorageTest {
                         .setTargetUserId(friendId)
                         .setTargetUserRemarkName("Best Friend")
                         .build();
-        storageFacade.updateFriendRemarkName(updateEvent);
+        storageFacade.updateFriendRemarkName(updateEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertEquals("Best Friend", relation.getRelationRemarkName());
@@ -297,7 +297,7 @@ class CassandraRelationStorageTest {
                         .setTargetUserRemarkName("Test")
                         .build();
 
-        assertThrows(NotFoundRelationException.class, () -> storageFacade.updateFriendRemarkName(event));
+        assertThrows(NotFoundRelationException.class, () -> storageFacade.updateFriendRemarkName(event, System.currentTimeMillis()));
     }
 
     // ==================== blockFriend Tests ====================
@@ -313,11 +313,11 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertTrue(RelationFlags.BLOCKED.isSet(relation.getRelationFlags()));
@@ -335,13 +335,13 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
-        assertThrows(BlockAlreadyExistsException.class, () -> storageFacade.blockFriend(blockEvent));
+        assertThrows(BlockAlreadyExistsException.class, () -> storageFacade.blockFriend(blockEvent, System.currentTimeMillis()));
     }
 
     @Test
@@ -352,7 +352,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(strangerId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, strangerId);
         assertNotNull(relation);
@@ -372,7 +372,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(strangerId).build();
-        storageFacade.blockStranger(event);
+        storageFacade.blockStranger(event, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, strangerId);
         assertNotNull(relation);
@@ -389,13 +389,13 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
 
         assertThrows(
-                StrangerHasRelationshipException.class, () -> storageFacade.blockStranger(blockEvent));
+                StrangerHasRelationshipException.class, () -> storageFacade.blockStranger(blockEvent, System.currentTimeMillis()));
     }
 
     // ==================== unblockUser Tests ====================
@@ -411,15 +411,15 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         RelationEvent unblockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.unblockUser(unblockEvent);
+        storageFacade.unblockUser(unblockEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNotNull(relation);
@@ -435,11 +435,11 @@ class CassandraRelationStorageTest {
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(strangerId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         RelationEvent unblockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(strangerId).build();
-        storageFacade.unblockUser(unblockEvent);
+        storageFacade.unblockUser(unblockEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, strangerId);
         assertNull(relation);
@@ -453,7 +453,7 @@ class CassandraRelationStorageTest {
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(notBlockedId).build();
 
-        assertThrows(NotFoundBlockException.class, () -> storageFacade.unblockUser(event));
+        assertThrows(NotFoundBlockException.class, () -> storageFacade.unblockUser(event, System.currentTimeMillis()));
     }
 
     // ==================== hideBlockedUser Tests ====================
@@ -469,15 +469,15 @@ class CassandraRelationStorageTest {
 
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         RelationEvent hideEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.hideBlockedUser(hideEvent);
+        storageFacade.hideBlockedUser(hideEvent, System.currentTimeMillis());
 
         Relation relation = storageFacade.getRelationBetweenUser(userId, friendId);
         assertNotNull(relation);
@@ -494,7 +494,7 @@ class CassandraRelationStorageTest {
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(notBlockedId).build();
 
-        assertThrows(NotFoundBlockException.class, () -> storageFacade.hideBlockedUser(event));
+        assertThrows(NotFoundBlockException.class, () -> storageFacade.hideBlockedUser(event, System.currentTimeMillis()));
     }
 
     // ==================== isBlocked Tests ====================
@@ -511,12 +511,12 @@ class CassandraRelationStorageTest {
         // Add friend first
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         // Block the friend
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         // userId blocked friendId, so isBlocked(userId, friendId) should return true
         assertTrue(storageFacade.isBlocked(userId, friendId));
@@ -542,7 +542,7 @@ class CassandraRelationStorageTest {
         // Add friend only (not blocked)
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         // They are friends but not blocked
         assertFalse(storageFacade.isBlocked(userId, friendId));
@@ -560,12 +560,12 @@ class CassandraRelationStorageTest {
         // Add friend
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         // Block
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         // Verify blocked
         assertTrue(storageFacade.isBlocked(userId, friendId));
@@ -573,7 +573,7 @@ class CassandraRelationStorageTest {
         // Unblock
         RelationEvent unblockEvent =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.unblockUser(unblockEvent);
+        storageFacade.unblockUser(unblockEvent, System.currentTimeMillis());
 
         // Verify not blocked anymore
         assertFalse(storageFacade.isBlocked(userId, friendId));
@@ -591,12 +591,12 @@ class CassandraRelationStorageTest {
         // Alice adds Bob as friend
         RelationEvent addEvent =
                 RelationEvent.newBuilder().setUserId(aliceId).setTargetUserId(bobId).build();
-        storageFacade.addFriend(addEvent);
+        storageFacade.addFriend(addEvent, System.currentTimeMillis());
 
         // Alice blocks Bob
         RelationEvent blockEvent =
                 RelationEvent.newBuilder().setUserId(aliceId).setTargetUserId(bobId).build();
-        storageFacade.blockFriend(blockEvent);
+        storageFacade.blockFriend(blockEvent, System.currentTimeMillis());
 
         // Alice blocked Bob: isBlocked(alice, bob) = true
         assertTrue(storageFacade.isBlocked(aliceId, bobId));
@@ -616,10 +616,10 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         Thread.sleep(10);
-        UUID versionBefore = Uuids.timeBased();
+        long afterVersionLong = System.currentTimeMillis();
         Thread.sleep(10);
 
         RelationEvent remarkEvent =
@@ -628,9 +628,9 @@ class CassandraRelationStorageTest {
                         .setTargetUserId(friendId)
                         .setTargetUserRemarkName("Best Friend")
                         .build();
-        storageFacade.updateFriendRemarkName(remarkEvent);
+        storageFacade.updateFriendRemarkName(remarkEvent, System.currentTimeMillis());
 
-        String afterVersion = String.valueOf(Uuids.unixTimestamp(versionBefore));
+        String afterVersion = String.valueOf(afterVersionLong);
 
         List<RelationVersionChange> changes =
                 storageFacade.getRelationChanges(userId, afterVersion, 10);
@@ -649,11 +649,10 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         Thread.sleep(10);
-        UUID versionAfterAll = Uuids.timeBased();
-        String afterVersion = String.valueOf(Uuids.unixTimestamp(versionAfterAll));
+        String afterVersion = String.valueOf(System.currentTimeMillis());
 
         List<RelationVersionChange> changes =
                 storageFacade.getRelationChanges(userId, afterVersion, 10);
@@ -691,7 +690,7 @@ class CassandraRelationStorageTest {
 
         RelationEvent event =
                 RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-        storageFacade.addFriend(event);
+        storageFacade.addFriend(event, System.currentTimeMillis());
 
         String latestVersion = storageFacade.getLatestRelationVersion(userId);
 
@@ -720,7 +719,7 @@ class CassandraRelationStorageTest {
             createUserProfile(friendId, "friend_page_" + i, "Friend " + i, "avatar.png");
             RelationEvent event =
                     RelationEvent.newBuilder().setUserId(userId).setTargetUserId(friendId).build();
-            storageFacade.addFriend(event);
+            storageFacade.addFriend(event, System.currentTimeMillis());
         }
     }
 }

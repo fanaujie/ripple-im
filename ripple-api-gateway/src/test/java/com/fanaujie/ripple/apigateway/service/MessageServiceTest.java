@@ -276,7 +276,7 @@ class MessageServiceTest {
     @Test
     void markLastReadMessageId_Success() {
         // Given
-        doNothing().when(storageFacade).markLastReadMessageId(CONVERSATION_ID, SENDER_ID, MESSAGE_ID);
+        doNothing().when(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         doNothing().when(conversationStorage).resetUnreadCount(SENDER_ID, CONVERSATION_ID);
 
         // When
@@ -290,7 +290,7 @@ class MessageServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(storageFacade).markLastReadMessageId(CONVERSATION_ID, SENDER_ID, MESSAGE_ID);
+        verify(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         verify(conversationStorage).resetUnreadCount(SENDER_ID, CONVERSATION_ID);
     }
 
@@ -298,7 +298,7 @@ class MessageServiceTest {
     void markLastReadMessageId_Error_ReturnsInternalError() {
         // Given
         doThrow(new RuntimeException("Storage error"))
-                .when(storageFacade).markLastReadMessageId(CONVERSATION_ID, SENDER_ID, MESSAGE_ID);
+                .when(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
 
         // When
         ResponseEntity<CommonResponse> response =
@@ -310,7 +310,7 @@ class MessageServiceTest {
         assertNotNull(response.getBody());
         assertEquals(500, response.getBody().getCode());
 
-        verify(storageFacade).markLastReadMessageId(CONVERSATION_ID, SENDER_ID, MESSAGE_ID);
+        verify(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         verify(conversationStorage, never()).resetUnreadCount(anyLong(), anyString());
     }
 }

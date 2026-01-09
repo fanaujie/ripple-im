@@ -71,7 +71,8 @@ public class QuitGroupCommandPayloadProcessor implements Processor<GroupCommandD
         this.storageFacade.removeUserGroup(userId, groupId, sendGroupCommandReq.getSendTimestamp());
         this.storageFacade.removeGroupMember(
                 groupId, userId, sendGroupCommandReq.getSendTimestamp());
-        this.storageFacade.removeGroupConversation(userId, groupId);
+        this.storageFacade.removeGroupConversation(
+                userId, groupId, sendGroupCommandReq.getSendTimestamp());
         this.groupHelper.writeGroupCommandMessage(
                 conversationId,
                 sendGroupCommandReq.getMessageId(),

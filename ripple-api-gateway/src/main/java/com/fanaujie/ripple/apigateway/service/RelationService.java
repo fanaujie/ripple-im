@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -83,7 +84,11 @@ public class RelationService {
             if (targetUserProfile.getAvatar() != null) {
                 b.setTargetUserAvatar(targetUserProfile.getAvatar());
             }
-            SendEventReq req = SendEventReq.newBuilder().setRelationEvent(b.build()).build();
+            SendEventReq req =
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(b.build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
+                            .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
@@ -114,6 +119,7 @@ public class RelationService {
                                             .setUserId(currentUserId)
                                             .setTargetUserId(targetUserId)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
@@ -147,6 +153,7 @@ public class RelationService {
                                             .setTargetUserId(targetUserId)
                                             .setTargetUserRemarkName(remarkName)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
@@ -193,7 +200,10 @@ public class RelationService {
                 eventBuilder.setTargetUserRemarkName(betweenUserRelation.getRelationRemarkName());
             }
             SendEventReq req =
-                    SendEventReq.newBuilder().setRelationEvent(eventBuilder.build()).build();
+                    SendEventReq.newBuilder()
+                            .setRelationEvent(eventBuilder.build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
+                            .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (NotFoundUserProfileException e) {
@@ -230,6 +240,7 @@ public class RelationService {
                                             .setUserId(currentUserId)
                                             .setTargetUserId(targetUserId)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
@@ -264,6 +275,7 @@ public class RelationService {
                                             .setUserId(currentUserId)
                                             .setTargetUserId(targetUserId)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
             return ResponseEntity.ok(new CommonResponse(200, "success"));

@@ -47,7 +47,7 @@ public class RelationCqlStatement {
         this.insertRelationVersionStmt =
                 session.prepare(
                         "INSERT INTO ripple.user_relation_version (user_id, version, relation_user_id, operation, nick_name, avatar, remark_name, relation_flags) "
-                                + "VALUES (?, now(), ?, ?, ?, ?, ?, ?)");
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         this.deleteRelationStmt =
                 session.prepare(
                         "DELETE FROM ripple.user_relations WHERE user_id = ? AND relation_user_id = ?");

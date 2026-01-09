@@ -72,6 +72,7 @@ message SendEventReq {
     SelfInfoUpdateEvent self_info_update_event = 1;
     RelationEvent relation_event = 2;
   }
+  int64 send_timestamp = 3;
 }
 
 message SendEventResp {

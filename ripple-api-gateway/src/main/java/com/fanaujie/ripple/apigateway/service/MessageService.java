@@ -85,7 +85,8 @@ public class MessageService {
     public ResponseEntity<CommonResponse> markLastReadMessageId(
             String conversationId, long messageId, long currentUserId) {
         try {
-            this.storageFacade.markLastReadMessageId(conversationId, currentUserId, messageId);
+            this.storageFacade.markLastReadMessageId(
+                    conversationId, currentUserId, messageId, Instant.now().toEpochMilli());
             this.conversationStorage.resetUnreadCount(currentUserId, conversationId);
             return ResponseEntity.ok(new CommonResponse(200, "success"));
         } catch (Exception e) {
@@ -118,7 +119,7 @@ public class MessageService {
 
         builder.setSenderId(senderId)
                 .setMessageId(res.getId())
-                .setSendTimestamp(Instant.now().getEpochSecond())
+                .setSendTimestamp(Instant.now().toEpochMilli())
                 .setSingleMessageContent(request.toSingleMessageContent());
 
         if (hasGroupId) {

@@ -80,9 +80,10 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
         MultiNotifications.Builder multiNotificationsBuilder = MultiNotifications.newBuilder();
         userNotificationBuilder.setReceiveUserId(receiverId);
         multiNotificationsBuilder.addNotificationTypes(USER_NOTIFICATION_TYPE_RELATION_UPDATE);
+        long version = sendEventReq.getSendTimestamp();
         switch (event.getEventType()) {
             case ADD_FRIEND:
-                storageFacade.addFriend(event);
+                storageFacade.addFriend(event, version);
                 // Check if bidirectional friendship exists and send FriendProfileUpdateData
                 Relation reverseRelation =
                         storageFacade.getRelationBetweenUser(
@@ -109,12 +110,12 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                 }
                 break;
             case REMOVE_FRIEND:
-                storageFacade.removeFriend(event);
+                storageFacade.removeFriend(event, version);
                 break;
             case UPDATE_FRIEND_REMARK_NAME:
                 {
                     UpdateFriendRemarkNameResult result =
-                            storageFacade.updateFriendRemarkName(event);
+                            storageFacade.updateFriendRemarkName(event, version);
                     if (result.isConversationUpdated()) {
                         multiNotificationsBuilder.addNotificationTypes(
                                 USER_NOTIFICATION_TYPE_CONVERSATION_UPDATE);
@@ -122,16 +123,16 @@ public class RelationUpdateEventPayloadProcessor implements Processor<EventData,
                 }
                 break;
             case BLOCK_FRIEND:
-                storageFacade.blockFriend(event);
+                storageFacade.blockFriend(event, version);
                 break;
             case BLOCK_STRANGER:
-                storageFacade.blockStranger(event);
+                storageFacade.blockStranger(event, version);
                 break;
             case UNBLOCK_USER:
-                storageFacade.unblockUser(event);
+                storageFacade.unblockUser(event, version);
                 break;
             case HIDE_BLOCKED_USER:
-                storageFacade.hideBlockedUser(event);
+                storageFacade.hideBlockedUser(event, version);
                 break;
             default:
                 logger.error(

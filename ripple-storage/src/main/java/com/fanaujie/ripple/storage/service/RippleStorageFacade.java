@@ -36,11 +36,11 @@ public interface RippleStorageFacade {
 
     Message getMessages(String conversationId, long messageId) throws NotMessageException;
 
-    void markLastReadMessageId(String conversationId, long ownerId, long readMessageId);
+    void markLastReadMessageId(String conversationId, long ownerId, long readMessageId, long version);
 
     boolean existsByConversationId(String conversationId, long ownerId);
 
-    void createSingeMessageConversation(String conversationId, long ownerId, long peerId)
+    void createSingeMessageConversation(String conversationId, long ownerId, long peerId, long version)
             throws NotFoundUserProfileException;
 
     void saveTextMessage(
@@ -72,32 +72,32 @@ public interface RippleStorageFacade {
 
     UserIds getFriendIds(long userId);
 
-    void addFriend(RelationEvent event)
+    void addFriend(RelationEvent event, long version)
             throws NotFoundUserProfileException, RelationAlreadyExistsException;
 
-    void removeFriend(RelationEvent event) throws NotFoundRelationException;
+    void removeFriend(RelationEvent event, long version) throws NotFoundRelationException;
 
-    UpdateFriendRemarkNameResult updateFriendRemarkName(RelationEvent event)
+    UpdateFriendRemarkNameResult updateFriendRemarkName(RelationEvent event, long version)
             throws NotFoundRelationException;
 
-    void updateFriendNickName(long sourceUserId, long targetUserId, String nickName)
+    void updateFriendNickName(long sourceUserId, long targetUserId, String nickName, long version)
             throws NotFoundRelationException;
 
-    void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar)
+    void updateFriendAvatar(long sourceUserId, long targetUserId, String avatar, long version)
             throws NotFoundRelationException;
 
-    void blockFriend(RelationEvent event) throws BlockAlreadyExistsException;
+    void blockFriend(RelationEvent event, long version) throws BlockAlreadyExistsException;
 
-    void blockStranger(RelationEvent event)
+    void blockStranger(RelationEvent event, long version)
             throws StrangerHasRelationshipException, NotFoundUserProfileException;
 
-    void unblockUser(RelationEvent event) throws NotFoundBlockException;
+    void unblockUser(RelationEvent event, long version) throws NotFoundBlockException;
 
-    void hideBlockedUser(RelationEvent event) throws NotFoundBlockException;
+    void hideBlockedUser(RelationEvent event, long version) throws NotFoundBlockException;
 
     boolean isBlocked(long userId, long targetUserId);
 
-    void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar)
+    void syncFriendInfo(long sourceUserId, long targetUserId, String nickName, String avatar, long version)
             throws NotFoundRelationException;
 
     List<Long> getGroupMemberIds(long groupId) throws NotFoundGroupException;
@@ -142,7 +142,7 @@ public interface RippleStorageFacade {
 
     void removeGroupMember(long groupId, long userId, long version);
 
-    void removeGroupConversation(long userId, long groupId);
+    void removeGroupConversation(long userId, long groupId, long version);
 
     void saveGroupCommandMessage(
             String conversationId,

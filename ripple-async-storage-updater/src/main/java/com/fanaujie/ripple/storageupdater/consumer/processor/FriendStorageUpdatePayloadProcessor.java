@@ -29,7 +29,8 @@ public class FriendStorageUpdatePayloadProcessor implements Processor<StorageUpd
                     friendStorageUpdateData.getUserId(),
                     friendStorageUpdateData.getFriendId(),
                     friendStorageUpdateData.getFriendNickname(),
-                    friendStorageUpdateData.getFriendAvatar());
+                    friendStorageUpdateData.getFriendAvatar(),
+                    friendStorageUpdateData.getSendTimestamp());
         } catch (NotFoundRelationException e) {
             logger.warn(
                     "Relation not found when updating friend storage: userId={}, friendId={}",

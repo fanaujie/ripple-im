@@ -338,7 +338,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createRemoveFriendRequest(long userId, long targetUserId) {
@@ -348,7 +351,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createBlockFriendRequest(long userId, long targetUserId) {
@@ -358,7 +364,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createBlockStrangerRequest(long userId, long targetUserId) {
@@ -368,7 +377,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createUnblockUserRequest(long userId, long targetUserId) {
@@ -378,7 +390,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createUpdateFriendRemarkNameRequest(
@@ -390,7 +405,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setTargetUserId(targetUserId)
                         .setTargetUserRemarkName(remarkName)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     protected SendEventReq createHideBlockedUserRequest(long userId, long targetUserId) {
@@ -400,7 +418,10 @@ public abstract class AbstractBusinessFlowTest {
                         .setUserId(userId)
                         .setTargetUserId(targetUserId)
                         .build();
-        return SendEventReq.newBuilder().setRelationEvent(event).build();
+        return SendEventReq.newBuilder()
+                .setRelationEvent(event)
+                .setSendTimestamp(System.currentTimeMillis())
+                .build();
     }
 
     // ==================== Message Request Builder Methods ====================

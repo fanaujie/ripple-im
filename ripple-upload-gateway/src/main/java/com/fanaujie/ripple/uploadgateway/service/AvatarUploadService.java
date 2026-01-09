@@ -78,6 +78,7 @@ public class AvatarUploadService {
                                             .setUserId(userId)
                                             .setAvatar(avatarUrl)
                                             .build())
+                            .setSendTimestamp(Instant.now().toEpochMilli())
                             .build();
             this.messageAPISender.sendEvent(req);
         } catch (Exception e) {

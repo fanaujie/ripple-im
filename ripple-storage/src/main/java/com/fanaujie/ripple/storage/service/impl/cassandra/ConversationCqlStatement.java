@@ -40,7 +40,7 @@ public class ConversationCqlStatement {
                         "INSERT INTO ripple.user_conversations_version "
                                 + "(user_id, version, conversation_id, peer_id, group_id, operation, "
                                 + "last_read_message_id, name, avatar) "
-                                + "VALUES (?, now(), ?, ?, ?, ?, ?, ?, ?)");
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         this.updateNameStmt =
                 session.prepare(
                         "UPDATE ripple.user_conversations "

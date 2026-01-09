@@ -609,7 +609,7 @@ class CassandraGroupStorageTest {
         PagedConversationResult before = storageFacade.getConversations(userId, null, 10);
         assertEquals(1, before.getConversations().size());
 
-        storageFacade.removeGroupConversation(userId, groupId);
+        storageFacade.removeGroupConversation(userId, groupId, System.currentTimeMillis());
 
         PagedConversationResult after = storageFacade.getConversations(userId, null, 10);
         assertTrue(after.getConversations().isEmpty());
