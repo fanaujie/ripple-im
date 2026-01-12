@@ -1944,4 +1944,33 @@ public class MongoStorageFacade implements RippleStorageFacade {
 
         userMessagesCollection.insertOne(doc);
     }
+
+    @Override
+    public int calculateUnreadCount(long userId, String conversationId) {
+        Document convDoc = userConversationsCollection.find(
+                Filters.and(
+                        Filters.eq("user_id", userId),
+                        Filters.eq("conversation_id", conversationId)
+                )
+        ).first();
+
+        if (convDoc == null) {
+            return 0;
+        }
+
+        Long lastReadMessageId = convDoc.getLong("last_read_message_id");
+        if (lastReadMessageId == null) {
+            lastReadMessageId = 0L;
+        }
+
+        long count = userMessagesCollection.countDocuments(
+                Filters.and(
+                        Filters.eq("conversation_id", conversationId),
+                        Filters.gt("message_id", lastReadMessageId),
+                        Filters.ne("sender_id", userId)
+                )
+        );
+
+        return (int) count;
+    }
 }

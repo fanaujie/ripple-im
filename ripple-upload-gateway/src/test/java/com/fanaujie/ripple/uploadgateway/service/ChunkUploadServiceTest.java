@@ -6,7 +6,6 @@ import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.config.MessageAttachmentProperties;
 import com.fanaujie.ripple.uploadgateway.dto.*;
 import io.minio.MinioClient;
@@ -53,8 +52,6 @@ class ChunkUploadServiceTest {
     @MockitoBean private CqlSession cqlSession;
 
     @MockitoBean private RedissonClient redissonClient;
-
-    @MockitoBean private CassandraUnreadCountCalculator cassandraUnreadCountCalculator;
 
     @MockitoBean private UserProfileStorage userProfileStorage;
 

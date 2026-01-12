@@ -2,7 +2,7 @@ package com.fanaujie.ripple.cache.service.impl;
 
 import com.fanaujie.ripple.storage.model.ConversationSummaryInfo;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.cache.service.impl.internal.RedisConversationOperations;
 import com.fanaujie.ripple.cache.service.impl.internal.UnreadCountCacheAside;
 import org.redisson.api.RedissonClient;
@@ -16,9 +16,9 @@ public class RedisConversationSummaryStorage implements ConversationSummaryStora
     private final UnreadCountCacheAside unreadCountCacheAside;
 
     public RedisConversationSummaryStorage(
-            RedissonClient redissonClient, CassandraUnreadCountCalculator unreadCountCalculator) {
+            RedissonClient redissonClient, RippleStorageFacade storageFacade) {
         this.redisOps = new RedisConversationOperations(redissonClient);
-        this.unreadCountCacheAside = new UnreadCountCacheAside(redisOps, unreadCountCalculator);
+        this.unreadCountCacheAside = new UnreadCountCacheAside(redisOps, storageFacade);
     }
 
     @Override

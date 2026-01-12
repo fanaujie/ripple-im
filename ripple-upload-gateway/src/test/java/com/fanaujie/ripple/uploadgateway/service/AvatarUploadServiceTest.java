@@ -9,7 +9,6 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendGroupCommandReq;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.config.AvatarProperties;
 import com.fanaujie.ripple.uploadgateway.dto.AvatarUploadResponse;
 import io.minio.MinioClient;
@@ -59,8 +58,6 @@ class AvatarUploadServiceTest {
     @MockitoBean private CqlSession cqlSession;
 
     @MockitoBean private RedissonClient redissonClient;
-
-    @MockitoBean private CassandraUnreadCountCalculator cassandraUnreadCountCalculator;
 
     @MockitoBean private UserProfileStorage userProfileStorage;
 

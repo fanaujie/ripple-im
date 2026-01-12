@@ -17,7 +17,6 @@ import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.typesafe.config.ConfigFactory;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -120,10 +119,8 @@ public class Application {
                     new RedisUserProfileStorage(redissonClient, storageFacade);
 
             // Create conversation storage with cache-aside pattern
-            CassandraUnreadCountCalculator unreadCountCalculator =
-                    new CassandraUnreadCountCalculator(cqlSession);
             conversationStorage =
-                    new RedisConversationSummaryStorage(redissonClient, unreadCountCalculator);
+                    new RedisConversationSummaryStorage(redissonClient, storageFacade);
             logger.info("ConversationStorage initialized successfully");
 
             // Initialize MessageGatewayClientManager

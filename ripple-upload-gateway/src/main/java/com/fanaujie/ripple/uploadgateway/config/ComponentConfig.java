@@ -14,7 +14,6 @@ import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.uploadgateway.utils.FileUtils;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -101,11 +100,6 @@ public class ComponentConfig {
     }
 
     @Bean
-    public CassandraUnreadCountCalculator cassandraUnreadCountCalculator(CqlSession cqlSession) {
-        return new CassandraUnreadCountCalculator(cqlSession);
-    }
-
-    @Bean
     public UserProfileStorage userProfileStorage(
             RedissonClient redissonClient, RippleStorageFacade storageFacade) {
         return new RedisUserProfileStorage(redissonClient, storageFacade);
@@ -114,7 +108,7 @@ public class ComponentConfig {
     @Bean
     public ConversationSummaryStorage conversationStorage(
             RedissonClient redissonClient,
-            CassandraUnreadCountCalculator cassandraUnreadCountCalculator) {
-        return new RedisConversationSummaryStorage(redissonClient, cassandraUnreadCountCalculator);
+            RippleStorageFacade storageFacade) {
+        return new RedisConversationSummaryStorage(redissonClient, storageFacade);
     }
 }

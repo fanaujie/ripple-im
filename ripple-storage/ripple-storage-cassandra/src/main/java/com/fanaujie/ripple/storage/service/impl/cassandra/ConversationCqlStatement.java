@@ -21,12 +21,24 @@ public class ConversationCqlStatement {
     private final PreparedStatement selectMessagesStmt;
     private final PreparedStatement selectMessageByIdStmt;
     private final PreparedStatement deleteConversationStmt;
+    private final PreparedStatement selectLastReadMessageIdStmt;
+    private final PreparedStatement countUnreadMessagesStmt;
 
     public ConversationCqlStatement(CqlSession session) {
         this.existsConversationStmt =
                 session.prepare(
                         "SELECT conversation_id FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? AND conversation_id = ?");
+
+        this.selectLastReadMessageIdStmt =
+                session.prepare(
+                        "SELECT last_read_message_id FROM ripple.user_conversations "
+                                + "WHERE owner_id = ? AND conversation_id = ?");
+
+        this.countUnreadMessagesStmt =
+                session.prepare(
+                        "SELECT sender_id FROM ripple.user_messages "
+                                + "WHERE conversation_id = ? AND message_id > ?");
 
         this.insertConversationStmt =
                 session.prepare(

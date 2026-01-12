@@ -152,4 +152,6 @@ public interface RippleStorageFacade {
             long timestamp,
             byte commandType,
             String commandData);
+
+    int calculateUnreadCount(long userId, String conversationId);
 }

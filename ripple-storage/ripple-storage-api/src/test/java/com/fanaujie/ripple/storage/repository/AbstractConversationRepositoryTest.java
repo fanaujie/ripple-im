@@ -408,6 +408,64 @@ public abstract class AbstractConversationRepositoryTest {
         assertEquals("file.jpg", message.getFileName());
     }
 
+    // ==================== calculateUnreadCount Tests ====================
+
+    @Test
+    void calculateUnreadCount_shouldReturnCorrectCount() throws NotFoundUserProfileException {
+        long ownerId = 3001L;
+        long peerId = 4001L;
+        createUserProfile(ownerId, "owner_unread", "Owner Unread", "avatar.png");
+        createUserProfile(peerId, "peer_unread", "Peer Unread", "avatar.png");
+
+        String conversationId = com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(ownerId, peerId);
+        getStorageFacade().createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
+
+        // Assume last read is 100
+        getStorageFacade().markLastReadMessageId(conversationId, ownerId, 100L, System.currentTimeMillis());
+
+        // Add messages
+        // Message 101 from peer (unread)
+        getStorageFacade().saveTextMessage(conversationId, 101L, peerId, ownerId, System.currentTimeMillis(), "Msg 101", null, null);
+        // Message 102 from owner (should not count as unread)
+        getStorageFacade().saveTextMessage(conversationId, 102L, ownerId, peerId, System.currentTimeMillis(), "Msg 102", null, null);
+        // Message 103 from peer (unread)
+        getStorageFacade().saveTextMessage(conversationId, 103L, peerId, ownerId, System.currentTimeMillis(), "Msg 103", null, null);
+
+        int unreadCount = getStorageFacade().calculateUnreadCount(ownerId, conversationId);
+
+        assertEquals(2, unreadCount);
+    }
+
+    @Test
+    void calculateUnreadCount_shouldReturnZero_whenNoUnreadMessages() throws NotFoundUserProfileException {
+        long ownerId = 3002L;
+        long peerId = 4002L;
+        createUserProfile(ownerId, "owner_read", "Owner Read", "avatar.png");
+        createUserProfile(peerId, "peer_read", "Peer Read", "avatar.png");
+
+        String conversationId = com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(ownerId, peerId);
+        getStorageFacade().createSingeMessageConversation(conversationId, ownerId, peerId, System.currentTimeMillis());
+
+        getStorageFacade().markLastReadMessageId(conversationId, ownerId, 200L, System.currentTimeMillis());
+
+        // Message 101 (read)
+        getStorageFacade().saveTextMessage(conversationId, 101L, peerId, ownerId, System.currentTimeMillis(), "Msg 101", null, null);
+
+        int unreadCount = getStorageFacade().calculateUnreadCount(ownerId, conversationId);
+
+        assertEquals(0, unreadCount);
+    }
+
+    @Test
+    void calculateUnreadCount_shouldReturnZero_whenConversationDoesNotExist() {
+        long ownerId = 3003L;
+        String conversationId = "non_existent_conv";
+
+        int unreadCount = getStorageFacade().calculateUnreadCount(ownerId, conversationId);
+
+        assertEquals(0, unreadCount);
+    }
+
     // ==================== Helper Methods ====================
 
     protected void createConversationsForPagination(long userId, int count)

@@ -1789,6 +1789,35 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         return null;
     }
 
+    @Override
+    public int calculateUnreadCount(long userId, String conversationId) {
+        Row conversationRow =
+                session.execute(
+                                conversationCqlStatement
+                                        .getSelectLastReadMessageIdStmt()
+                                        .bind(userId, conversationId))
+                        .one();
+        if (conversationRow == null) {
+            return 0;
+        }
+
+        long lastReadMessageId = conversationRow.getLong("last_read_message_id");
+
+        ResultSet countRow =
+                session.execute(
+                        conversationCqlStatement
+                                .getCountUnreadMessagesStmt()
+                                .bind(conversationId, lastReadMessageId));
+        int unreadCount = 0;
+        for (Row row : countRow) {
+            long senderId = row.getLong("sender_id");
+            if (senderId != userId) {
+                unreadCount++;
+            }
+        }
+        return unreadCount;
+    }
+
     private UserDefinedType buildGroupChangeDetailType() {
         return session.getMetadata()
                 .getKeyspace("ripple")

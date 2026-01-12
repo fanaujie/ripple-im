@@ -27,7 +27,6 @@ import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraUnreadCountCalculator;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import org.redisson.api.RedissonClient;
@@ -95,12 +94,9 @@ public class Application {
         RedisUserProfileStorage userProfileCache =
                 new RedisUserProfileStorage(redissonClient, userStorageFacade);
 
-        // Create Cassandra calculators for fallback
-        CassandraUnreadCountCalculator cassandraUnreadCalculator =
-                new CassandraUnreadCountCalculator(cqlSession);
         // Create ConversationStorage facade with simplified constructor
         ConversationSummaryStorage conversationStorage =
-                new RedisConversationSummaryStorage(redissonClient, cassandraUnreadCalculator);
+                new RedisConversationSummaryStorage(redissonClient, userStorageFacade);
 
         DefaultKeyedPayloadHandler payloadRouter =
                 createKeyedPayloadHandler(
