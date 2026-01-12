@@ -31,7 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-storage</artifactId>
+            <artifactId>ripple-storage-cassandra</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>

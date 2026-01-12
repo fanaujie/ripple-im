@@ -6,84 +6,52 @@
 
     <parent>
         <groupId>com.fanaujie.ripple</groupId>
-        <artifactId>ripple-im</artifactId>
+        <artifactId>ripple-storage</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>ripple-integration-tests</artifactId>
+    <artifactId>ripple-storage-cassandra</artifactId>
     <packaging>jar</packaging>
 
-    <name>ripple-integration-tests</name>
-    <description>Integration tests for Ripple IM business flows</description>
+    <name>ripple-storage-cassandra</name>
+    <description>Cassandra Storage Implementation for Ripple IM</description>
 
     <dependencies>
-        <!-- Internal modules -->
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-protobuf</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>ripple-storage-api</artifactId>
         </dependency>
+        <!-- Test dependency on the test-jar of api -->
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-storage-cassandra</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-communication</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-message-api-server</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-message-dispatcher</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-async-storage-updater</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.10.0</version>
+            <artifactId>ripple-storage-api</artifactId>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>3.24.2</version>
-            <scope>test</scope>
+            <groupId>com.datastax.oss</groupId>
+            <artifactId>java-driver-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.21.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>cassandra</artifactId>
-            <version>1.21.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>1.21.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Copy Cassandra Schema for Tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -99,7 +67,7 @@
                             <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.parent.basedir}/cassandra-ddl</directory>
+                                    <directory>${project.parent.parent.basedir}/cassandra-ddl</directory>
                                     <includes>
                                         <include>ripple.cql</include>
                                     </includes>
@@ -108,17 +76,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
-                <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*IT.java</include>
-                    </includes>
-                </configuration>
             </plugin>
         </plugins>
     </build>

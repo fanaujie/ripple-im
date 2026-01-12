@@ -40,7 +40,3 @@ pids/
 
 ### Maven ###
 dependency-reduced-pom.xml
-
-openspec/
-AGENTS.md
-CLAUDE.md
