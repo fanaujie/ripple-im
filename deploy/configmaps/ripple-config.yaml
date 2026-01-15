@@ -16,6 +16,10 @@ data:
   CASSANDRA_KEYSPACE_NAME: "ripple"
   CASSANDRA_LOCAL_DATACENTER: "datacenter1"
 
+  # MongoDB settings
+  MONGODB_URI: "mongodb://mongodb:27017"
+  MONGODB_DATABASE: "ripple"
+
   REDIS_HOST: "redis"
   REDIS_PORT: "6379"
 

@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.uploadgateway.service;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.UserProfileStorage;
 import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
@@ -48,8 +47,6 @@ class ChunkUploadServiceTest {
     @MockitoBean private SnowflakeIdClient snowflakeIdClient;
 
     @MockitoBean private RippleStorageFacade storageFacade;
-
-    @MockitoBean private CqlSession cqlSession;
 
     @MockitoBean private RedissonClient redissonClient;
 

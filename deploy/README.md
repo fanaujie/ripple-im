@@ -49,7 +49,11 @@ This setup uses a **hybrid deployment**:
 **Option A: Build in Minikube (Recommended)**
 
 ```bash
+# Build for Cassandra (Default)
 ./deploy/03a-build-images.sh
+
+# OR Build for MongoDB
+./deploy/03a-build-images.sh mongodb
 ```
 
 **Option B: Load existing images**

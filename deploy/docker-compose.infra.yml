@@ -108,6 +108,48 @@ services:
     networks:
       - ripple-network
 
+  mongodb:
+    container_name: mongodb
+    image: mongo:8.0.0
+    hostname: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ripple
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27017" ]
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ripple-network
+
+  mongodb-init:
+    image: mongo:8.0.0
+    container_name: mongodb-init
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: >
+      mongosh --host mongodb:27017 --eval '
+        try {
+          rs.status();
+          console.log("Replica Set already initialized");
+        } catch (e) {
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "localhost:27017" }]
+          });
+          console.log("Replica Set initialized successfully");
+        }
+      '
+    networks:
+      - ripple-network
+
   kafka:
     image: apache/kafka:4.1.0
     container_name: kafka-broker
@@ -136,7 +178,7 @@ services:
   otel-collector:
     container_name: otel-collector
     image: otel/opentelemetry-collector:0.117.0
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
@@ -178,6 +220,7 @@ volumes:
   zookeeper_data_log:
   redis_data:
   cassandra_data:
+  mongodb_data:
   kafka_data:
   prometheus_data:
   grafana_data:

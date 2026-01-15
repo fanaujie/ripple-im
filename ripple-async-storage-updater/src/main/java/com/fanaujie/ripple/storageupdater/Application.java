@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.storageupdater;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.cache.driver.RedisDriver;
 import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
@@ -20,21 +19,17 @@ import com.fanaujie.ripple.storageupdater.consumer.processor.GroupMemberBatchIns
 import com.fanaujie.ripple.storageupdater.consumer.processor.UserGroupBatchUpdateProcessor;
 import com.fanaujie.ripple.storageupdater.consumer.processor.RelationBatchUpdateProcessor;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class Application {
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
@@ -43,14 +38,6 @@ public class Application {
         Config config = ConfigFactory.load();
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
-        String contactPointsStr = config.getString("cassandra.contact.points");
-        List<String> cassandraContacts = Arrays.stream(contactPointsStr.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-        String cassandraKeyspace = config.getString("cassandra.keyspace.name");
-        String localDatacenter = config.getString("cassandra.local.datacenter");
-
         String storageUpdateTopic = config.getString("broker.topic.storage-updates");
         String pushTopic = config.getString("broker.topic.push");
         String brokerServer = config.getString("broker.server");
@@ -71,12 +58,8 @@ public class Application {
         logger.info("Consumer Group ID: {}", consumerGroupId);
         logger.info("Consumer Client ID: {}", consumerClientId);
 
-        CqlSession cqlSession =
-                createCQLSession(cassandraContacts, cassandraKeyspace, localDatacenter);
+        RippleStorageFacade storageFacade = RippleStorageLoader.load(System::getenv);
 
-        CassandraStorageFacadeBuilder storageBuilder = new CassandraStorageFacadeBuilder();
-        storageBuilder.cqlSession(cqlSession);
-        CassandraStorageFacade storageFacade = storageBuilder.build();
         int cpuSize = Runtime.getRuntime().availableProcessors();
         ExecutorService executorService =
                 createExecutorService(cpuSize, cpuSize * 2, processorThreadPoolSize);
@@ -147,7 +130,7 @@ public class Application {
 
     private ProcessorDispatcher<StorageUpdatePayload.PayloadCase, StorageUpdatePayload, Void>
             createProcessorDispatcher(
-                    CassandraStorageFacade storageFacade,
+                    RippleStorageFacade storageFacade,
                     ExecutorService executorService,
                     GenericProducer<String, PushMessage> pushMessageProducer,
                     String pushTopic,
@@ -172,12 +155,6 @@ public class Application {
                 new GroupInfoBatchUpdateProcessor(
                         storageFacade, executorService, pushMessageProducer, pushTopic));
         return processor;
-    }
-
-    private CqlSession createCQLSession(
-            List<String> cassandraContacts, String cassandraKeyspace, String localDatacenter) {
-        return CassandraDriver.createCqlSession(
-                cassandraContacts, cassandraKeyspace, localDatacenter);
     }
 
     private ExecutorService createExecutorService(int coreSize, int maxSize, int queueCapacity) {

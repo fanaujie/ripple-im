@@ -16,11 +16,25 @@
     <name>ripple-storage</name>
     <description>Storage module parent for Ripple IM</description>
 
-    <modules>
-        <module>ripple-storage-api</module>
-        <module>ripple-storage-cassandra</module>
-        <module>ripple-storage-mongodb</module>
-    </modules>
+    <profiles>
+        <profile>
+            <id>mongodb</id>
+            <modules>
+                <module>ripple-storage-api</module>
+                <module>ripple-storage-mongodb</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>cassandra</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>ripple-storage-api</module>
+                <module>ripple-storage-cassandra</module>
+            </modules>
+        </profile>
+    </profiles>
 
     <dependencyManagement>
         <dependencies>

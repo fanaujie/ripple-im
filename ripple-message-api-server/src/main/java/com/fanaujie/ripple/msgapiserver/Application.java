@@ -1,28 +1,21 @@
 package com.fanaujie.ripple.msgapiserver;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFactory;
+import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
 import com.fanaujie.ripple.communication.processor.ProcessorDispatcher;
 import com.fanaujie.ripple.msgapiserver.processor.*;
-import com.fanaujie.ripple.communication.processor.DefaultProcessorDispatcher;
 import com.fanaujie.ripple.msgapiserver.server.GrpcServer;
 import com.fanaujie.ripple.protobuf.msgapiserver.*;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
-
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 public class Application {
 
@@ -32,35 +25,18 @@ public class Application {
         Config config = ConfigFactory.load();
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
-        String contactPointsStr = config.getString("cassandra.contact.points");
-        List<String> cassandraContacts = Arrays.stream(contactPointsStr.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-        String cassandraKeyspace = config.getString("cassandra.keyspace.name");
-        String localDatacenter = config.getString("cassandra.local.datacenter");
         String brokerTopic = config.getString("broker.topic.message");
         String brokerServer = config.getString("broker.server");
         int executorQueueSize = config.getInt("ripple.executor.queue.capacity");
         int grpcPort = config.getInt("server.grpc.port");
         logger.info("Configuration - Redis Host: {}, Redis Port: {}", redisHost, redisPort);
-        logger.info("Configuration - Cassandra Contact Points: {}", cassandraContacts);
-        logger.info("Configuration - Cassandra Keyspace: {}", cassandraKeyspace);
-        logger.info("Configuration - Cassandra Local Datacenter: {}", localDatacenter);
         logger.info("Configuration - Broker Server: {}", brokerServer);
         logger.info("Configuration - Broker Topic: {}", brokerTopic);
         logger.info("Configuration - Executor Queue Size: {}", executorQueueSize);
         logger.info("gRPC Port: {}", grpcPort);
         GenericProducer<String, MessagePayload> producer = createKafkaProducer(brokerServer);
-
         ExecutorService executorService = createExecutorService(executorQueueSize);
-        CqlSession cqlSession =
-                CassandraDriver.createCqlSession(
-                        cassandraContacts, cassandraKeyspace, localDatacenter);
-        CassandraStorageFacadeBuilder userStorageFacadeBuilder =
-                new CassandraStorageFacadeBuilder();
-        userStorageFacadeBuilder.cqlSession(cqlSession);
-        CassandraStorageFacade userStorageFacade = userStorageFacadeBuilder.build();
+        RippleStorageFacade userStorageFacade = RippleStorageLoader.load(System::getenv);
         GrpcServer grpcServer =
                 new GrpcServer(
                         grpcPort,
@@ -98,7 +74,7 @@ public class Application {
     private ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
             createMessageDispatcher(
                     String topic,
-                    CassandraStorageFacade userStorageFacade,
+                    RippleStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendMessageReq.MessageCase, SendMessageReq, SendMessageResp>
@@ -113,7 +89,7 @@ public class Application {
     private ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp>
             createEventDispatcher(
                     String messageTopic,
-                    CassandraStorageFacade userStorageFacade,
+                    RippleStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> messageProducer,
                     ExecutorService executorService) {
         ProcessorDispatcher<SendEventReq.EventCase, SendEventReq, SendEventResp> eventDispatcher =
@@ -135,7 +111,7 @@ public class Application {
                     SendGroupCommandResp>
             createGroupDispatcher(
                     String topic,
-                    CassandraStorageFacade userStorageFacade,
+                    RippleStorageFacade userStorageFacade,
                     GenericProducer<String, MessagePayload> producer,
                     ExecutorService executorService) {
         ProcessorDispatcher<

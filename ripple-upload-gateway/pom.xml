@@ -35,8 +35,8 @@
         </dependency>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-storage-cassandra</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>ripple-storage-api</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
@@ -124,6 +124,31 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>cassandra</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.fanaujie.ripple</groupId>
+                    <artifactId>ripple-storage-cassandra</artifactId>
+                    <version>${project.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>mongodb</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.fanaujie.ripple</groupId>
+                    <artifactId>ripple-storage-mongodb</artifactId>
+                    <version>${project.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>

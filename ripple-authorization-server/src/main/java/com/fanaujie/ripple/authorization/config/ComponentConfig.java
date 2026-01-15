@@ -1,30 +1,17 @@
 package com.fanaujie.ripple.authorization.config;
 
-import com.datastax.oss.driver.api.core.CqlSession;
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
-import java.util.List;
 
 @Configuration
 public class ComponentConfig {
 
     @Bean
-    public CqlSession cqlSession(
-            @Value("${cassandra.contact-points}") List<String> contactPoints,
-            @Value("${cassandra.keyspace-name}") String keyspace,
-            @Value("${cassandra.local-datacenter}") String localDatacenter) {
-        return CassandraDriver.createCqlSession(contactPoints, keyspace, localDatacenter);
-    }
-
-    @Bean
-    RippleStorageFacade userStorage(CqlSession cqlSession) {
-        CassandraStorageFacadeBuilder b = new CassandraStorageFacadeBuilder();
-        b.cqlSession(cqlSession);
-        return b.build();
+    RippleStorageFacade userStorage(Environment env) {
+        return RippleStorageLoader.load(env::getProperty);
     }
 }

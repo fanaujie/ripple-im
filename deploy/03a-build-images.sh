@@ -14,6 +14,9 @@ if ! minikube status &>/dev/null; then
     exit 1
 fi
 
+PROFILE=${1:-cassandra}
+echo "Building images with profile: $PROFILE"
+
 echo "Switching to Minikube's Docker daemon..."
 eval $(minikube docker-env)
 
@@ -36,7 +39,7 @@ service_modules=(
 
 for module in "${service_modules[@]}"; do
     echo "Building $module..."
-    docker build -t $module:latest -f $module/Dockerfile .
+    docker build -t $module:latest -f $module/Dockerfile --build-arg PROFILE=$PROFILE .
 done
 
 echo "Listing built images..."

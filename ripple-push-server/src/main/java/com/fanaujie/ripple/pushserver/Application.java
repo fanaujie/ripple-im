@@ -1,7 +1,7 @@
 package com.fanaujie.ripple.pushserver;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.batch.Config;
@@ -11,20 +11,14 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFacto
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
-import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.pushserver.service.PushService;
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
-import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.typesafe.config.ConfigFactory;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class Application {
 
@@ -56,15 +50,6 @@ public class Application {
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
 
-        // Load Cassandra configuration
-        String contactPointsStr = config.getString("cassandra.contact.points");
-        List<String> cassandraContacts = Arrays.stream(contactPointsStr.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-        String cassandraKeyspace = config.getString("cassandra.keyspace.name");
-        String localDatacenter = config.getString("cassandra.local.datacenter");
-
         logger.info("Broker Config - Server: {}, Push Topic: {}", brokerServer, pushTopic);
         logger.info(
                 "Ripple Config - Push Group ID: {}, Push Client ID: {}",
@@ -87,43 +72,20 @@ public class Application {
                 kafkaFetchMinBytes,
                 kafkaFetchMaxWaitMs);
         logger.info("Redis Config - Host: {}, Port: {}", redisHost, redisPort);
-        logger.info(
-                "Cassandra Config - Contacts: {}, Keyspace: {}, Datacenter: {}",
-                cassandraContacts,
-                cassandraKeyspace,
-                localDatacenter);
 
         Config batchConfig =
                 new Config(batchQueueSize, batchWorkerSize, batchMaxSize, batchTimeoutMs);
 
         MessageGatewayClientManager messageGatewayManager = null;
         PushService pushService = null;
-        CqlSession cqlSession = null;
         RedissonClient redissonClient = null;
         ConversationSummaryStorage conversationStorage = null;
         try {
-            // Initialize Cassandra and Redis clients
-            cqlSession =
-                    CassandraDriver.createCqlSession(
-                            cassandraContacts, cassandraKeyspace, localDatacenter);
             redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
-
-            // Create storage facade for user profile lookup
-            CassandraStorageFacadeBuilder storageFacadeBuilder =
-                    new CassandraStorageFacadeBuilder();
-            storageFacadeBuilder.cqlSession(cqlSession);
-            RippleStorageFacade storageFacade = storageFacadeBuilder.build();
-
-            // Create cached user profile storage
-            RedisUserProfileStorage userProfileStorage =
-                    new RedisUserProfileStorage(redissonClient, storageFacade);
-
-            // Create conversation storage with cache-aside pattern
+            RippleStorageFacade storageFacade = RippleStorageLoader.load(System::getenv);
             conversationStorage =
                     new RedisConversationSummaryStorage(redissonClient, storageFacade);
             logger.info("ConversationStorage initialized successfully");
-
-            // Initialize MessageGatewayClientManager
             messageGatewayManager =
                     new MessageGatewayClientManager(zookeeperAddress, messageGatewayDiscoveryPath);
             messageGatewayManager.start();
@@ -152,7 +114,6 @@ public class Application {
             // Add shutdown hook for graceful cleanup
             final MessageGatewayClientManager finalManager = messageGatewayManager;
             final PushService finalPushService = pushService;
-            final CqlSession finalCqlSession = cqlSession;
             final RedissonClient finalRedissonClient = redissonClient;
             Runtime.getRuntime()
                     .addShutdownHook(
@@ -164,9 +125,6 @@ public class Application {
                                             finalManager.close();
                                             if (finalRedissonClient != null) {
                                                 finalRedissonClient.shutdown();
-                                            }
-                                            if (finalCqlSession != null) {
-                                                finalCqlSession.close();
                                             }
                                         } catch (Exception e) {
                                             logger.error("Error during shutdown cleanup", e);
@@ -187,9 +145,6 @@ public class Application {
                 }
                 if (redissonClient != null) {
                     redissonClient.shutdown();
-                }
-                if (cqlSession != null) {
-                    cqlSession.close();
                 }
             } catch (Exception closeException) {
                 logger.error("Error closing", closeException);

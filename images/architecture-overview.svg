@@ -1,178 +1,188 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="Arial, sans-serif">
-  <defs>
-    <linearGradient id="clientGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#5CB85C;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#449D44;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="serviceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#F0AD4E;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#EC971F;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="infraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#D9534F;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#C9302C;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8E44AD;stop-opacity:1" />
-    </linearGradient>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
-    </marker>
-  </defs>
+    <defs>
+        <linearGradient id="clientGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#5CB85C;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#449D44;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="serviceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#F0AD4E;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#EC971F;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="infraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#D9534F;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#C9302C;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="coreGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#8E44AD;stop-opacity:1"/>
+        </linearGradient>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+        </marker>
+    </defs>
 
-  <!-- Background -->
-  <rect width="1200" height="900" fill="#f5f7fa"/>
+    <!-- Background -->
+    <rect width="1200" height="900" fill="#f5f7fa"/>
 
-  <!-- Title -->
-  <text x="600" y="40" text-anchor="middle" font-size="28" font-weight="bold" fill="#2c3e50">Ripple-IM System Architecture</text>
+    <!-- Title -->
+    <text x="600" y="40" text-anchor="middle" font-size="28" font-weight="bold" fill="#2c3e50">Ripple-IM System
+        Architecture
+    </text>
 
-  <!-- Client Layer -->
-  <rect x="450" y="70" width="300" height="60" rx="10" fill="url(#clientGrad)"/>
-  <text x="600" y="108" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Client Applications</text>
-  <text x="600" y="150" text-anchor="middle" font-size="12" fill="#666">Desktop / Mobile / Web</text>
+    <!-- Client Layer -->
+    <rect x="450" y="70" width="300" height="60" rx="10" fill="url(#clientGrad)"/>
+    <text x="600" y="108" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Client Applications</text>
+    <text x="600" y="150" text-anchor="middle" font-size="12" fill="#666">Desktop / Mobile / Web</text>
 
-  <!-- Arrows from Client -->
-  <line x1="500" y1="160" x2="200" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <line x1="600" y1="160" x2="600" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
-  <line x1="700" y1="160" x2="1000" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <!-- Arrows from Client -->
+    <line x1="500" y1="160" x2="200" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="600" y1="160" x2="600" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="700" y1="160" x2="1000" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
 
-  <!-- Gateway Layer Box -->
-  <rect x="30" y="190" width="1140" height="140" rx="10" fill="none" stroke="#5CB85C" stroke-width="2" stroke-dasharray="5,5"/>
-  <text x="50" y="215" font-size="14" font-weight="bold" fill="#5CB85C">Gateway Layer</text>
+    <!-- Gateway Layer Box -->
+    <rect x="30" y="190" width="1140" height="140" rx="10" fill="none" stroke="#5CB85C" stroke-width="2"
+          stroke-dasharray="5,5"/>
+    <text x="50" y="215" font-size="14" font-weight="bold" fill="#5CB85C">Gateway Layer</text>
 
-  <!-- API Gateway -->
-  <rect x="50" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
-  <text x="150" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">API Gateway</text>
-  <text x="150" y="282" text-anchor="middle" font-size="11" fill="white">:10002 HTTP</text>
-  <text x="150" y="298" text-anchor="middle" font-size="10" fill="#d4edda">REST API, OAuth2</text>
+    <!-- API Gateway -->
+    <rect x="50" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
+    <text x="150" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">API Gateway</text>
+    <text x="150" y="282" text-anchor="middle" font-size="11" fill="white">:10002 HTTP</text>
+    <text x="150" y="298" text-anchor="middle" font-size="10" fill="#d4edda">REST API, OAuth2</text>
 
-  <!-- Authorization Server -->
-  <rect x="280" y="230" width="190" height="80" rx="8" fill="url(#gatewayGrad)"/>
-  <text x="375" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Authorization Server</text>
-  <text x="375" y="282" text-anchor="middle" font-size="11" fill="white">:10001 HTTP</text>
-  <text x="375" y="298" text-anchor="middle" font-size="10" fill="#d4edda">OAuth2, JWT</text>
+    <!-- Authorization Server -->
+    <rect x="280" y="230" width="190" height="80" rx="8" fill="url(#gatewayGrad)"/>
+    <text x="375" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Authorization Server
+    </text>
+    <text x="375" y="282" text-anchor="middle" font-size="11" fill="white">:10001 HTTP</text>
+    <text x="375" y="298" text-anchor="middle" font-size="10" fill="#d4edda">OAuth2, JWT</text>
 
-  <!-- Message Gateway -->
-  <rect x="500" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
-  <text x="600" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Message Gateway</text>
-  <text x="600" y="282" text-anchor="middle" font-size="11" fill="white">:10200 WS / :10103 gRPC</text>
-  <text x="600" y="298" text-anchor="middle" font-size="10" fill="#d4edda">WebSocket, Real-time</text>
+    <!-- Message Gateway -->
+    <rect x="500" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
+    <text x="600" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Message Gateway</text>
+    <text x="600" y="282" text-anchor="middle" font-size="11" fill="white">:10200 WS / :10103 gRPC</text>
+    <text x="600" y="298" text-anchor="middle" font-size="10" fill="#d4edda">WebSocket, Real-time</text>
 
-  <!-- Upload Gateway -->
-  <rect x="950" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
-  <text x="1050" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Upload Gateway</text>
-  <text x="1050" y="282" text-anchor="middle" font-size="11" fill="white">:10003 HTTP</text>
-  <text x="1050" y="298" text-anchor="middle" font-size="10" fill="#d4edda">File Upload, MinIO</text>
+    <!-- Upload Gateway -->
+    <rect x="950" y="230" width="200" height="80" rx="8" fill="url(#gatewayGrad)"/>
+    <text x="1050" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Upload Gateway</text>
+    <text x="1050" y="282" text-anchor="middle" font-size="11" fill="white">:10003 HTTP</text>
+    <text x="1050" y="298" text-anchor="middle" font-size="10" fill="#d4edda">File Upload, MinIO</text>
 
-  <!-- Core Services Layer Box -->
-  <rect x="30" y="350" width="1140" height="180" rx="10" fill="none" stroke="#F0AD4E" stroke-width="2" stroke-dasharray="5,5"/>
-  <text x="50" y="375" font-size="14" font-weight="bold" fill="#F0AD4E">Core Services Layer</text>
+    <!-- Core Services Layer Box -->
+    <rect x="30" y="350" width="1140" height="180" rx="10" fill="none" stroke="#F0AD4E" stroke-width="2"
+          stroke-dasharray="5,5"/>
+    <text x="50" y="375" font-size="14" font-weight="bold" fill="#F0AD4E">Core Services Layer</text>
 
-  <!-- Message API Server -->
-  <rect x="50" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="135" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message API</text>
-  <text x="135" y="436" text-anchor="middle" font-size="11" fill="white">:10102 gRPC</text>
-  <text x="135" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Message Processing</text>
+    <!-- Message API Server -->
+    <rect x="50" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="135" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message API</text>
+    <text x="135" y="436" text-anchor="middle" font-size="11" fill="white">:10102 gRPC</text>
+    <text x="135" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Message Processing</text>
 
-  <!-- Message Dispatcher -->
-  <rect x="240" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="325" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Dispatcher</text>
-  <text x="325" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
-  <text x="325" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Route and Persist</text>
+    <!-- Message Dispatcher -->
+    <rect x="240" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="325" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Dispatcher</text>
+    <text x="325" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
+    <text x="325" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Route and Persist</text>
 
-  <!-- Push Server -->
-  <rect x="430" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="515" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Push Server</text>
-  <text x="515" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
-  <text x="515" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Push Notifications</text>
+    <!-- Push Server -->
+    <rect x="430" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="515" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Push Server</text>
+    <text x="515" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
+    <text x="515" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Push Notifications</text>
 
-  <!-- User Presence Server -->
-  <rect x="620" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="705" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">User Presence</text>
-  <text x="705" y="436" text-anchor="middle" font-size="11" fill="white">:10101 gRPC</text>
-  <text x="705" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Online Status</text>
+    <!-- User Presence Server -->
+    <rect x="620" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="705" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">User Presence</text>
+    <text x="705" y="436" text-anchor="middle" font-size="11" fill="white">:10101 gRPC</text>
+    <text x="705" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Online Status</text>
 
-  <!-- SnowflakeID Server -->
-  <rect x="810" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="895" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">SnowflakeID</text>
-  <text x="895" y="436" text-anchor="middle" font-size="11" fill="white">:10100 Netty</text>
-  <text x="895" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Distributed ID Gen</text>
+    <!-- SnowflakeID Server -->
+    <rect x="810" y="390" width="170" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="895" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">SnowflakeID</text>
+    <text x="895" y="436" text-anchor="middle" font-size="11" fill="white">:10100 Netty</text>
+    <text x="895" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Distributed ID Gen</text>
 
-  <!-- Async Storage Updater -->
-  <rect x="1000" y="390" width="160" height="70" rx="8" fill="url(#serviceGrad)"/>
-  <text x="1080" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Async Updater</text>
-  <text x="1080" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
-  <text x="1080" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Storage Sync</text>
+    <!-- Async Storage Updater -->
+    <rect x="1000" y="390" width="160" height="70" rx="8" fill="url(#serviceGrad)"/>
+    <text x="1080" y="418" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Async Updater</text>
+    <text x="1080" y="436" text-anchor="middle" font-size="11" fill="white">Kafka Consumer</text>
+    <text x="1080" y="452" text-anchor="middle" font-size="9" fill="#fff3cd">Storage Sync</text>
 
-  <!-- Shared Libraries Box -->
-  <rect x="50" y="480" width="1110" height="45" rx="8" fill="url(#coreGrad)"/>
-  <text x="600" y="510" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Shared Libraries: ripple-storage | ripple-cache | ripple-communication | ripple-protobuf</text>
+    <!-- Shared Libraries Box -->
+    <rect x="50" y="480" width="1110" height="45" rx="8" fill="url(#coreGrad)"/>
+    <text x="600" y="510" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Shared Libraries:
+        ripple-storage | ripple-cache | ripple-communication | ripple-protobuf
+    </text>
 
-  <!-- Infrastructure Layer Box -->
-  <rect x="30" y="550" width="1140" height="180" rx="10" fill="none" stroke="#D9534F" stroke-width="2" stroke-dasharray="5,5"/>
-  <text x="50" y="575" font-size="14" font-weight="bold" fill="#D9534F">Infrastructure Layer</text>
+    <!-- Infrastructure Layer Box -->
+    <rect x="30" y="550" width="1140" height="180" rx="10" fill="none" stroke="#D9534F" stroke-width="2"
+          stroke-dasharray="5,5"/>
+    <text x="50" y="575" font-size="14" font-weight="bold" fill="#D9534F">Infrastructure Layer</text>
 
-  <!-- Kafka -->
-  <rect x="50" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="125" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Apache Kafka</text>
-  <text x="125" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Message Queue</text>
+    <!-- Kafka -->
+    <rect x="50" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="125" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Apache Kafka</text>
+    <text x="125" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Message Queue</text>
 
-  <!-- Cassandra -->
-  <rect x="220" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="295" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Cassandra</text>
-  <text x="295" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Main Database</text>
+    <!-- Cassandra / MongoDB -->
+    <rect x="220" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="295" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Cassandra/MongoDB</text>
+    <text x="295" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Main DB (Pluggable)</text>
 
-  <!-- Redis -->
-  <rect x="390" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="465" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Redis</text>
-  <text x="465" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Cache Layer</text>
+    <!-- Redis -->
+    <rect x="390" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="465" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Redis</text>
+    <text x="465" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Cache Layer</text>
 
-  <!-- MySQL -->
-  <rect x="560" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="635" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MySQL</text>
-  <text x="635" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Auth Database</text>
+    <!-- MySQL -->
+    <rect x="560" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="635" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MySQL</text>
+    <text x="635" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Auth Database</text>
 
-  <!-- ZooKeeper -->
-  <rect x="730" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="805" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">ZooKeeper</text>
-  <text x="805" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Service Discovery</text>
+    <!-- ZooKeeper -->
+    <rect x="730" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="805" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">ZooKeeper</text>
+    <text x="805" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Service Discovery</text>
 
-  <!-- MinIO -->
-  <rect x="900" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
-  <text x="975" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MinIO</text>
-  <text x="975" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Object Storage</text>
+    <!-- MinIO -->
+    <rect x="900" y="590" width="150" height="60" rx="8" fill="url(#infraGrad)"/>
+    <text x="975" y="618" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MinIO</text>
+    <text x="975" y="638" text-anchor="middle" font-size="10" fill="#f5c6cb">Object Storage</text>
 
-  <!-- Kafka Topics -->
-  <rect x="50" y="665" width="350" height="50" rx="6" fill="#fff" stroke="#D9534F" stroke-width="2"/>
-  <text x="225" y="685" text-anchor="middle" font-size="11" font-weight="bold" fill="#D9534F">Kafka Topics</text>
-  <text x="225" y="702" text-anchor="middle" font-size="9" fill="#666">ripple-messages | ripple-push-notifications | ripple-storage-updates</text>
+    <!-- Kafka Topics -->
+    <rect x="50" y="665" width="350" height="50" rx="6" fill="#fff" stroke="#D9534F" stroke-width="2"/>
+    <text x="225" y="685" text-anchor="middle" font-size="11" font-weight="bold" fill="#D9534F">Kafka Topics</text>
+    <text x="225" y="702" text-anchor="middle" font-size="9" fill="#666">ripple-messages | ripple-push-notifications |
+        ripple-storage-updates
+    </text>
 
-  <!-- Legend -->
-  <rect x="750" y="750" width="420" height="120" rx="10" fill="#fff" stroke="#ccc" stroke-width="1"/>
-  <text x="770" y="775" font-size="14" font-weight="bold" fill="#333">Legend</text>
+    <!-- Legend -->
+    <rect x="750" y="750" width="420" height="120" rx="10" fill="#fff" stroke="#ccc" stroke-width="1"/>
+    <text x="770" y="775" font-size="14" font-weight="bold" fill="#333">Legend</text>
 
-  <rect x="770" y="790" width="20" height="15" rx="3" fill="url(#clientGrad)"/>
-  <text x="800" y="802" font-size="11" fill="#333">Client Layer</text>
+    <rect x="770" y="790" width="20" height="15" rx="3" fill="url(#clientGrad)"/>
+    <text x="800" y="802" font-size="11" fill="#333">Client Layer</text>
 
-  <rect x="900" y="790" width="20" height="15" rx="3" fill="url(#gatewayGrad)"/>
-  <text x="930" y="802" font-size="11" fill="#333">Gateway Layer</text>
+    <rect x="900" y="790" width="20" height="15" rx="3" fill="url(#gatewayGrad)"/>
+    <text x="930" y="802" font-size="11" fill="#333">Gateway Layer</text>
 
-  <rect x="1030" y="790" width="20" height="15" rx="3" fill="url(#serviceGrad)"/>
-  <text x="1060" y="802" font-size="11" fill="#333">Core Services</text>
+    <rect x="1030" y="790" width="20" height="15" rx="3" fill="url(#serviceGrad)"/>
+    <text x="1060" y="802" font-size="11" fill="#333">Core Services</text>
 
-  <rect x="770" y="815" width="20" height="15" rx="3" fill="url(#coreGrad)"/>
-  <text x="800" y="827" font-size="11" fill="#333">Shared Libraries</text>
+    <rect x="770" y="815" width="20" height="15" rx="3" fill="url(#coreGrad)"/>
+    <text x="800" y="827" font-size="11" fill="#333">Shared Libraries</text>
 
-  <rect x="900" y="815" width="20" height="15" rx="3" fill="url(#infraGrad)"/>
-  <text x="930" y="827" font-size="11" fill="#333">Infrastructure</text>
+    <rect x="900" y="815" width="20" height="15" rx="3" fill="url(#infraGrad)"/>
+    <text x="930" y="827" font-size="11" fill="#333">Infrastructure</text>
 
-  <text x="770" y="855" font-size="10" fill="#666">Protocols: HTTP REST | WebSocket | gRPC | Kafka | Protobuf</text>
+    <text x="770" y="855" font-size="10" fill="#666">Protocols: HTTP REST | WebSocket | gRPC | Kafka | Protobuf</text>
 
 
 </svg>

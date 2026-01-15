@@ -6,7 +6,8 @@ A high-performance, scalable instant messaging system built with microservices a
 
 Building a reliable instant messaging system involves solving several complex distributed systems challenges:
 
-- **Real-time Delivery**: Messages must be delivered instantly across distributed servers while maintaining order and consistency
+- **Real-time Delivery**: Messages must be delivered instantly across distributed servers while maintaining order and
+  consistency
 - **Scalability**: The system must handle millions of concurrent connections and messages without degradation
 - **Reliability**: No message should be lost, even during server failures or network partitions
 - **Presence Management**: Tracking user online status across multiple devices and gateway instances
@@ -14,14 +15,14 @@ Building a reliable instant messaging system involves solving several complex di
 
 Ripple-IM addresses these challenges through:
 
-| Challenge | Solution |
-|-----------|----------|
-| Real-time delivery | WebSocket connections with Netty for low-latency push |
-| Message reliability | Kafka message queue ensures at-least-once delivery |
-| Data consistency | Cassandra for write-heavy message storage with tunable consistency |
-| Service discovery | ZooKeeper for dynamic gateway instance registration |
-| Horizontal scaling | Stateless microservices with gRPC for efficient inter-service communication |
-| ID generation | Snowflake algorithm for globally unique, time-ordered message IDs |
+| Challenge           | Solution                                                                          |
+|---------------------|-----------------------------------------------------------------------------------|
+| Real-time delivery  | WebSocket connections with Netty for low-latency push                             |
+| Message reliability | Kafka message queue ensures at-least-once delivery                                |
+| Data consistency    | **Cassandra or MongoDB** for write-heavy message storage with tunable consistency |
+| Service discovery   | ZooKeeper for dynamic gateway instance registration                               |
+| Horizontal scaling  | Stateless microservices with gRPC for efficient inter-service communication       |
+| ID generation       | Snowflake algorithm for globally unique, time-ordered message IDs                 |
 
 ## Features
 
@@ -29,7 +30,7 @@ Ripple-IM addresses these challenges through:
 - **Direct & Group Chat**: Support for one-on-one and group conversations
 - **OAuth2 Authentication**: Secure authentication with JWT tokens and Google OAuth2 support
 - **Scalable Architecture**: Microservices design with gRPC inter-service communication
-- **Message Persistence**: Reliable message storage with Apache Cassandra
+- **Message Persistence**: Reliable message storage with **Cassandra or MongoDB**
 - **High Availability**: Kafka-based message queuing for reliable delivery
 - **User Presence**: Real-time online status tracking
 - **File Upload**: Avatar and attachment support with MinIO object storage
@@ -56,7 +57,7 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 1. Client sends message via HTTP POST to API Gateway
 2. API Gateway forwards request to Message API Server (gRPC)
 3. Message API generates Snowflake ID and publishes to Kafka
-4. Message Dispatcher consumes, persists to Cassandra, and updates Redis cache
+4. Message Dispatcher consumes, persists to **Cassandra or MongoDB**, and updates Redis cache
 5. Push notification published to Kafka
 6. Push Server queries user online status and delivers via Message Gateway (gRPC)
 7. Message Gateway pushes to recipient via WebSocket
@@ -76,7 +77,7 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 | **ripple-user-presence-server**  | User online status management                                     | 10101         | gRPC      |
 | **ripple-snowflakeid-server**    | Distributed unique ID generation                                  | 10100         | Netty     |
 | **ripple-async-storage-updater** | Kafka consumer for async storage synchronization                  | -             | Kafka     |
-| **ripple-storage**               | Data persistence layer (Cassandra)                                | -             | Library   |
+| **ripple-storage**               | Data persistence layer (**Cassandra or MongoDB**)                 | -             | Library   |
 | **ripple-cache**                 | Redis caching layer                                               | -             | Library   |
 | **ripple-communication**         | gRPC and Kafka communication utilities                            | -             | Library   |
 | **ripple-protobuf**              | Protocol Buffer message definitions                               | -             | Library   |
@@ -102,12 +103,12 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 
 ### Storage
 
-| Category       | Technology       |
-|----------------|------------------|
-| Main Database  | Apache Cassandra |
-| Auth Database  | MySQL            |
-| Cache          | Redis            |
-| Object Storage | MinIO            |
+| Category       | Technology                                    |
+|----------------|-----------------------------------------------|
+| Main Database  | **Apache Cassandra** (Default) or **MongoDB** |
+| Auth Database  | MySQL                                         |
+| Cache          | Redis                                         |
+| Object Storage | MinIO                                         |
 
 ### Service Discovery
 
@@ -120,19 +121,29 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 - **Java 17** or higher
 - **Maven 3.6+**
 - **Docker & Docker Compose** (for infrastructure services)
-
-### Infrastructure Services
-
-| Service          | Default Port |
-|------------------|--------------|
-| Apache Cassandra | 9042         |
-| MySQL            | 3306         |
-| Redis            | 6379         |
-| Apache Kafka     | 9092         |
-| Apache ZooKeeper | 2181         |
-| MinIO            | 9000         |
+- **Memory**: At least **16GB RAM** is recommended for full stack deployment.
 
 ## Getting Started
+
+### ⚠️ Resource Warning
+
+Running the full stack (10+ services + infrastructure) via **Docker Compose** or **Minikube** is resource-intensive and
+requires significant memory.
+
+**For local development and testing on machines with limited RAM, we strongly
+recommend [Option 3: Manual JAR Execution](#option-3-manual-jar-execution)**. This method is much more memory-efficient
+as it runs services directly as JVM processes.
+
+### 📦 Storage Backend Selection
+
+Ripple-IM supports both **Apache Cassandra** and **MongoDB** as the message storage backend. The choice is made at *
+*build time** using Maven profiles.
+
+- **Cassandra** (Default): High write throughput, suitable for massive scale.
+- **MongoDB**: Flexible document model, easier to manage for smaller deployments.
+
+**To switch to MongoDB:**
+You must build the project with the `mongodb` profile (e.g., `mvn clean install -Pmongodb`).
 
 ### Prerequisites
 
@@ -145,20 +156,18 @@ Ripple-IM follows a microservices architecture pattern with the following layers
 
 The project uses split Docker Compose files for flexibility:
 
-| File                                 | Contents                                                          | Use Case           |
-|--------------------------------------|-------------------------------------------------------------------|--------------------|
-| `deploy/docker-compose.infra.yml`    | Infrastructure (MySQL, Cassandra, Redis, Kafka, Zookeeper, MinIO) | Always needed      |
-| `deploy/docker-compose.services.yml` | All 10 application services                                       | Full stack testing |
+| File                                 | Contents                                                                  | Use Case           |
+|--------------------------------------|---------------------------------------------------------------------------|--------------------|
+| `deploy/docker-compose.infra.yml`    | Infrastructure (MySQL, Cassandra/Mongodb, Redis, Kafka, Zookeeper, MinIO) | Always needed      |
+| `deploy/docker-compose.services.yml` | All 10 application services                                               | Full stack testing |
+
+> **Note**: Running both files together requires substantial memory.
 
 #### Start Infrastructure Only (for IDE debugging)
 
 ```bash
-# Start infrastructure services
+# Start infrastructure services (runs BOTH Cassandra and MongoDB containers)
 docker compose -f deploy/docker-compose.infra.yml up -d
-
-# Run individual services from IDE with these environment variables:
-# KAFKA_BROKER: localhost:9094 (external listener)
-# Other services: localhost:<port>
 ```
 
 #### Start Full Stack
@@ -166,44 +175,70 @@ docker compose -f deploy/docker-compose.infra.yml up -d
 ```bash
 # Start everything
 docker compose -f deploy/docker-compose.infra.yml -f deploy/docker-compose.services.yml up -d
-
-# Or start specific services
-docker compose -f deploy/docker-compose.services.yml up -d ripple-api-gateway
 ```
 
-### Option 2: Kubernetes Deployment
+### Option 2: Kubernetes Deployment (Minikube)
 
 For production or staging environments, deploy to Kubernetes with external managed infrastructure.
 
 See [Deployment Guide](deploy/README.md) for detailed instructions.
 
-**Quick Start (Minikube):**
+**Quick Start:**
 
 ```bash
-# Use the deployment scripts
 ./deploy/01-start-infra.sh
 ./deploy/02-connect-minikube.sh
-./deploy/03a-build-images.sh
+./deploy/03a-build-images.sh [mongodb] # Optional 'mongodb' profile
 ./deploy/04-deploy.sh
 ```
 
-### Option 3: Manual JAR Execution
+### Option 3: Manual JAR Execution (Recommended for Testing)
 
-#### Build the Project
+This is the **most memory-efficient** way to run Ripple-IM on a single machine.
+
+#### 1. Build the Project
 
 ```bash
-# Build all modules
+# Build for Cassandra (Default)
 mvn clean install -DskipTests
+
+# OR Build for MongoDB
+mvn clean install -DskipTests -Pmongodb
 ```
 
-#### Start Services
+#### 2. Start Infrastructure
+
+Ensure the infrastructure services are running first:
 
 ```bash
-# Start all services (in correct order)
+docker compose -f deploy/docker-compose.infra.yml up -d
+```
+
+#### 3. Start Application Services
+
+```bash
+# Start all 10 services in correct order
 ./start-services.sh
 ```
 
 The script will:
+
+- Detect the required configuration based on the built JARs
+- Save PIDs to `pids/` and logs to `logs/`
+- Run as lightweight background processes
+
+#### 4. Manage Services
+
+```bash
+# View logs
+tail -f logs/ripple-api-gateway.log
+
+# Stop all services
+./stop-services.sh
+```
+
+The script will:
+
 - Start all 10 services in the correct dependency order
 - Save PIDs to `pids/` directory for management
 - Save logs to `logs/` directory
@@ -231,11 +266,11 @@ The project includes OpenTelemetry instrumentation for metrics collection and Gr
 
 ### Components
 
-| Component       | Port | Description                          |
-|-----------------|------|--------------------------------------|
-| OTel Collector  | 4317/4318 | Receives OTLP metrics (gRPC/HTTP) |
-| Prometheus      | 9090 | Metrics storage and querying        |
-| Grafana         | 3000 | Dashboards and visualization        |
+| Component      | Port      | Description                       |
+|----------------|-----------|-----------------------------------|
+| OTel Collector | 4317/4318 | Receives OTLP metrics (gRPC/HTTP) |
+| Prometheus     | 9090      | Metrics storage and querying      |
+| Grafana        | 3000      | Dashboards and visualization      |
 
 ### Start with Monitoring
 

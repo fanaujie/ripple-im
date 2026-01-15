@@ -50,6 +50,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-message-dispatcher/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     environment:
       OTEL_SERVICE_NAME: ripple-message-dispatcher
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -65,6 +67,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       REDIS_HOST: redis
       REDIS_PORT: 6379
     networks:
@@ -76,6 +80,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-message-api-server/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     ports:
       - "10102:10102"
     environment:
@@ -93,6 +99,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       REDIS_HOST: redis
       REDIS_PORT: 6379
     networks:
@@ -132,6 +140,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-push-server/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     environment:
       OTEL_SERVICE_NAME: ripple-push-server
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -149,6 +159,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       REDIS_HOST: redis
       REDIS_PORT: 6379
     networks:
@@ -160,6 +172,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-authorization-server/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     ports:
       - "10001:10001"
     environment:
@@ -178,6 +192,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       OAUTH2_CLIENT_ID: ripple-im-desktop
       OAUTH2_CLIENT_SECRET: ripple
       OAUTH2_CLIENT_REDIRECT_URI: http://localhost:8000/callback
@@ -193,6 +209,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-upload-gateway/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     ports:
       - "10003:10003"
     environment:
@@ -209,6 +227,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -227,6 +247,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-api-gateway/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     ports:
       - "10002:10002"
     environment:
@@ -244,6 +266,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       MESSAGE_API_SERVER_ADDRESS: ripple-message-api-server:10102
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -258,6 +282,8 @@ services:
     build:
       context: ..
       dockerfile: ripple-async-storage-updater/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
     environment:
       OTEL_SERVICE_NAME: ripple-async-storage-updater
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -270,7 +296,8 @@ services:
       CASSANDRA_CONTACT_POINTS: cassandra:9042
       CASSANDRA_KEYSPACE_NAME: ripple
       CASSANDRA_LOCAL_DATACENTER: datacenter1
-      BROKER_SERVER: kafka:9092
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
       REDIS_HOST: redis
       REDIS_PORT: 6379
     networks:

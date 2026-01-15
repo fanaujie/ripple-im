@@ -24,8 +24,8 @@
         </dependency>
         <dependency>
             <groupId>com.fanaujie.ripple</groupId>
-            <artifactId>ripple-storage-cassandra</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>ripple-storage-api</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.redisson</groupId>

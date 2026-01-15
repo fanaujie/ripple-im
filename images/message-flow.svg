@@ -1,247 +1,258 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" font-family="Arial, sans-serif">
-  <defs>
-    <linearGradient id="clientGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#5CB85C;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#449D44;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="serviceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#F0AD4E;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#EC971F;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="infraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#D9534F;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#C9302C;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="kafkaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#8E44AD;stop-opacity:1" />
-    </linearGradient>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#2980b9"/>
-    </marker>
-    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#27ae60"/>
-    </marker>
-    <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#8e44ad"/>
-    </marker>
-    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#c0392b"/>
-    </marker>
-  </defs>
+    <defs>
+        <linearGradient id="clientGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="gatewayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#5CB85C;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#449D44;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="serviceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#F0AD4E;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#EC971F;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="infraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#D9534F;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#C9302C;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="kafkaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#9B59B6;stop-opacity:1"/>
+            <stop offset="100%" style="stop-color:#8E44AD;stop-opacity:1"/>
+        </linearGradient>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#2980b9"/>
+        </marker>
+        <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"
+                markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#27ae60"/>
+        </marker>
+        <marker id="arrowPurple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"
+                markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#8e44ad"/>
+        </marker>
+        <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"
+                markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#c0392b"/>
+        </marker>
+    </defs>
 
-  <!-- Background -->
-  <rect width="1200" height="850" fill="#f8f9fa"/>
+    <!-- Background -->
+    <rect width="1200" height="850" fill="#f8f9fa"/>
 
-  <!-- Title -->
-  <text x="500" y="35" text-anchor="middle" font-size="24" font-weight="bold" fill="#2c3e50">Message Flow Diagram</text>
-  <text x="500" y="55" text-anchor="middle" font-size="12" fill="#7f8c8d">Client sends via HTTP, receives via WebSocket</text>
+    <!-- Title -->
+    <text x="500" y="35" text-anchor="middle" font-size="24" font-weight="bold" fill="#2c3e50">Message Flow Diagram
+    </text>
+    <text x="500" y="55" text-anchor="middle" font-size="12" fill="#7f8c8d">Client sends via HTTP, receives via
+        WebSocket
+    </text>
 
-  <!-- ========== ROW 1: Client -> API Gateway -> Message API ========== -->
+    <!-- ========== ROW 1: Client -> API Gateway -> Message API ========== -->
 
-  <!-- Sender Client -->
-  <rect x="50" y="90" width="140" height="70" rx="10" fill="url(#clientGrad)"/>
-  <text x="120" y="125" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Sender Client</text>
-  <text x="120" y="145" text-anchor="middle" font-size="11" fill="#d4edda">User A</text>
+    <!-- Sender Client -->
+    <rect x="50" y="90" width="140" height="70" rx="10" fill="url(#clientGrad)"/>
+    <text x="120" y="125" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Sender Client</text>
+    <text x="120" y="145" text-anchor="middle" font-size="11" fill="#d4edda">User A</text>
 
-  <!-- Step 1 -->
-  <circle cx="220" cy="125" r="16" fill="#3498db"/>
-  <text x="220" y="130" text-anchor="middle" font-size="14" font-weight="bold" fill="white">1</text>
+    <!-- Step 1 -->
+    <circle cx="220" cy="125" r="16" fill="#3498db"/>
+    <text x="220" y="130" text-anchor="middle" font-size="14" font-weight="bold" fill="white">1</text>
 
-  <!-- Arrow 1: Client to API Gateway (HTTP) -->
-  <line x1="240" y1="125" x2="290" y2="125" stroke="#2980b9" stroke-width="3" marker-end="url(#arrow)"/>
-  <text x="255" y="115" font-size="9" fill="#2980b9">HTTP</text>
+    <!-- Arrow 1: Client to API Gateway (HTTP) -->
+    <line x1="240" y1="125" x2="290" y2="125" stroke="#2980b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="255" y="115" font-size="9" fill="#2980b9">HTTP</text>
 
-  <!-- API Gateway -->
-  <rect x="300" y="90" width="160" height="70" rx="10" fill="url(#gatewayGrad)"/>
-  <text x="380" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="white">API Gateway</text>
-  <text x="380" y="138" text-anchor="middle" font-size="10" fill="#d4edda">HTTP :10002</text>
-  <text x="380" y="152" text-anchor="middle" font-size="9" fill="white">REST API</text>
+    <!-- API Gateway -->
+    <rect x="300" y="90" width="160" height="70" rx="10" fill="url(#gatewayGrad)"/>
+    <text x="380" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="white">API Gateway</text>
+    <text x="380" y="138" text-anchor="middle" font-size="10" fill="#d4edda">HTTP :10002</text>
+    <text x="380" y="152" text-anchor="middle" font-size="9" fill="white">REST API</text>
 
-  <!-- Step 2 -->
-  <circle cx="490" cy="125" r="16" fill="#3498db"/>
-  <text x="490" y="130" text-anchor="middle" font-size="14" font-weight="bold" fill="white">2</text>
+    <!-- Step 2 -->
+    <circle cx="490" cy="125" r="16" fill="#3498db"/>
+    <text x="490" y="130" text-anchor="middle" font-size="14" font-weight="bold" fill="white">2</text>
 
-  <!-- Arrow 2: API Gateway to Message API -->
-  <line x1="510" y1="125" x2="560" y2="125" stroke="#27ae60" stroke-width="3" marker-end="url(#arrowGreen)"/>
-  <text x="525" y="115" font-size="9" fill="#27ae60">gRPC</text>
+    <!-- Arrow 2: API Gateway to Message API -->
+    <line x1="510" y1="125" x2="560" y2="125" stroke="#27ae60" stroke-width="3" marker-end="url(#arrowGreen)"/>
+    <text x="525" y="115" font-size="9" fill="#27ae60">gRPC</text>
 
-  <!-- Message API Server -->
-  <rect x="570" y="90" width="160" height="70" rx="10" fill="url(#serviceGrad)"/>
-  <text x="650" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message API</text>
-  <text x="650" y="138" text-anchor="middle" font-size="10" fill="#fff3cd">gRPC :10102</text>
-  <text x="650" y="152" text-anchor="middle" font-size="9" fill="white">Generate ID and Validate</text>
+    <!-- Message API Server -->
+    <rect x="570" y="90" width="160" height="70" rx="10" fill="url(#serviceGrad)"/>
+    <text x="650" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message API</text>
+    <text x="650" y="138" text-anchor="middle" font-size="10" fill="#fff3cd">gRPC :10102</text>
+    <text x="650" y="152" text-anchor="middle" font-size="9" fill="white">Generate ID and Validate</text>
 
-  <!-- SnowflakeID callout -->
-  <rect x="760" y="90" width="110" height="45" rx="6" fill="#fff" stroke="#F0AD4E" stroke-width="2"/>
-  <text x="815" y="110" text-anchor="middle" font-size="11" font-weight="bold" fill="#EC971F">SnowflakeID</text>
-  <text x="815" y="125" text-anchor="middle" font-size="9" fill="#666">Generate msgId</text>
-  <line x1="730" y1="115" x2="755" y2="112" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <!-- SnowflakeID callout -->
+    <rect x="760" y="90" width="110" height="45" rx="6" fill="#fff" stroke="#F0AD4E" stroke-width="2"/>
+    <text x="815" y="110" text-anchor="middle" font-size="11" font-weight="bold" fill="#EC971F">SnowflakeID</text>
+    <text x="815" y="125" text-anchor="middle" font-size="9" fill="#666">Generate msgId</text>
+    <line x1="730" y1="115" x2="755" y2="112" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
 
-  <!-- ========== ROW 2: Kafka ripple-messages ========== -->
+    <!-- ========== ROW 2: Kafka ripple-messages ========== -->
 
-  <!-- Step 3 -->
-  <circle cx="560" cy="200" r="16" fill="#3498db"/>
-  <text x="560" y="205" text-anchor="middle" font-size="14" font-weight="bold" fill="white">3</text>
+    <!-- Step 3 -->
+    <circle cx="560" cy="200" r="16" fill="#3498db"/>
+    <text x="560" y="205" text-anchor="middle" font-size="14" font-weight="bold" fill="white">3</text>
 
-  <!-- Arrow 3: Message API to Kafka -->
-  <line x1="650" y1="160" x2="650" y2="210" stroke="#8e44ad" stroke-width="3" marker-end="url(#arrowPurple)"/>
-  <text x="665" y="190" font-size="9" fill="#8e44ad">Produce</text>
+    <!-- Arrow 3: Message API to Kafka -->
+    <line x1="650" y1="160" x2="650" y2="210" stroke="#8e44ad" stroke-width="3" marker-end="url(#arrowPurple)"/>
+    <text x="665" y="190" font-size="9" fill="#8e44ad">Produce</text>
 
-  <!-- Kafka Topic: ripple-messages -->
-  <rect x="490" y="220" width="320" height="50" rx="8" fill="url(#kafkaGrad)"/>
-  <text x="650" y="243" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Kafka: ripple-messages</text>
-  <text x="650" y="260" text-anchor="middle" font-size="10" fill="#d4b9e8">Message payloads</text>
+    <!-- Kafka Topic: ripple-messages -->
+    <rect x="490" y="220" width="320" height="50" rx="8" fill="url(#kafkaGrad)"/>
+    <text x="650" y="243" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Kafka: ripple-messages
+    </text>
+    <text x="650" y="260" text-anchor="middle" font-size="10" fill="#d4b9e8">Message payloads</text>
 
-  <!-- ========== ROW 3: Message Dispatcher (center) ========== -->
+    <!-- ========== ROW 3: Message Dispatcher (center) ========== -->
 
-  <!-- Step 4 -->
-  <circle cx="560" cy="310" r="16" fill="#3498db"/>
-  <text x="560" y="315" text-anchor="middle" font-size="14" font-weight="bold" fill="white">4</text>
+    <!-- Step 4 -->
+    <circle cx="560" cy="310" r="16" fill="#3498db"/>
+    <text x="560" y="315" text-anchor="middle" font-size="14" font-weight="bold" fill="white">4</text>
 
-  <!-- Arrow 4: Kafka to Dispatcher -->
-  <line x1="650" y1="270" x2="650" y2="320" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
-  <text x="665" y="300" font-size="9" fill="#8e44ad">Consume</text>
+    <!-- Arrow 4: Kafka to Dispatcher -->
+    <line x1="650" y1="270" x2="650" y2="320" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <text x="665" y="300" font-size="9" fill="#8e44ad">Consume</text>
 
-  <!-- Message Dispatcher -->
-  <rect x="570" y="330" width="160" height="70" rx="10" fill="url(#serviceGrad)"/>
-  <text x="650" y="360" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Dispatcher</text>
-  <text x="650" y="378" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
-  <text x="650" y="392" text-anchor="middle" font-size="9" fill="white">Route and Process</text>
+    <!-- Message Dispatcher -->
+    <rect x="570" y="330" width="160" height="70" rx="10" fill="url(#serviceGrad)"/>
+    <text x="650" y="360" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Dispatcher</text>
+    <text x="650" y="378" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
+    <text x="650" y="392" text-anchor="middle" font-size="9" fill="white">Route and Process</text>
 
-  <!-- ========== LEFT SIDE: Storage (Cassandra, Redis) ========== -->
+    <!-- ========== LEFT SIDE: Storage (Cassandra, Redis) ========== -->
 
-  <!-- Cassandra -->
-  <rect x="100" y="330" width="130" height="50" rx="8" fill="url(#infraGrad)"/>
-  <text x="165" y="355" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Cassandra</text>
-  <text x="165" y="372" text-anchor="middle" font-size="9" fill="#f5c6cb">Persist Message</text>
+    <!-- Cassandra / MongoDB -->
+    <rect x="100" y="330" width="130" height="50" rx="8" fill="url(#infraGrad)"/>
+    <text x="165" y="355" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Cassandra/MongoDB</text>
+    <text x="165" y="372" text-anchor="middle" font-size="9" fill="#f5c6cb">Persist Message</text>
 
-  <!-- Arrow: Dispatcher to Cassandra -->
-  <line x1="570" y1="355" x2="235" y2="355" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
-  <text x="400" y="345" font-size="8" fill="#c0392b">Store</text>
+    <!-- Arrow: Dispatcher to Cassandra/Mongo -->
+    <line x1="570" y1="355" x2="235" y2="355" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+    <text x="400" y="345" font-size="8" fill="#c0392b">Store</text>
 
-  <!-- Redis -->
-  <rect x="100" y="395" width="130" height="50" rx="8" fill="url(#infraGrad)"/>
-  <text x="165" y="420" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Redis</text>
-  <text x="165" y="437" text-anchor="middle" font-size="9" fill="#f5c6cb">Update Cache</text>
+    <!-- Redis -->
+    <rect x="100" y="395" width="130" height="50" rx="8" fill="url(#infraGrad)"/>
+    <text x="165" y="420" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Redis</text>
+    <text x="165" y="437" text-anchor="middle" font-size="9" fill="#f5c6cb">Update Cache</text>
 
-  <!-- Arrow: Dispatcher to Redis -->
-  <line x1="570" y1="380" x2="235" y2="420" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
-  <text x="400" y="410" font-size="8" fill="#c0392b">Cache</text>
+    <!-- Arrow: Dispatcher to Redis -->
+    <line x1="570" y1="380" x2="235" y2="420" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+    <text x="400" y="410" font-size="8" fill="#c0392b">Cache</text>
 
-  <!-- ========== ROW 4: Two Kafka Topics (side by side below Dispatcher) ========== -->
+    <!-- ========== ROW 4: Two Kafka Topics (side by side below Dispatcher) ========== -->
 
-  <!-- Kafka Topic: ripple-push-notifications (LEFT) -->
-  <rect x="320" y="440" width="200" height="50" rx="8" fill="url(#kafkaGrad)"/>
-  <text x="420" y="463" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Kafka: ripple-push-notifications</text>
-  <text x="420" y="480" text-anchor="middle" font-size="9" fill="#d4b9e8">Push notifications</text>
+    <!-- Kafka Topic: ripple-push-notifications (LEFT) -->
+    <rect x="320" y="440" width="200" height="50" rx="8" fill="url(#kafkaGrad)"/>
+    <text x="420" y="463" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Kafka:
+        ripple-push-notifications
+    </text>
+    <text x="420" y="480" text-anchor="middle" font-size="9" fill="#d4b9e8">Push notifications</text>
 
-  <!-- Arrow: Dispatcher to push-notifications -->
-  <line x1="600" y1="400" x2="520" y2="435" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <!-- Arrow: Dispatcher to push-notifications -->
+    <line x1="600" y1="400" x2="520" y2="435" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
 
-  <!-- Kafka Topic: ripple-storage-updates (RIGHT) -->
-  <rect x="780" y="440" width="200" height="50" rx="8" fill="url(#kafkaGrad)"/>
-  <text x="880" y="463" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Kafka: ripple-storage-updates</text>
-  <text x="880" y="480" text-anchor="middle" font-size="9" fill="#d4b9e8">Storage sync operations</text>
+    <!-- Kafka Topic: ripple-storage-updates (RIGHT) -->
+    <rect x="780" y="440" width="200" height="50" rx="8" fill="url(#kafkaGrad)"/>
+    <text x="880" y="463" text-anchor="middle" font-size="11" font-weight="bold" fill="white">Kafka:
+        ripple-storage-updates
+    </text>
+    <text x="880" y="480" text-anchor="middle" font-size="9" fill="#d4b9e8">Storage sync operations</text>
 
-  <!-- Arrow: Dispatcher to storage-updates -->
-  <line x1="700" y1="400" x2="780" y2="440" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <!-- Arrow: Dispatcher to storage-updates -->
+    <line x1="700" y1="400" x2="780" y2="440" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
 
-  <!-- ========== ROW 5: Push Server (LEFT) and Async Storage Updater (RIGHT) ========== -->
+    <!-- ========== ROW 5: Push Server (LEFT) and Async Storage Updater (RIGHT) ========== -->
 
-  <!-- Step 5 -->
-  <circle cx="340" cy="530" r="16" fill="#3498db"/>
-  <text x="340" y="535" text-anchor="middle" font-size="14" font-weight="bold" fill="white">5</text>
+    <!-- Step 5 -->
+    <circle cx="340" cy="530" r="16" fill="#3498db"/>
+    <text x="340" y="535" text-anchor="middle" font-size="14" font-weight="bold" fill="white">5</text>
 
-  <!-- Arrow: push-notifications to Push Server -->
-  <line x1="420" y1="490" x2="420" y2="530" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <!-- Arrow: push-notifications to Push Server -->
+    <line x1="420" y1="490" x2="420" y2="530" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
 
-  <!-- Push Server -->
-  <rect x="340" y="540" width="160" height="65" rx="10" fill="url(#serviceGrad)"/>
-  <text x="420" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Push Server</text>
-  <text x="420" y="585" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
-  <text x="420" y="599" text-anchor="middle" font-size="9" fill="white">Batch and Push</text>
+    <!-- Push Server -->
+    <rect x="340" y="540" width="160" height="65" rx="10" fill="url(#serviceGrad)"/>
+    <text x="420" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Push Server</text>
+    <text x="420" y="585" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
+    <text x="420" y="599" text-anchor="middle" font-size="9" fill="white">Batch and Push</text>
 
-  <!-- User Presence callout -->
-  <rect x="520" y="550" width="110" height="40" rx="6" fill="#fff" stroke="#F0AD4E" stroke-width="2"/>
-  <text x="575" y="570" text-anchor="middle" font-size="10" font-weight="bold" fill="#EC971F">User Presence</text>
-  <text x="575" y="583" text-anchor="middle" font-size="8" fill="#666">Check online</text>
-  <line x1="500" y1="572" x2="515" y2="572" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <!-- User Presence callout -->
+    <rect x="520" y="550" width="110" height="40" rx="6" fill="#fff" stroke="#F0AD4E" stroke-width="2"/>
+    <text x="575" y="570" text-anchor="middle" font-size="10" font-weight="bold" fill="#EC971F">User Presence</text>
+    <text x="575" y="583" text-anchor="middle" font-size="8" fill="#666">Check online</text>
+    <line x1="500" y1="572" x2="515" y2="572" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
 
-  <!-- Async Storage Updater -->
-  <rect x="800" y="540" width="160" height="65" rx="10" fill="url(#serviceGrad)"/>
-  <text x="880" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Async Updater</text>
-  <text x="880" y="585" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
-  <text x="880" y="599" text-anchor="middle" font-size="9" fill="white">Storage Sync</text>
+    <!-- Async Storage Updater -->
+    <rect x="800" y="540" width="160" height="65" rx="10" fill="url(#serviceGrad)"/>
+    <text x="880" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Async Updater</text>
+    <text x="880" y="585" text-anchor="middle" font-size="10" fill="#fff3cd">Kafka Consumer</text>
+    <text x="880" y="599" text-anchor="middle" font-size="9" fill="white">Storage Sync</text>
 
-  <!-- Arrow: storage-updates to Async Updater -->
-  <line x1="880" y1="490" x2="880" y2="535" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
+    <!-- Arrow: storage-updates to Async Updater -->
+    <line x1="880" y1="490" x2="880" y2="535" stroke="#8e44ad" stroke-width="2" marker-end="url(#arrowPurple)"/>
 
-  <!-- ========== ROW 6: Message Gateway and Recipient ========== -->
+    <!-- ========== ROW 6: Message Gateway and Recipient ========== -->
 
-  <!-- Step 6 -->
-  <circle cx="340" cy="645" r="16" fill="#3498db"/>
-  <text x="340" y="650" text-anchor="middle" font-size="14" font-weight="bold" fill="white">6</text>
+    <!-- Step 6 -->
+    <circle cx="340" cy="645" r="16" fill="#3498db"/>
+    <text x="340" y="650" text-anchor="middle" font-size="14" font-weight="bold" fill="white">6</text>
 
-  <!-- Arrow: Push Server to Message Gateway -->
-  <line x1="420" y1="605" x2="420" y2="650" stroke="#27ae60" stroke-width="3" marker-end="url(#arrowGreen)"/>
-  <text x="435" y="630" font-size="9" fill="#27ae60">gRPC</text>
+    <!-- Arrow: Push Server to Message Gateway -->
+    <line x1="420" y1="605" x2="420" y2="650" stroke="#27ae60" stroke-width="3" marker-end="url(#arrowGreen)"/>
+    <text x="435" y="630" font-size="9" fill="#27ae60">gRPC</text>
 
-  <!-- Message Gateway (Push) -->
-  <rect x="340" y="670" width="160" height="65" rx="10" fill="url(#gatewayGrad)"/>
-  <text x="420" y="697" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Gateway</text>
-  <text x="420" y="715" text-anchor="middle" font-size="10" fill="#d4edda">WebSocket :10200</text>
-  <text x="420" y="729" text-anchor="middle" font-size="9" fill="white">Push to User</text>
+    <!-- Message Gateway (Push) -->
+    <rect x="340" y="670" width="160" height="65" rx="10" fill="url(#gatewayGrad)"/>
+    <text x="420" y="697" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Message Gateway</text>
+    <text x="420" y="715" text-anchor="middle" font-size="10" fill="#d4edda">WebSocket :10200</text>
+    <text x="420" y="729" text-anchor="middle" font-size="9" fill="white">Push to User</text>
 
-  <!-- Step 7 -->
-  <circle cx="280" cy="702" r="16" fill="#3498db"/>
-  <text x="280" y="707" text-anchor="middle" font-size="14" font-weight="bold" fill="white">7</text>
+    <!-- Step 7 -->
+    <circle cx="280" cy="702" r="16" fill="#3498db"/>
+    <text x="280" y="707" text-anchor="middle" font-size="14" font-weight="bold" fill="white">7</text>
 
-  <!-- Arrow: Gateway to Recipient (WebSocket) -->
-  <line x1="335" y1="702" x2="300" y2="702" stroke="#2980b9" stroke-width="3" marker-end="url(#arrow)"/>
-  <text x="310" y="692" font-size="9" fill="#2980b9">WebSocket</text>
+    <!-- Arrow: Gateway to Recipient (WebSocket) -->
+    <line x1="335" y1="702" x2="300" y2="702" stroke="#2980b9" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="310" y="692" font-size="9" fill="#2980b9">WebSocket</text>
 
-  <!-- Recipient Client -->
-  <rect x="100" y="667" width="140" height="70" rx="10" fill="url(#clientGrad)"/>
-  <text x="170" y="702" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Recipient Client</text>
-  <text x="170" y="722" text-anchor="middle" font-size="11" fill="#d4edda">User B</text>
+    <!-- Recipient Client -->
+    <rect x="100" y="667" width="140" height="70" rx="10" fill="url(#clientGrad)"/>
+    <text x="170" y="702" text-anchor="middle" font-size="14" font-weight="bold" fill="white">Recipient Client</text>
+    <text x="170" y="722" text-anchor="middle" font-size="11" fill="#d4edda">User B</text>
 
-  <!-- ========== Legend ========== -->
-  <rect x="980" y="90" width="200" height="200" rx="10" fill="#fff" stroke="#ddd" stroke-width="1"/>
-  <text x="1080" y="115" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">Legend</text>
+    <!-- ========== Legend ========== -->
+    <rect x="980" y="90" width="200" height="200" rx="10" fill="#fff" stroke="#ddd" stroke-width="1"/>
+    <text x="1080" y="115" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">Legend</text>
 
-  <line x1="1000" y1="140" x2="1040" y2="140" stroke="#2980b9" stroke-width="3"/>
-  <text x="1050" y="144" font-size="10" fill="#333">HTTP / WebSocket</text>
+    <line x1="1000" y1="140" x2="1040" y2="140" stroke="#2980b9" stroke-width="3"/>
+    <text x="1050" y="144" font-size="10" fill="#333">HTTP / WebSocket</text>
 
-  <line x1="1000" y1="165" x2="1040" y2="165" stroke="#27ae60" stroke-width="3"/>
-  <text x="1050" y="169" font-size="10" fill="#333">gRPC Call</text>
+    <line x1="1000" y1="165" x2="1040" y2="165" stroke="#27ae60" stroke-width="3"/>
+    <text x="1050" y="169" font-size="10" fill="#333">gRPC Call</text>
 
-  <line x1="1000" y1="190" x2="1040" y2="190" stroke="#8e44ad" stroke-width="3"/>
-  <text x="1050" y="194" font-size="10" fill="#333">Kafka Message</text>
+    <line x1="1000" y1="190" x2="1040" y2="190" stroke="#8e44ad" stroke-width="3"/>
+    <text x="1050" y="194" font-size="10" fill="#333">Kafka Message</text>
 
-  <line x1="1000" y1="215" x2="1040" y2="215" stroke="#c0392b" stroke-width="2"/>
-  <text x="1050" y="219" font-size="10" fill="#333">Storage Write</text>
+    <line x1="1000" y1="215" x2="1040" y2="215" stroke="#c0392b" stroke-width="2"/>
+    <text x="1050" y="219" font-size="10" fill="#333">Storage Write</text>
 
-  <line x1="1000" y1="240" x2="1040" y2="240" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <text x="1050" y="244" font-size="10" fill="#333">Service Call</text>
+    <line x1="1000" y1="240" x2="1040" y2="240" stroke="#F0AD4E" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="1050" y="244" font-size="10" fill="#333">Service Call</text>
 
-  <circle cx="1010" cy="270" r="10" fill="#3498db"/>
-  <text x="1025" y="274" font-size="10" fill="#333">Step Number</text>
+    <circle cx="1010" cy="270" r="10" fill="#3498db"/>
+    <text x="1025" y="274" font-size="10" fill="#333">Step Number</text>
 
-  <!-- Flow Summary -->
-  <rect x="980" y="310" width="200" height="180" rx="10" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1"/>
-  <text x="1080" y="335" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">Flow Summary</text>
-  <text x="995" y="360" font-size="9" fill="#333">1. Client sends via HTTP</text>
-  <text x="995" y="378" font-size="9" fill="#333">2. API Gateway calls Message API</text>
-  <text x="995" y="396" font-size="9" fill="#333">3. Publish to ripple-messages</text>
-  <text x="995" y="414" font-size="9" fill="#333">4. Dispatcher routes message</text>
-  <text x="995" y="432" font-size="9" fill="#333">5. Push Server consumes</text>
-  <text x="995" y="450" font-size="9" fill="#333">6. Push via Message Gateway</text>
-  <text x="995" y="468" font-size="9" fill="#333">7. Recipient receives via WS</text>
+    <!-- Flow Summary -->
+    <rect x="980" y="310" width="200" height="180" rx="10" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1"/>
+    <text x="1080" y="335" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">Flow Summary</text>
+    <text x="995" y="360" font-size="9" fill="#333">1. Client sends via HTTP</text>
+    <text x="995" y="378" font-size="9" fill="#333">2. API Gateway calls Message API</text>
+    <text x="995" y="396" font-size="9" fill="#333">3. Publish to ripple-messages</text>
+    <text x="995" y="414" font-size="9" fill="#333">4. Dispatcher routes message</text>
+    <text x="995" y="432" font-size="9" fill="#333">5. Push Server consumes</text>
+    <text x="995" y="450" font-size="9" fill="#333">6. Push via Message Gateway</text>
+    <text x="995" y="468" font-size="9" fill="#333">7. Recipient receives via WS</text>
 
 </svg>

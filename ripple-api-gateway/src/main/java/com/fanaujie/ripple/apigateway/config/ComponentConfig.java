@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.apigateway.config;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.cache.driver.RedisDriver;
 import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
@@ -9,35 +8,22 @@ import com.fanaujie.ripple.communication.msgapi.MessageAPISender;
 import com.fanaujie.ripple.communication.msgapi.impl.DefaultMessageAPISender;
 import com.fanaujie.ripple.protobuf.msgapiserver.MessageAPIGrpc;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
-import com.fanaujie.ripple.storage.driver.CassandraDriver;
+import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.cache.service.UserProfileStorage;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 import java.util.concurrent.*;
 
 @Configuration
 public class ComponentConfig {
 
     @Bean
-    public CqlSession cqlSession(
-            @Value("${cassandra.contact-points}") List<String> contactPoints,
-            @Value("${cassandra.keyspace-name}") String keyspace,
-            @Value("${cassandra.local-datacenter}") String localDatacenter) {
-        return CassandraDriver.createCqlSession(contactPoints, keyspace, localDatacenter);
-    }
-
-    @Bean
-    RippleStorageFacade userStorageAggregator(CqlSession cqlSession) {
-        CassandraStorageFacadeBuilder b = new CassandraStorageFacadeBuilder();
-        b.cqlSession(cqlSession);
-        return b.build();
+    RippleStorageFacade storageFacade() {
+        return RippleStorageLoader.load(System::getenv);
     }
 
     @Bean
@@ -86,8 +72,7 @@ public class ComponentConfig {
 
     @Bean
     public ConversationSummaryStorage conversationStorage(
-            RedissonClient redissonClient,
-            RippleStorageFacade storageFacade) {
+            RedissonClient redissonClient, RippleStorageFacade storageFacade) {
         return new RedisConversationSummaryStorage(redissonClient, storageFacade);
     }
 }

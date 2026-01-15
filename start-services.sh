@@ -102,6 +102,8 @@ start_service() {
     export BROKER_SERVER="localhost:9094"
     export REDIS_HOST="localhost"
     export CASSANDRA_CONTACT_POINTS="localhost:9042"
+    export MONGODB_URI="mongodb://localhost:27017"
+    export MONGODB_DATABASE="ripple"
     export ZOOKEEPER_ADDRESS="localhost:2181"
     export SNOWFLAKEID_SERVER_HOST="localhost"
     export USER_PRESENCE_SERVICE_ADDRESS="localhost:10101"

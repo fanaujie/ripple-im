@@ -10,7 +10,8 @@ COPY . .
 RUN curl -L -o opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
 
 # Build the application
-RUN mvn clean package -pl ripple-push-server -am -DskipTests
+ARG PROFILE=cassandra
+RUN mvn clean package -pl ripple-push-server -am -DskipTests -P ${PROFILE}
 
 # Runtime stage
 FROM eclipse-temurin:17-jre
