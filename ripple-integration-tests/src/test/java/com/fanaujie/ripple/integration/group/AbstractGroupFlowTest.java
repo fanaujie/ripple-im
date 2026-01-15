@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Group Business Flow Tests")
-class GroupFlowTest extends AbstractBusinessFlowTest {
+public abstract class AbstractGroupFlowTest extends AbstractBusinessFlowTest {
 
     // Test users
     protected static final long ALICE_ID = 1001L;

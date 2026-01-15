@@ -1,6 +1,5 @@
 package com.fanaujie.ripple.integration.base;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.integration.mock.MockConversationSummaryStorage;
 import com.fanaujie.ripple.integration.mock.MockProducer;
 import com.fanaujie.ripple.integration.mock.MockUserProfileStorage;
@@ -9,38 +8,26 @@ import com.fanaujie.ripple.msgapiserver.processor.SingleMessageContentProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.RelationUpdateEventPayloadProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.SingleMessagePayloadProcessor;
 import com.fanaujie.ripple.protobuf.msgapiserver.*;
-import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.storage.model.User;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
-import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import com.fanaujie.ripple.storageupdater.consumer.processor.FriendStorageUpdatePayloadProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.CassandraContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.concurrent.Executors;
 
-@Testcontainers
 public abstract class AbstractBusinessFlowTest {
 
     protected static final String TOPIC_MESSAGES = "ripple-messages";
     protected static final String TOPIC_PUSH = "ripple-push-notifications";
     protected static final String TOPIC_STORAGE_UPDATES = "ripple-storage-updates";
 
-    @Container
-    protected static CassandraContainer<?> cassandraContainer =
-            new CassandraContainer<>("cassandra:5.0.2").withInitScript("ripple.cql");
-
-    protected CqlSession session;
     protected RippleStorageFacade storageFacade;
 
     // Mock producers to capture messages
@@ -62,16 +49,9 @@ public abstract class AbstractBusinessFlowTest {
     protected MockUserProfileStorage userProfileStorage;
 
     @BeforeEach
-    void setUp() {
-        // Initialize Cassandra session
-        this.session =
-                CqlSession.builder()
-                        .addContactPoint(cassandraContainer.getContactPoint())
-                        .withLocalDatacenter(cassandraContainer.getLocalDatacenter())
-                        .build();
-
-        // Initialize storage facade
-        this.storageFacade = new CassandraStorageFacadeBuilder().cqlSession(session).build();
+    void setUp() throws Exception {
+        // Initialize storage (implemented by subclasses)
+        initializeStorage();
 
         // Initialize mock producers
         this.messagePayloadProducer = new MockProducer<>();
@@ -81,6 +61,9 @@ public abstract class AbstractBusinessFlowTest {
         // Initialize processors
         initializeProcessors();
     }
+
+    /** Subclasses must initialize storageFacade and any required database connection. */
+    protected abstract void initializeStorage() throws Exception;
 
     private void initializeProcessors() {
         // Initialize mock services
@@ -123,23 +106,9 @@ public abstract class AbstractBusinessFlowTest {
     }
 
     @AfterEach
-    void tearDown() {
-        if (session != null) {
-            // Clean up all tables
-            session.execute("TRUNCATE ripple.user");
-            session.execute("TRUNCATE ripple.user_profile");
-            session.execute("TRUNCATE ripple.user_relations");
-            session.execute("TRUNCATE ripple.user_relation_version");
-            session.execute("TRUNCATE ripple.user_blocked_by");
-            session.execute("TRUNCATE ripple.user_conversations");
-            session.execute("TRUNCATE ripple.user_conversations_version");
-            session.execute("TRUNCATE ripple.user_messages");
-            session.execute("TRUNCATE ripple.group_members");
-            session.execute("TRUNCATE ripple.group_members_version");
-            session.execute("TRUNCATE ripple.user_group");
-            session.execute("TRUNCATE ripple.user_group_version");
-            session.close();
-        }
+    void tearDown() throws Exception {
+        // Clean up storage (implemented by subclasses)
+        cleanupStorage();
 
         // Clear mock producers
         if (messagePayloadProducer != null) messagePayloadProducer.clear();
@@ -150,6 +119,9 @@ public abstract class AbstractBusinessFlowTest {
         if (conversationSummaryStorage != null) conversationSummaryStorage.clear();
         if (userProfileStorage != null) userProfileStorage.clear();
     }
+
+    /** Subclasses must perform database cleanup. */
+    protected abstract void cleanupStorage() throws Exception;
 
     // ==================== Test Data Setup Methods ====================
 

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Friend Relation Business Flow Tests")
-class FriendRelationFlowTest extends AbstractBusinessFlowTest {
+public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlowTest {
 
     // Test users
     protected static final long ALICE_ID = 1001L;
