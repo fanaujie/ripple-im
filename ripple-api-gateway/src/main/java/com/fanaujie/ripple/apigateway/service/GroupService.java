@@ -72,7 +72,7 @@ public class GroupService {
             commandReqBuilder.setSenderId(senderId);
             commandReqBuilder.setGroupId(groupId);
             commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
+            commandReqBuilder.setSendTimestamp(Instant.now().toEpochMilli());
             commandReqBuilder.setGroupCreateCommand(groupCreateCommandBuilder.build());
             messageAPISender.sendGroupCommand(commandReqBuilder.build());
             return ResponseEntity.ok(CreateGroupResponse.success(String.valueOf(groupId)));
@@ -115,7 +115,7 @@ public class GroupService {
             commandReqBuilder.setSenderId(senderId);
             commandReqBuilder.setGroupId(groupId);
             commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
+            commandReqBuilder.setSendTimestamp(Instant.now().toEpochMilli());
             commandReqBuilder.setGroupInviteCommand(inviteCommandBuilder.build());
 
             messageAPISender.sendGroupCommand(commandReqBuilder.build());
@@ -203,7 +203,7 @@ public class GroupService {
             commandReqBuilder.setSenderId(userId);
             commandReqBuilder.setGroupId(groupId);
             commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
+            commandReqBuilder.setSendTimestamp(Instant.now().toEpochMilli());
             commandReqBuilder.setGroupQuitCommand(quitCommandBuilder.build());
 
             messageAPISender.sendGroupCommand(commandReqBuilder.build());
@@ -232,7 +232,7 @@ public class GroupService {
             commandReqBuilder.setSenderId(senderId);
             commandReqBuilder.setGroupId(groupId);
             commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
+            commandReqBuilder.setSendTimestamp(Instant.now().toEpochMilli());
             commandReqBuilder.setGroupUpdateInfoCommand(updateCommandBuilder.build());
 
             messageAPISender.sendGroupCommand(commandReqBuilder.build());
