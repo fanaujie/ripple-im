@@ -408,6 +408,85 @@ public abstract class AbstractConversationRepositoryTest {
         assertEquals("file.jpg", message.getFileName());
     }
 
+    // ==================== getMessagesAfter Tests ====================
+
+    @Test
+    void getMessagesAfter_shouldReturnMessagesAfterSpecificMessageId() {
+        String conversationId = "conv_messages_after1";
+        for (long i = 1001; i <= 1010; i++) {
+            getStorageFacade().saveTextMessage(
+                    conversationId, i, 1060L, 2060L, System.currentTimeMillis(), "Message " + i, null, null);
+        }
+
+        Messages result = getStorageFacade().getMessagesAfter(conversationId, 1005, 10);
+
+        assertNotNull(result);
+        assertEquals(5, result.getMessages().size());
+        for (Message msg : result.getMessages()) {
+            assertTrue(msg.getMessageId() > 1005);
+        }
+    }
+
+    @Test
+    void getMessagesAfter_shouldReturnMessagesInAscendingOrder() {
+        String conversationId = "conv_messages_after2";
+        for (long i = 1001; i <= 1005; i++) {
+            getStorageFacade().saveTextMessage(
+                    conversationId, i, 1061L, 2061L, System.currentTimeMillis(), "Message " + i, null, null);
+        }
+
+        Messages result = getStorageFacade().getMessagesAfter(conversationId, 1001, 10);
+
+        assertNotNull(result);
+        assertEquals(4, result.getMessages().size());
+        long previousId = 0;
+        for (Message msg : result.getMessages()) {
+            assertTrue(msg.getMessageId() > previousId);
+            previousId = msg.getMessageId();
+        }
+    }
+
+    @Test
+    void getMessagesAfter_shouldRespectPageSize() {
+        String conversationId = "conv_messages_after3";
+        for (long i = 1001; i <= 1010; i++) {
+            getStorageFacade().saveTextMessage(
+                    conversationId, i, 1062L, 2062L, System.currentTimeMillis(), "Message " + i, null, null);
+        }
+
+        Messages result = getStorageFacade().getMessagesAfter(conversationId, 1001, 3);
+
+        assertNotNull(result);
+        assertEquals(3, result.getMessages().size());
+        assertEquals(1002, result.getMessages().get(0).getMessageId());
+        assertEquals(1003, result.getMessages().get(1).getMessageId());
+        assertEquals(1004, result.getMessages().get(2).getMessageId());
+    }
+
+    @Test
+    void getMessagesAfter_shouldReturnEmptyWhenNoMessagesAfterGivenId() {
+        String conversationId = "conv_messages_after4";
+        for (long i = 1001; i <= 1005; i++) {
+            getStorageFacade().saveTextMessage(
+                    conversationId, i, 1063L, 2063L, System.currentTimeMillis(), "Message " + i, null, null);
+        }
+
+        Messages result = getStorageFacade().getMessagesAfter(conversationId, 1005, 10);
+
+        assertNotNull(result);
+        assertTrue(result.getMessages().isEmpty());
+    }
+
+    @Test
+    void getMessagesAfter_shouldReturnEmptyWhenConversationHasNoMessages() {
+        String conversationId = "conv_messages_after_empty";
+
+        Messages result = getStorageFacade().getMessagesAfter(conversationId, 0, 10);
+
+        assertNotNull(result);
+        assertTrue(result.getMessages().isEmpty());
+    }
+
     // ==================== calculateUnreadCount Tests ====================
 
     @Test

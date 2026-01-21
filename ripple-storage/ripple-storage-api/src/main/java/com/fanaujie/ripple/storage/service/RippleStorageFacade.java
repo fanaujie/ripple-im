@@ -34,6 +34,8 @@ public interface RippleStorageFacade {
 
     Messages getMessages(String conversationId, long beforeMessageId, int pageSize);
 
+    Messages getMessagesAfter(String conversationId, long afterMessageId, int pageSize);
+
     Message getMessages(String conversationId, long messageId) throws NotMessageException;
 
     void markLastReadMessageId(String conversationId, long ownerId, long readMessageId, long version);

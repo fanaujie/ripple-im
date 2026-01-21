@@ -286,7 +286,48 @@ public class MongoStorageFacade implements RippleStorageFacade {
                         Filters.lt("message_id", effectiveBeforeMessageId)
                 )
         )
-        .sort(Sorts.descending("message_id"))
+        .sort(Sorts.ascending("message_id"))
+        .limit(pageSize)
+        .into(docs);
+
+        List<Message> messages = new ArrayList<>();
+        for (Document doc : docs) {
+            Message message = new Message();
+            message.setConversationId(doc.getString("conversation_id"));
+            message.setMessageId(doc.getLong("message_id"));
+            message.setSenderId(doc.getLong("sender_id"));
+
+            Long receiverId = doc.getLong("receiver_id");
+            if (receiverId != null) message.setReceiverId(receiverId);
+
+            Long groupId = doc.getLong("group_id");
+            if (groupId != null) message.setGroupId(groupId);
+
+            message.setSendTimestamp(doc.getLong("send_timestamp"));
+            message.setMessageType(doc.getInteger("message_type").byteValue());
+            message.setText(doc.getString("text"));
+            message.setFileUrl(doc.getString("file_url"));
+            message.setFileName(doc.getString("file_name"));
+
+            Integer commandType = doc.getInteger("command_type");
+            if (commandType != null) message.setCommandType(commandType.byteValue());
+
+            message.setCommandData(doc.getString("command_data"));
+            messages.add(message);
+        }
+        return new Messages(messages);
+    }
+
+    @Override
+    public Messages getMessagesAfter(String conversationId, long afterMessageId, int pageSize) {
+        List<Document> docs = new ArrayList<>();
+        userMessagesCollection.find(
+                Filters.and(
+                        Filters.eq("conversation_id", conversationId),
+                        Filters.gt("message_id", afterMessageId)
+                )
+        )
+        .sort(Sorts.ascending("message_id"))
         .limit(pageSize)
         .into(docs);
 

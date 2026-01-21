@@ -26,20 +26,15 @@ import static org.mockito.Mockito.*;
 @SpringBootTest(classes = {MessageService.class})
 class MessageServiceTest {
 
-    @MockitoBean
-    private MessageAPISender messageAPISender;
+    @MockitoBean private MessageAPISender messageAPISender;
 
-    @MockitoBean
-    private SnowflakeIdClient snowflakeIdClient;
+    @MockitoBean private SnowflakeIdClient snowflakeIdClient;
 
-    @MockitoBean
-    private RippleStorageFacade storageFacade;
+    @MockitoBean private RippleStorageFacade storageFacade;
 
-    @MockitoBean
-    private ConversationSummaryStorage conversationStorage;
+    @MockitoBean private ConversationSummaryStorage conversationStorage;
 
-    @Autowired
-    private MessageService messageService;
+    @Autowired private MessageService messageService;
 
     private static final long SENDER_ID = 1L;
     private static final long RECEIVER_ID = 2L;
@@ -172,7 +167,10 @@ class MessageServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(400, response.getBody().getCode());
-        assertTrue(response.getBody().getMessage().contains("Either receiverId or groupId is required"));
+        assertTrue(
+                response.getBody()
+                        .getMessage()
+                        .contains("Either receiverId or groupId is required"));
     }
 
     @Test
@@ -182,7 +180,8 @@ class MessageServiceTest {
         when(snowflakeIdClient.requestSnowflakeId())
                 .thenReturn(CompletableFuture.completedFuture(idResponse));
         doThrow(new RuntimeException("gRPC error"))
-                .when(messageAPISender).seenMessage(any(SendMessageReq.class));
+                .when(messageAPISender)
+                .seenMessage(any(SendMessageReq.class));
 
         SendMessageRequest request = new SendMessageRequest();
         request.setSenderId(String.valueOf(SENDER_ID));
@@ -210,7 +209,7 @@ class MessageServiceTest {
 
         // When
         ResponseEntity<ReadMessagesResponse> response =
-                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 50, SENDER_ID);
+                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 50);
 
         // Then
         assertNotNull(response);
@@ -223,26 +222,30 @@ class MessageServiceTest {
     }
 
     @Test
-    void readMessages_InvalidReadSize_Zero_ReturnsBadRequest() {
+    void readMessages_InvalidReadSize_Zero_UsesDefaultMaxSize() {
+        // Given
+        Messages messages = new Messages();
+        messages.setMessages(new ArrayList<>());
+        when(storageFacade.getMessages(CONVERSATION_ID, MESSAGE_ID, 200)).thenReturn(messages);
+
         // When
         ResponseEntity<ReadMessagesResponse> response =
-                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 0, SENDER_ID);
+                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 0);
 
         // Then
         assertNotNull(response);
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(400, response.getBody().getCode());
-        assertTrue(response.getBody().getMessage().contains("Invalid read size"));
+        assertEquals(200, response.getBody().getCode());
 
-        verifyNoInteractions(storageFacade);
+        verify(storageFacade).getMessages(CONVERSATION_ID, MESSAGE_ID, 200);
     }
 
     @Test
     void readMessages_InvalidReadSize_TooLarge_ReturnsBadRequest() {
         // When
         ResponseEntity<ReadMessagesResponse> response =
-                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 500, SENDER_ID);
+                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 500);
 
         // Then
         assertNotNull(response);
@@ -262,7 +265,7 @@ class MessageServiceTest {
 
         // When
         ResponseEntity<ReadMessagesResponse> response =
-                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 50, SENDER_ID);
+                messageService.readMessages(CONVERSATION_ID, MESSAGE_ID, 50);
 
         // Then
         assertNotNull(response);
@@ -276,7 +279,10 @@ class MessageServiceTest {
     @Test
     void markLastReadMessageId_Success() {
         // Given
-        doNothing().when(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
+        doNothing()
+                .when(storageFacade)
+                .markLastReadMessageId(
+                        eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         doNothing().when(conversationStorage).resetUnreadCount(SENDER_ID, CONVERSATION_ID);
 
         // When
@@ -290,7 +296,9 @@ class MessageServiceTest {
         assertEquals(200, response.getBody().getCode());
         assertEquals("success", response.getBody().getMessage());
 
-        verify(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
+        verify(storageFacade)
+                .markLastReadMessageId(
+                        eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         verify(conversationStorage).resetUnreadCount(SENDER_ID, CONVERSATION_ID);
     }
 
@@ -298,7 +306,9 @@ class MessageServiceTest {
     void markLastReadMessageId_Error_ReturnsInternalError() {
         // Given
         doThrow(new RuntimeException("Storage error"))
-                .when(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
+                .when(storageFacade)
+                .markLastReadMessageId(
+                        eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
 
         // When
         ResponseEntity<CommonResponse> response =
@@ -310,7 +320,9 @@ class MessageServiceTest {
         assertNotNull(response.getBody());
         assertEquals(500, response.getBody().getCode());
 
-        verify(storageFacade).markLastReadMessageId(eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
+        verify(storageFacade)
+                .markLastReadMessageId(
+                        eq(CONVERSATION_ID), eq(SENDER_ID), eq(MESSAGE_ID), anyLong());
         verify(conversationStorage, never()).resetUnreadCount(anyLong(), anyString());
     }
 }

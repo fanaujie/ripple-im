@@ -19,6 +19,7 @@ public class ConversationCqlStatement {
     private final PreparedStatement selectConversationChangesStmt;
     private final PreparedStatement selectLatestVersionStmt;
     private final PreparedStatement selectMessagesStmt;
+    private final PreparedStatement selectMessagesAfterStmt;
     private final PreparedStatement selectMessageByIdStmt;
     private final PreparedStatement deleteConversationStmt;
     private final PreparedStatement selectLastReadMessageIdStmt;
@@ -112,10 +113,18 @@ public class ConversationCqlStatement {
         this.selectMessagesStmt =
                 session.prepare(
                         "SELECT conversation_id, message_id, sender_id, receiver_id, group_id, "
-                                + "send_timestamp, message_type,text, file_url, file_name,command_type,command_data "
+                                + "send_timestamp, message_type, text, file_url, file_name, command_type, command_data "
                                 + "FROM ripple.user_messages "
                                 + "WHERE conversation_id = ? AND message_id < ? "
-                                + "ORDER BY message_id LIMIT ?");
+                                + "ORDER BY message_id ASC LIMIT ?");
+
+        this.selectMessagesAfterStmt =
+                session.prepare(
+                        "SELECT conversation_id, message_id, sender_id, receiver_id, group_id, "
+                                + "send_timestamp, message_type, text, file_url, file_name, command_type, command_data "
+                                + "FROM ripple.user_messages "
+                                + "WHERE conversation_id = ? AND message_id > ? "
+                                + "ORDER BY message_id ASC LIMIT ?");
 
         this.selectMessageByIdStmt =
                 session.prepare(

@@ -37,6 +37,9 @@
     <profiles>
         <profile>
             <id>cassandra</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <dependencies>
                 <dependency>
                     <groupId>com.fanaujie.ripple</groupId>

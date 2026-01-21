@@ -188,7 +188,7 @@ public class UsersController {
     @Operation(
             summary = "Read messages",
             description =
-                    "Retrieve messages from a conversation before the specified message ID. Returns messages in descending order by message ID (newest to oldest relative to the anchor message).")
+                    "Retrieve messages from a conversation. Use beforeMessageId to fetch older messages or afterMessageId to fetch newer messages. Results are always ordered by message ID ascending. Exactly one of beforeMessageId or afterMessageId must be provided.")
     @ApiResponses(
             value = {
                 @ApiResponse(
@@ -202,6 +202,13 @@ public class UsersController {
                                                         implementation =
                                                                 ReadMessagesResponse.class))),
                 @ApiResponse(
+                        responseCode = "400",
+                        description = "Invalid request parameters",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema = @Schema(implementation = CommonResponse.class))),
+                @ApiResponse(
                         responseCode = "401",
                         description = "Unauthorized access",
                         content =
@@ -213,20 +220,37 @@ public class UsersController {
             @Parameter(description = "Conversation ID", required = true)
                     @PathVariable("conversationId")
                     String conversationId,
+            @Parameter(description = "Fetch messages before this ID (exclusive)")
+                    @RequestParam(name = "beforeMessageId", required = false)
+                    String beforeMessageId,
+            @Parameter(description = "Fetch messages after this ID (exclusive)")
+                    @RequestParam(name = "afterMessageId", required = false)
+                    String afterMessageId,
             @Parameter(
-                            description = "Message ID to read from (fetch messages before this ID)",
-                            required = true)
-                    @RequestParam(name = "messageId")
-                    String messageId,
-            @Parameter(description = "Number of messages to retrieve (default: 50, max: 200)")
+                            description =
+                                    "Number of messages to retrieve (default: 50, max: 200 for afterMessageId and beforeMessageId)")
                     @RequestParam(defaultValue = "50", name = "readSize")
                     int readSize,
             @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
         try {
-            long currentUserId = Long.parseLong(jwt.getSubject());
-            long messageIdLong = Long.parseLong(messageId);
-            return messageService.readMessages(
-                    conversationId, messageIdLong, readSize, currentUserId);
+            boolean hasBefore = beforeMessageId != null && !beforeMessageId.isEmpty();
+            boolean hasAfter = afterMessageId != null && !afterMessageId.isEmpty();
+
+            if (hasBefore == hasAfter) {
+                return ResponseEntity.badRequest()
+                        .body(
+                                ReadMessagesResponse.error(
+                                        400,
+                                        "Exactly one of beforeMessageId or afterMessageId must be provided"));
+            }
+
+            if (hasBefore) {
+                long beforeId = Long.parseLong(beforeMessageId);
+                return messageService.readMessages(conversationId, beforeId, readSize);
+            } else {
+                long afterId = Long.parseLong(afterMessageId);
+                return messageService.readMessagesAfter(conversationId, afterId, readSize);
+            }
         } catch (NumberFormatException e) {
             return ResponseEntity.badRequest()
                     .body(ReadMessagesResponse.error(400, "Invalid message ID or user ID format"));

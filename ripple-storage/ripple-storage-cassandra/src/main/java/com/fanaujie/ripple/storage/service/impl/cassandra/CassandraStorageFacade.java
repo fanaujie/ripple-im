@@ -268,6 +268,34 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
+    public Messages getMessagesAfter(String conversationId, long afterMessageId, int pageSize) {
+        ResultSet resultSet =
+                session.execute(
+                        conversationCqlStatement
+                                .getSelectMessagesAfterStmt()
+                                .bind(conversationId, afterMessageId, pageSize));
+
+        List<Message> messages = new ArrayList<>();
+        for (Row row : resultSet) {
+            Message message = new Message();
+            message.setConversationId(row.getString("conversation_id"));
+            message.setMessageId(row.getLong("message_id"));
+            message.setSenderId(row.getLong("sender_id"));
+            message.setReceiverId(row.getLong("receiver_id"));
+            message.setGroupId(row.getLong("group_id"));
+            message.setSendTimestamp(row.getLong("send_timestamp"));
+            message.setMessageType(row.getByte("message_type"));
+            message.setText(row.getString("text"));
+            message.setFileUrl(row.getString("file_url"));
+            message.setFileName(row.getString("file_name"));
+            message.setCommandType(row.getByte("command_type"));
+            message.setCommandData(row.getString("command_data"));
+            messages.add(message);
+        }
+        return new Messages(messages);
+    }
+
+    @Override
     public Message getMessages(String conversationId, long messageId) throws NotMessageException {
         ResultSet resultSet =
                 session.execute(

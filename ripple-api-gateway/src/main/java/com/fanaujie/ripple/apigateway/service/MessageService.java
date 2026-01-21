@@ -20,6 +20,7 @@ import java.time.Instant;
 public class MessageService {
 
     private static final int MAX_READ_SIZE = 200;
+    private static final int MAX_READ_SIZE_AFTER = 100;
 
     private final MessageAPISender messageAPISender;
     private final SnowflakeIdClient snowflakeIdClient;
@@ -57,29 +58,56 @@ public class MessageService {
     }
 
     public ResponseEntity<ReadMessagesResponse> readMessages(
-            String conversationId, long messageId, int readSize, long currentUserId) {
+            String conversationId, long messageId, int readSize) {
         try {
-            // Validate readSize
-            if (readSize <= 0 || readSize > MAX_READ_SIZE) {
-                return ResponseEntity.badRequest()
-                        .body(
-                                ReadMessagesResponse.error(
-                                        400, "Invalid read size. Must be between 1 and 200"));
-            }
-            Messages result = storageFacade.getMessages(conversationId, messageId, readSize);
-            ReadMessagesData data =
-                    new ReadMessagesData(
-                            result.getMessages().stream().map(MessageItem::new).toList());
-            return ResponseEntity.ok(ReadMessagesResponse.success(data));
-        } catch (NumberFormatException e) {
-            log.error("readMessages: Invalid message ID format", e);
+            int validatedSize = validateReadSize(readSize, MAX_READ_SIZE);
+            Messages result = storageFacade.getMessages(conversationId, messageId, validatedSize);
+            return buildReadMessagesResponse(result);
+        } catch (IllegalArgumentException e) {
+            log.error("readMessages: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                    .body(ReadMessagesResponse.error(400, "Invalid message ID format"));
+                    .body(ReadMessagesResponse.error(400, e.getMessage()));
         } catch (Exception e) {
             log.error("readMessages: Error reading messages", e);
             return ResponseEntity.status(500)
                     .body(ReadMessagesResponse.error(500, "Internal server error"));
         }
+    }
+
+    public ResponseEntity<ReadMessagesResponse> readMessagesAfter(
+            String conversationId, long afterMessageId, int readSize) {
+        try {
+            int validatedSize = validateReadSize(readSize, MAX_READ_SIZE_AFTER);
+            Messages result =
+                    storageFacade.getMessagesAfter(conversationId, afterMessageId, validatedSize);
+            return buildReadMessagesResponse(result);
+        } catch (IllegalArgumentException e) {
+            log.error("readMessagesAfter: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ReadMessagesResponse.error(400, e.getMessage()));
+        } catch (Exception e) {
+            log.error("readMessagesAfter: Error reading messages", e);
+            return ResponseEntity.status(500)
+                    .body(ReadMessagesResponse.error(500, "Internal server error"));
+        }
+    }
+
+    private int validateReadSize(int readSize, int maxSize) {
+        if (readSize <= 0) {
+            return maxSize;
+        }
+        if (readSize > maxSize) {
+            throw new IllegalArgumentException(
+                    String.format("Invalid read size. Must be between 1 and %d", maxSize));
+        }
+        return readSize;
+    }
+
+    private ResponseEntity<ReadMessagesResponse> buildReadMessagesResponse(Messages messages) {
+        ReadMessagesData data =
+                new ReadMessagesData(
+                        messages.getMessages().stream().map(MessageItem::new).toList());
+        return ResponseEntity.ok(ReadMessagesResponse.success(data));
     }
 
     public ResponseEntity<CommonResponse> markLastReadMessageId(

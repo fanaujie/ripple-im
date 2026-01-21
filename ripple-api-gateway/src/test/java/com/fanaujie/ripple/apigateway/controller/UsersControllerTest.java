@@ -29,36 +29,35 @@ import java.util.Collections;
 
 @WebMvcTest(UsersController.class)
 @Import(SecurityConfig.class)
-@TestPropertySource(properties = {"oauth2.jwk.secret=dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tMTIzNA=="})
+@TestPropertySource(
+        properties = {"oauth2.jwk.secret=dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tMTIzNA=="})
 class UsersControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Autowired private ObjectMapper objectMapper;
 
-    @MockitoBean
-    private MessageService messageService;
+    @MockitoBean private MessageService messageService;
 
-    @MockitoBean
-    private ConversationService conversationService;
+    @MockitoBean private ConversationService conversationService;
 
-    @MockitoBean
-    private UserProfileService userProfileService;
+    @MockitoBean private UserProfileService userProfileService;
 
-    @MockitoBean
-    private RelationService relationService;
+    @MockitoBean private RelationService relationService;
 
-    @MockitoBean
-    private GroupService groupService;
+    @MockitoBean private GroupService groupService;
 
     private static final String USER_ID = "1";
     private static final String TARGET_USER_ID = "2";
 
     @BeforeEach
     void setUp() {
-        reset(messageService, conversationService, userProfileService, relationService, groupService);
+        reset(
+                messageService,
+                conversationService,
+                userProfileService,
+                relationService,
+                groupService);
     }
 
     // ==================== Profile Tests ====================
@@ -67,10 +66,17 @@ class UsersControllerTest {
     void getMyProfile_Success() throws Exception {
         UserProfileData profileData = new UserProfileData(USER_ID, "TestUser", "avatar.jpg");
         when(userProfileService.getUserProfile(1L))
-                .thenReturn(ResponseEntity.ok(new UserProfileResponse(200, "success", profileData)));
+                .thenReturn(
+                        ResponseEntity.ok(new UserProfileResponse(200, "success", profileData)));
 
-        mockMvc.perform(get("/api/users/me/profile")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/profile")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.userId").value(USER_ID))
@@ -81,20 +87,27 @@ class UsersControllerTest {
 
     @Test
     void getMyProfile_Unauthorized() throws Exception {
-        mockMvc.perform(get("/api/users/me/profile"))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/users/me/profile")).andExpect(status().isUnauthorized());
 
         verifyNoInteractions(userProfileService);
     }
 
     @Test
     void getUserProfile_Success() throws Exception {
-        UserProfileData profileData = new UserProfileData(TARGET_USER_ID, "TargetUser", "avatar.jpg");
+        UserProfileData profileData =
+                new UserProfileData(TARGET_USER_ID, "TargetUser", "avatar.jpg");
         when(userProfileService.getUserProfile(2L))
-                .thenReturn(ResponseEntity.ok(new UserProfileResponse(200, "success", profileData)));
+                .thenReturn(
+                        ResponseEntity.ok(new UserProfileResponse(200, "success", profileData)));
 
-        mockMvc.perform(get("/api/users/{userId}/profile", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/{userId}/profile", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.userId").value(TARGET_USER_ID));
@@ -105,11 +118,20 @@ class UsersControllerTest {
     @Test
     void getUserProfile_NotFound() throws Exception {
         when(userProfileService.getUserProfile(2L))
-                .thenReturn(ResponseEntity.status(404)
-                        .body(new UserProfileResponse(404, "User profile not found", null)));
+                .thenReturn(
+                        ResponseEntity.status(404)
+                                .body(
+                                        new UserProfileResponse(
+                                                404, "User profile not found", null)));
 
-        mockMvc.perform(get("/api/users/{userId}/profile", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/{userId}/profile", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404));
 
@@ -118,8 +140,14 @@ class UsersControllerTest {
 
     @Test
     void getUserProfile_InvalidId() throws Exception {
-        mockMvc.perform(get("/api/users/{userId}/profile", "invalid")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/{userId}/profile", "invalid")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
@@ -134,10 +162,16 @@ class UsersControllerTest {
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setNickname("NewNickname");
 
-        mockMvc.perform(patch("/api/users/me/profile")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/users/me/profile")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -148,10 +182,16 @@ class UsersControllerTest {
     void updateProfile_NoFieldsToUpdate() throws Exception {
         UpdateProfileRequest request = new UpdateProfileRequest();
 
-        mockMvc.perform(patch("/api/users/me/profile")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/users/me/profile")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("No fields to update"));
@@ -164,8 +204,14 @@ class UsersControllerTest {
         when(userProfileService.deleteAvatar(1L))
                 .thenReturn(ResponseEntity.ok(new CommonResponse(200, "success")));
 
-        mockMvc.perform(delete("/api/users/me/avatar")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        delete("/api/users/me/avatar")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -182,8 +228,14 @@ class UsersControllerTest {
         when(relationService.getRelations(1L, null, 50))
                 .thenReturn(ResponseEntity.ok(new UserRelationsResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/relations")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/relations")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.users").isArray())
@@ -199,10 +251,16 @@ class UsersControllerTest {
         when(relationService.getRelations(1L, "token", 20))
                 .thenReturn(ResponseEntity.ok(new UserRelationsResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/relations")
-                        .param("nextPageToken", "token")
-                        .param("pageSize", "20")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/relations")
+                                .param("nextPageToken", "token")
+                                .param("pageSize", "20")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.hasMore").value(true))
                 .andExpect(jsonPath("$.data.nextPageToken").value("nextToken"));
@@ -217,9 +275,15 @@ class UsersControllerTest {
         when(relationService.syncRelations(1L, "v1"))
                 .thenReturn(ResponseEntity.ok(new RelationSyncResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/relations/sync")
-                        .param("version", "v1")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/relations/sync")
+                                .param("version", "v1")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.fullSync").value(false));
@@ -237,10 +301,16 @@ class UsersControllerTest {
         AddFriendRequest request = new AddFriendRequest();
         request.setTargetUserId(TARGET_USER_ID);
 
-        mockMvc.perform(post("/api/users/me/friends")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/friends")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -252,10 +322,16 @@ class UsersControllerTest {
         AddFriendRequest request = new AddFriendRequest();
         request.setTargetUserId("invalid");
 
-        mockMvc.perform(post("/api/users/me/friends")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/friends")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
@@ -265,16 +341,25 @@ class UsersControllerTest {
     @Test
     void addFriend_AlreadyFriend() throws Exception {
         when(relationService.addFriend(1L, 2L))
-                .thenReturn(ResponseEntity.badRequest()
-                        .body(new CommonResponse(400, "Target user is already your friend")));
+                .thenReturn(
+                        ResponseEntity.badRequest()
+                                .body(
+                                        new CommonResponse(
+                                                400, "Target user is already your friend")));
 
         AddFriendRequest request = new AddFriendRequest();
         request.setTargetUserId(TARGET_USER_ID);
 
-        mockMvc.perform(post("/api/users/me/friends")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/friends")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Target user is already your friend"));
@@ -285,8 +370,14 @@ class UsersControllerTest {
         when(relationService.removeFriend(1L, 2L))
                 .thenReturn(ResponseEntity.ok(new CommonResponse(200, "success")));
 
-        mockMvc.perform(delete("/api/users/me/friends/{friendId}", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        delete("/api/users/me/friends/{friendId}", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -296,11 +387,18 @@ class UsersControllerTest {
     @Test
     void removeFriend_NotFriend() throws Exception {
         when(relationService.removeFriend(1L, 2L))
-                .thenReturn(ResponseEntity.badRequest()
-                        .body(new CommonResponse(400, "Target user is not your friend")));
+                .thenReturn(
+                        ResponseEntity.badRequest()
+                                .body(new CommonResponse(400, "Target user is not your friend")));
 
-        mockMvc.perform(delete("/api/users/me/friends/{friendId}", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        delete("/api/users/me/friends/{friendId}", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
     }
@@ -313,10 +411,16 @@ class UsersControllerTest {
         UpdateFriendRequest request = new UpdateFriendRequest();
         request.setRemarkName("NewRemark");
 
-        mockMvc.perform(patch("/api/users/me/friends/{friendId}", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/users/me/friends/{friendId}", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -333,10 +437,16 @@ class UsersControllerTest {
         BlockUserRequest request = new BlockUserRequest();
         request.setTargetUserId(TARGET_USER_ID);
 
-        mockMvc.perform(post("/api/users/me/blocked-users")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/blocked-users")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -348,8 +458,14 @@ class UsersControllerTest {
         when(relationService.removeBlockedUser(1L, 2L))
                 .thenReturn(ResponseEntity.ok(new CommonResponse(200, "success")));
 
-        mockMvc.perform(delete("/api/users/me/blocked-users/{userId}", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        delete("/api/users/me/blocked-users/{userId}", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -364,10 +480,16 @@ class UsersControllerTest {
         UpdateBlockedUserRequest request = new UpdateBlockedUserRequest();
         request.setHidden(true);
 
-        mockMvc.perform(patch("/api/users/me/blocked-users/{userId}", TARGET_USER_ID)
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/users/me/blocked-users/{userId}", TARGET_USER_ID)
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -383,8 +505,14 @@ class UsersControllerTest {
         when(conversationService.getConversations(1L, null, 50))
                 .thenReturn(ResponseEntity.ok(new ConversationsResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/conversations")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/conversations")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.conversations").isArray());
@@ -399,9 +527,15 @@ class UsersControllerTest {
         when(conversationService.syncConversations(1L, "v1"))
                 .thenReturn(ResponseEntity.ok(new ConversationSyncResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/conversations/sync")
-                        .param("version", "v1")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/conversations/sync")
+                                .param("version", "v1")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.fullSync").value(false));
@@ -415,15 +549,23 @@ class UsersControllerTest {
         List<ConversationSummary> summaries = new ArrayList<>();
         ConversationSummaryData summaryData = new ConversationSummaryData(summaries);
         when(conversationService.getConversationSummaries(1L, conversationIds))
-                .thenReturn(ResponseEntity.ok(new ConversationSummaryResponse(200, "success", summaryData)));
+                .thenReturn(
+                        ResponseEntity.ok(
+                                new ConversationSummaryResponse(200, "success", summaryData)));
 
         ConversationSummaryRequest request = new ConversationSummaryRequest();
         request.setConversationIds(conversationIds);
 
-        mockMvc.perform(post("/api/users/me/conversations/summary")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/conversations/summary")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -443,10 +585,16 @@ class UsersControllerTest {
         request.setConversationId("conv1");
         request.setTextContent("Hello");
 
-        mockMvc.perform(post("/api/users/me/conversations/messages")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/conversations/messages")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -460,10 +608,16 @@ class UsersControllerTest {
         request.setConversationId("conv1");
         request.setTextContent("Hello");
 
-        mockMvc.perform(post("/api/users/me/conversations/messages")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        post("/api/users/me/conversations/messages")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(403))
                 .andExpect(jsonPath("$.message").value("Forbidden: Sender ID mismatch"));
@@ -472,26 +626,102 @@ class UsersControllerTest {
     }
 
     @Test
-    void readMessages_Success() throws Exception {
+    void readMessages_WithBeforeMessageId_Success() throws Exception {
         List<MessageItem> messages = new ArrayList<>();
         ReadMessagesData data = new ReadMessagesData(messages);
-        when(messageService.readMessages("conv1", 100L, 50, 1L))
+        when(messageService.readMessages("conv1", 100L, 50))
                 .thenReturn(ResponseEntity.ok(new ReadMessagesResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/conversations/{conversationId}/messages", "conv1")
-                        .param("messageId", "100")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/conversations/{conversationId}/messages", "conv1")
+                                .param("beforeMessageId", "100")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-        verify(messageService).readMessages("conv1", 100L, 50, 1L);
+        verify(messageService).readMessages("conv1", 100L, 50);
+    }
+
+    @Test
+    void readMessages_WithAfterMessageId_Success() throws Exception {
+        List<MessageItem> messages = new ArrayList<>();
+        ReadMessagesData data = new ReadMessagesData(messages);
+        when(messageService.readMessagesAfter("conv1", 100L, 50))
+                .thenReturn(ResponseEntity.ok(new ReadMessagesResponse(200, "success", data)));
+
+        mockMvc.perform(
+                        get("/api/users/me/conversations/{conversationId}/messages", "conv1")
+                                .param("afterMessageId", "100")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(messageService).readMessagesAfter("conv1", 100L, 50);
+    }
+
+    @Test
+    void readMessages_MissingBothParams_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        get("/api/users/me/conversations/{conversationId}/messages", "conv1")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Exactly one of beforeMessageId or afterMessageId must be provided"));
+
+        verifyNoInteractions(messageService);
+    }
+
+    @Test
+    void readMessages_BothParamsProvided_ReturnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        get("/api/users/me/conversations/{conversationId}/messages", "conv1")
+                                .param("beforeMessageId", "100")
+                                .param("afterMessageId", "50")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(
+                                        "Exactly one of beforeMessageId or afterMessageId must be provided"));
+
+        verifyNoInteractions(messageService);
     }
 
     @Test
     void readMessages_InvalidMessageId() throws Exception {
-        mockMvc.perform(get("/api/users/me/conversations/{conversationId}/messages", "conv1")
-                        .param("messageId", "invalid")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/conversations/{conversationId}/messages", "conv1")
+                                .param("beforeMessageId", "invalid")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
 
@@ -506,10 +736,16 @@ class UsersControllerTest {
         UpdateReadPositionRequest request = new UpdateReadPositionRequest();
         request.setMessageId("100");
 
-        mockMvc.perform(patch("/api/users/me/conversations/{conversationId}/read-position", "conv1")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user"))))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/users/me/conversations/{conversationId}/read-position", "conv1")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user"))))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
@@ -525,8 +761,14 @@ class UsersControllerTest {
         when(groupService.getUserGroups(1L, null, 50))
                 .thenReturn(ResponseEntity.ok(new GetUserGroupsResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/groups")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/groups")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.groups").isArray());
@@ -541,9 +783,15 @@ class UsersControllerTest {
         when(groupService.syncUserGroups(1L, "v1"))
                 .thenReturn(ResponseEntity.ok(new UserGroupSyncResponse(200, "success", data)));
 
-        mockMvc.perform(get("/api/users/me/groups/sync")
-                        .param("version", "v1")
-                        .with(jwt().jwt(builder -> builder.subject(USER_ID)).authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_user")))))
+        mockMvc.perform(
+                        get("/api/users/me/groups/sync")
+                                .param("version", "v1")
+                                .with(
+                                        jwt().jwt(builder -> builder.subject(USER_ID))
+                                                .authorities(
+                                                        Collections.singletonList(
+                                                                new SimpleGrantedAuthority(
+                                                                        "ROLE_user")))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.fullSync").value(false));
@@ -560,8 +808,10 @@ class UsersControllerTest {
         mockMvc.perform(get("/api/users/me/relations")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/users/me/conversations")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/users/me/groups")).andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/users/me/friends")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}")).andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        post("/api/users/me/friends")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isUnauthorized());
     }
 }
