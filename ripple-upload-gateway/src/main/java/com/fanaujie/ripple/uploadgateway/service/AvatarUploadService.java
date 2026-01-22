@@ -113,7 +113,7 @@ public class AvatarUploadService {
             commandReqBuilder.setSenderId(senderId);
             commandReqBuilder.setGroupId(groupId);
             commandReqBuilder.setMessageId(messageId);
-            commandReqBuilder.setSendTimestamp(Instant.now().getEpochSecond());
+            commandReqBuilder.setSendTimestamp(Instant.now().toEpochMilli());
             commandReqBuilder.setGroupUpdateInfoCommand(updateCommandBuilder.build());
 
             messageAPISender.sendGroupCommand(commandReqBuilder.build());
