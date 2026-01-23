@@ -34,6 +34,8 @@ public class Application {
         String zookeeperAddress = config.getString("zookeeper.address");
         String messageGatewayDiscoveryPath =
                 config.getString("zookeeper.message-gateway.discovery-path");
+        int zookeeperSessionTimeoutMs = config.getInt("zookeeper.session-timeout-ms");
+        int zookeeperConnectionTimeoutMs = config.getInt("zookeeper.connection-timeout-ms");
 
         // Load batch executor configuration
         int batchQueueSize = config.getInt("batch.executor.queue-size");
@@ -57,9 +59,11 @@ public class Application {
                 topicPushClientId);
         logger.info("User Presence Server: {}", userPresenceServer);
         logger.info(
-                "Zookeeper Address: {}, Message Gateway Discovery Path: {}",
+                "Zookeeper Config - Address: {}, Discovery Path: {}, Session Timeout: {}ms, Connection Timeout: {}ms",
                 zookeeperAddress,
-                messageGatewayDiscoveryPath);
+                messageGatewayDiscoveryPath,
+                zookeeperSessionTimeoutMs,
+                zookeeperConnectionTimeoutMs);
         logger.info(
                 "Batch Executor Config - Queue Size: {}, Worker Size: {}, Max Size: {}, Timeout (ms): {}",
                 batchQueueSize,
@@ -87,9 +91,13 @@ public class Application {
                     new RedisConversationSummaryStorage(redissonClient, storageFacade);
             logger.info("ConversationStorage initialized successfully");
             messageGatewayManager =
-                    new MessageGatewayClientManager(zookeeperAddress, messageGatewayDiscoveryPath);
+                    new MessageGatewayClientManager(
+                            zookeeperAddress,
+                            messageGatewayDiscoveryPath,
+                            zookeeperSessionTimeoutMs,
+                            zookeeperConnectionTimeoutMs);
             messageGatewayManager.start();
-            logger.info("MessageGatewayClientManager initialized successfully");
+            logger.info("MessageGatewayClientManager initialized with ZooKeeper connection monitoring");
 
             pushService =
                     createPushService(

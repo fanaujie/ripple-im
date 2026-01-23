@@ -35,6 +35,8 @@ public class Application {
         String userPresenceServer = config.getString("server.user-presence.address");
         String zookeeperAddress = config.getString("zookeeper.address");
         String discoveryPath = config.getString("zookeeper.message-gateway.discovery-path");
+        int zookeeperSessionTimeoutMs = config.getInt("zookeeper.session-timeout-ms");
+        int zookeeperConnectionTimeoutMs = config.getInt("zookeeper.connection-timeout-ms");
 
         // Read batch configuration
         int batchQueueSize = config.getInt("batch.user-online.queue-size");
@@ -54,9 +56,19 @@ public class Application {
                 batchWorkerSize,
                 batchMaxSize,
                 batchTimeoutMs);
+        logger.info(
+                "Zookeeper Config - Address: {}, Discovery Path: {}, Session Timeout: {}ms, Connection Timeout: {}ms",
+                zookeeperAddress,
+                discoveryPath,
+                zookeeperSessionTimeoutMs,
+                zookeeperConnectionTimeoutMs);
 
         ZookeeperDiscoverService discoveryService =
-                new ZookeeperDiscoverService(zookeeperAddress, discoveryPath);
+                new ZookeeperDiscoverService(
+                        zookeeperAddress,
+                        discoveryPath,
+                        zookeeperSessionTimeoutMs,
+                        zookeeperConnectionTimeoutMs);
 
         // Use GATEWAY_GRPC_ADDRESS if configured (K8s StatefulSet), otherwise fallback to local IP
         String configuredGrpcAddress = config.getString("server.gateway.grpc-address");
