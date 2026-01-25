@@ -1,6 +1,8 @@
 package com.fanaujie.ripple.apigateway.config;
 
 import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.BotConfigStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisBotConfigStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
@@ -74,5 +76,11 @@ public class ComponentConfig {
     public ConversationSummaryStorage conversationStorage(
             RedissonClient redissonClient, RippleStorageFacade storageFacade) {
         return new RedisConversationSummaryStorage(redissonClient, storageFacade);
+    }
+
+    @Bean
+    public BotConfigStorage botConfigStorage(
+            RedissonClient redissonClient, RippleStorageFacade storageFacade) {
+        return new RedisBotConfigStorage(redissonClient, storageFacade);
     }
 }

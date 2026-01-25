@@ -16,4 +16,5 @@ public class Conversation {
     private int unreadCount;
     private String name;
     private String avatar;
+    private String botSessionId; // Session ID for bot conversations
 }

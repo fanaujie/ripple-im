@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_conversations"
     "last_read_message_id" bigint,
     "name"                 text,
     "avatar"               text,
+    "bot_session_id"       text,
     primary key (owner_id, conversation_id)
 );
 
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_conversations_version"
     "last_read_message_id" bigint,
     "name"                 text,
     "avatar"               text,
+    "bot_session_id"       text,
     primary key ( user_id, version )
 );
 
@@ -145,4 +147,15 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_group_version"
     primary key ( user_id, version )
 );
 
+-- Bot configuration table
+CREATE TABLE IF NOT EXISTS "ripple"."bot_config"
+(
+    "user_id"     bigint, -- FK to user table (bot's user_id)
+    "webhook_url" text,   -- External webhook endpoint
+    "api_key"     text,   -- Optional API key for auth
+    "description" text,   -- Bot description
+    "created_at"  timestamp,
+    "updated_at"  timestamp,
+    primary key ( user_id )
+);
 

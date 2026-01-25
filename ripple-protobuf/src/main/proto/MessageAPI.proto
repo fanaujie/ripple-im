@@ -28,6 +28,7 @@ message SendMessageReq {
     SingleMessageContent single_message_content = 7;
     GroupCommandMessageContent group_command_message_content = 8;
   };
+  string session_id = 9;  // Required for bot messages
 }
 
 message SendMessageResp {

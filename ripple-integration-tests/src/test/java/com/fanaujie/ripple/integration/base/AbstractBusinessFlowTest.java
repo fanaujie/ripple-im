@@ -1,5 +1,6 @@
 package com.fanaujie.ripple.integration.base;
 
+import com.fanaujie.ripple.integration.mock.MockBotConfigStorage;
 import com.fanaujie.ripple.integration.mock.MockConversationSummaryStorage;
 import com.fanaujie.ripple.integration.mock.MockProducer;
 import com.fanaujie.ripple.integration.mock.MockUserProfileStorage;
@@ -14,19 +15,27 @@ import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.storage.model.User;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
+import com.fanaujie.ripple.storage.model.BotConfig;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import com.fanaujie.ripple.storageupdater.consumer.processor.FriendStorageUpdatePayloadProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractBusinessFlowTest {
+
+    private static final AtomicLong ID_GENERATOR =
+            new AtomicLong(System.currentTimeMillis() % 1_000_000_000L);
+    protected long testIdBase;
 
     protected static final String TOPIC_MESSAGES = "ripple-messages";
     protected static final String TOPIC_PUSH = "ripple-push-notifications";
     protected static final String TOPIC_STORAGE_UPDATES = "ripple-storage-updates";
+    protected static final String TOPIC_BOT_WEBHOOK = "ripple-bot-webhook";
 
     protected RippleStorageFacade storageFacade;
 
@@ -34,6 +43,7 @@ public abstract class AbstractBusinessFlowTest {
     protected MockProducer<String, MessagePayload> messagePayloadProducer;
     protected MockProducer<String, PushMessage> pushMessageProducer;
     protected MockProducer<String, StorageUpdatePayload> storageUpdateProducer;
+    protected MockProducer<String, MessagePayload> botWebhookProducer;
 
     // Processors - Relation
     protected RelationEventProcessor relationEventProcessor;
@@ -45,11 +55,15 @@ public abstract class AbstractBusinessFlowTest {
     protected SingleMessagePayloadProcessor singleMessagePayloadProcessor;
 
     // Mock services
+    protected MockBotConfigStorage botConfigStorage;
     protected MockConversationSummaryStorage conversationSummaryStorage;
     protected MockUserProfileStorage userProfileStorage;
 
     @BeforeEach
     void setUp() throws Exception {
+        // Generate unique ID base for this test method
+        this.testIdBase = ID_GENERATOR.addAndGet(10000);
+
         // Initialize storage (implemented by subclasses)
         initializeStorage();
 
@@ -57,6 +71,7 @@ public abstract class AbstractBusinessFlowTest {
         this.messagePayloadProducer = new MockProducer<>();
         this.pushMessageProducer = new MockProducer<>();
         this.storageUpdateProducer = new MockProducer<>();
+        this.botWebhookProducer = new MockProducer<>();
 
         // Initialize processors
         initializeProcessors();
@@ -67,6 +82,7 @@ public abstract class AbstractBusinessFlowTest {
 
     private void initializeProcessors() {
         // Initialize mock services
+        this.botConfigStorage = new MockBotConfigStorage();
         this.conversationSummaryStorage = new MockConversationSummaryStorage();
         this.userProfileStorage = new MockUserProfileStorage(storageFacade);
 
@@ -102,7 +118,13 @@ public abstract class AbstractBusinessFlowTest {
 
         this.singleMessagePayloadProcessor =
                 new SingleMessagePayloadProcessor(
-                        storageFacade, conversationSummaryStorage, pushMessageProducer, TOPIC_PUSH);
+                        storageFacade,
+                        botConfigStorage,
+                        conversationSummaryStorage,
+                        pushMessageProducer,
+                        TOPIC_PUSH,
+                        botWebhookProducer,
+                        TOPIC_BOT_WEBHOOK);
     }
 
     @AfterEach
@@ -114,8 +136,10 @@ public abstract class AbstractBusinessFlowTest {
         if (messagePayloadProducer != null) messagePayloadProducer.clear();
         if (pushMessageProducer != null) pushMessageProducer.clear();
         if (storageUpdateProducer != null) storageUpdateProducer.clear();
+        if (botWebhookProducer != null) botWebhookProducer.clear();
 
         // Clear mock services
+        if (botConfigStorage != null) botConfigStorage.clear();
         if (conversationSummaryStorage != null) conversationSummaryStorage.clear();
         if (userProfileStorage != null) userProfileStorage.clear();
     }
@@ -134,6 +158,23 @@ public abstract class AbstractBusinessFlowTest {
     /** Creates a test user with default avatar. */
     protected void createUser(long userId, String account, String nickName) {
         createUser(userId, account, nickName, "default-avatar.png");
+    }
+
+    /** Registers a bot for testing. */
+    protected void registerBot(long botId, String webhookUrl, String apiKey) {
+        BotConfig config = new BotConfig();
+        config.setUserId(botId);
+        config.setWebhookUrl(webhookUrl);
+        config.setApiKey(apiKey);
+        config.setDescription("Test bot");
+        config.setCreatedAt(Instant.now());
+        config.setUpdatedAt(Instant.now());
+        botConfigStorage.registerBot(botId, config);
+    }
+
+    /** Registers a bot with default configuration. */
+    protected void registerBot(long botId) {
+        registerBot(botId, "https://example.com/webhook", "test-api-key");
     }
 
     // ==================== Business Flow Execution Methods ====================
@@ -396,6 +437,24 @@ public abstract class AbstractBusinessFlowTest {
                 .build();
     }
 
+    // ==================== Bot Message Flow Execution Methods ====================
+
+    /** Executes the complete bot message flow with session ID. */
+    protected void executeSendBotMessageFlow(
+            long senderId,
+            long botId,
+            String conversationId,
+            long messageId,
+            String text,
+            String sessionId)
+            throws Exception {
+        SendMessageReq request =
+                createSendBotMessageRequest(
+                        senderId, botId, conversationId, messageId, text, sessionId);
+        singleMessageContentProcessor.handle(request);
+        processMessagePayloads();
+    }
+
     // ==================== Message Request Builder Methods ====================
 
     protected SendMessageReq createSendMessageRequest(
@@ -406,6 +465,25 @@ public abstract class AbstractBusinessFlowTest {
                 .setReceiverId(receiverId)
                 .setConversationId(conversationId)
                 .setMessageId(messageId)
+                .setSendTimestamp(System.currentTimeMillis())
+                .setSingleMessageContent(content)
+                .build();
+    }
+
+    protected SendMessageReq createSendBotMessageRequest(
+            long senderId,
+            long botId,
+            String conversationId,
+            long messageId,
+            String text,
+            String sessionId) {
+        SingleMessageContent content = SingleMessageContent.newBuilder().setText(text).build();
+        return SendMessageReq.newBuilder()
+                .setSenderId(senderId)
+                .setReceiverId(botId)
+                .setConversationId(conversationId)
+                .setMessageId(messageId)
+                .setSessionId(sessionId)
                 .setSendTimestamp(System.currentTimeMillis())
                 .setSingleMessageContent(content)
                 .build();

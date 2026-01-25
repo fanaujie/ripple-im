@@ -2,6 +2,8 @@ package com.fanaujie.ripple.integration.relation;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.fanaujie.ripple.storage.service.impl.cassandra.CassandraStorageFacadeBuilder;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -13,35 +15,30 @@ public class CassandraFriendRelationFlowTest extends AbstractFriendRelationFlowT
     protected static CassandraContainer<?> cassandraContainer =
             new CassandraContainer<>("cassandra:5.0.2").withInitScript("ripple.cql");
 
-    protected CqlSession session;
+    protected static CqlSession session;
 
-    @Override
-    protected void initializeStorage() {
-        this.session =
+    @BeforeAll
+    static void initSession() {
+        session =
                 CqlSession.builder()
                         .addContactPoint(cassandraContainer.getContactPoint())
                         .withLocalDatacenter(cassandraContainer.getLocalDatacenter())
+                        .withKeyspace("ripple")
                         .build();
+    }
 
+    @AfterAll
+    static void closeSession() {
+        if (session != null && !session.isClosed()) {
+            session.close();
+        }
+    }
+
+    @Override
+    protected void initializeStorage() {
         this.storageFacade = new CassandraStorageFacadeBuilder().cqlSession(session).build();
     }
 
     @Override
-    protected void cleanupStorage() {
-        if (session != null) {
-            session.execute("TRUNCATE ripple.user");
-            session.execute("TRUNCATE ripple.user_profile");
-            session.execute("TRUNCATE ripple.user_relations");
-            session.execute("TRUNCATE ripple.user_relation_version");
-            session.execute("TRUNCATE ripple.user_blocked_by");
-            session.execute("TRUNCATE ripple.user_conversations");
-            session.execute("TRUNCATE ripple.user_conversations_version");
-            session.execute("TRUNCATE ripple.user_messages");
-            session.execute("TRUNCATE ripple.group_members");
-            session.execute("TRUNCATE ripple.group_members_version");
-            session.execute("TRUNCATE ripple.user_group");
-            session.execute("TRUNCATE ripple.user_group_version");
-            session.close();
-        }
-    }
+    protected void cleanupStorage() {}
 }

@@ -26,6 +26,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     private final RelationCqlStatement relationCqlStatement;
     private final ConversationCqlStatement conversationCqlStatement;
     private final GroupCqlStatement groupCqlStatement;
+    private final BotCqlStatement botCqlStatement;
 
     public CassandraStorageFacade(CassandraStorageFacadeBuilder builder) {
         this.session = builder.getSession();
@@ -33,6 +34,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         this.relationCqlStatement = new RelationCqlStatement(this.session);
         this.conversationCqlStatement = new ConversationCqlStatement(this.session);
         this.groupCqlStatement = new GroupCqlStatement(this.session);
+        this.botCqlStatement = new BotCqlStatement(this.session);
     }
 
     @Override
@@ -347,7 +349,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                 ConversationOperation.READ_MESSAGES.getValue(),
                                                 readMessageId, // last_read_message_id
                                                 null, // name not updated when marking read
-                                                null)) // avatar not updated when marking read
+                                                null, // avatar not updated when marking read
+                                                null)) // bot_session_id
                         .build();
         session.execute(batch);
     }
@@ -408,7 +411,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                         .getValue(),
                                                 null, // last_read_message_id is null for create
                                                 name,
-                                                avatar))
+                                                avatar,
+                                                null)) // bot_session_id
                         // events
                         .build();
         session.execute(senderBatch);
@@ -500,6 +504,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             conversation.setUnreadCount(0);
             conversation.setName(row.getString("name"));
             conversation.setAvatar(row.getString("avatar"));
+            conversation.setBotSessionId(row.getString("bot_session_id"));
             conversations.add(conversation);
         }
 
@@ -514,6 +519,38 @@ public class CassandraStorageFacade implements RippleStorageFacade {
         }
 
         return new PagedConversationResult(conversations, nextToken, hasMore);
+    }
+
+    @Override
+    public Conversation getConversation(long ownerId, String conversationId) {
+        ResultSet resultSet =
+                session.execute(
+                        conversationCqlStatement
+                                .getSelectConversationStmt()
+                                .bind(ownerId, conversationId));
+        Row row = resultSet.one();
+        if (row == null) {
+            return null;
+        }
+        Conversation conversation = new Conversation();
+        conversation.setOwnerId(ownerId);
+        conversation.setConversationId(row.getString("conversation_id"));
+        conversation.setPeerId(row.getLong("peer_id"));
+        conversation.setGroupId(row.getLong("group_id"));
+        conversation.setLastReadMessageId(row.getLong("last_read_message_id"));
+        conversation.setUnreadCount(0);
+        conversation.setName(row.getString("name"));
+        conversation.setAvatar(row.getString("avatar"));
+        conversation.setBotSessionId(row.getString("bot_session_id"));
+        return conversation;
+    }
+
+    @Override
+    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId) {
+        session.execute(
+                conversationCqlStatement
+                        .getUpdateBotSessionIdStmt()
+                        .bind(botSessionId, ownerId, conversationId));
     }
 
     @Override
@@ -552,6 +589,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
             record.setLastReadMessageId(row.getLong("last_read_message_id"));
             record.setName(row.getString("name"));
             record.setAvatar(row.getString("avatar"));
+            record.setBotSessionId(row.getString("bot_session_id"));
             changes.add(record);
         }
         return changes;
@@ -759,7 +797,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                     ConversationOperation.UPDATE_CONVERSATION_NAME.getValue(),
                                     null,
                                     remarkName,
-                                    null));
+                                    null,
+                                    null)); // bot_session_id
             result.setConversationUpdated(true);
             result.setConversationId(conversationId);
         }
@@ -819,7 +858,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                     ConversationOperation.UPDATE_CONVERSATION_NAME.getValue(),
                                     null,
                                     nickName,
-                                    null));
+                                    null,
+                                    null)); // bot_session_id
         }
         session.execute(batchBuilder.build());
     }
@@ -869,7 +909,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                     ConversationOperation.UPDATE_CONVERSATION_AVATAR.getValue(),
                                     null,
                                     null,
-                                    avatar));
+                                    avatar,
+                                    null)); // bot_session_id
         }
         session.execute(batchBuilder.build());
     }
@@ -1167,7 +1208,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                     relation.getRelationRemarkName() == null
                                             ? nickName
                                             : relation.getRelationRemarkName(),
-                                    avatar));
+                                    avatar,
+                                    null)); // bot_session_id
         }
         session.execute(batchBuilder.build());
     }
@@ -1284,7 +1326,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                         .getValue(),
                                                 null,
                                                 groupName,
-                                                groupAvatar))
+                                                groupAvatar,
+                                                null)) // bot_session_id
                         .build();
         session.execute(batch);
     }
@@ -1612,7 +1655,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                         .getValue(),
                                                 null, // last_read_message_id
                                                 groupName,
-                                                null)) // avatar
+                                                null, // avatar
+                                                null)) // bot_session_id
                         .build();
         session.execute(batch);
     }
@@ -1655,7 +1699,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                         .getValue(),
                                                 null, // last_read_message_id
                                                 null, // name
-                                                groupAvatar))
+                                                groupAvatar,
+                                                null)) // bot_session_id
                         .build();
         session.execute(batch);
     }
@@ -1737,7 +1782,8 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                                                         .getValue(),
                                                 null, // last_read_message_id
                                                 null, // name
-                                                null)) // avatar
+                                                null, // avatar
+                                                null)) // bot_session_id
                         .build();
         session.execute(batch);
     }
@@ -1851,5 +1897,64 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                 .getKeyspace("ripple")
                 .flatMap(ks -> ks.getUserDefinedType("group_change_detail"))
                 .orElseThrow(() -> new IllegalStateException("UDT group_change_detail not found"));
+    }
+
+    // Bot Config Operations
+
+    @Override
+    public BotConfig getBotConfig(long botUserId) {
+        BoundStatement bound = botCqlStatement.getSelectBotConfigStmt().bind(botUserId);
+        Row row = session.execute(bound).one();
+        if (row == null) {
+            return null;
+        }
+        return new BotConfig(
+                row.getLong("user_id"),
+                row.getString("webhook_url"),
+                row.getString("api_key"),
+                row.getString("description"),
+                row.getInstant("created_at"),
+                row.getInstant("updated_at"));
+    }
+
+    @Override
+    public void saveBotConfig(BotConfig config) {
+        BoundStatement bound = botCqlStatement.getInsertBotConfigStmt().bind(
+                config.getUserId(),
+                config.getWebhookUrl(),
+                config.getApiKey(),
+                config.getDescription(),
+                config.getCreatedAt(),
+                config.getUpdatedAt());
+        session.execute(bound);
+    }
+
+    @Override
+    public void deleteBotConfig(long botUserId) {
+        BoundStatement bound = botCqlStatement.getDeleteBotConfigStmt().bind(botUserId);
+        session.execute(bound);
+    }
+
+    @Override
+    public boolean isBot(long userId) {
+        BotConfig config = getBotConfig(userId);
+        return config != null;
+    }
+
+    @Override
+    public List<BotConfig> listAllBots() {
+        BoundStatement bound = botCqlStatement.getSelectAllBotsStmt().bind();
+        ResultSet rs = session.execute(bound);
+        List<BotConfig> bots = new ArrayList<>();
+        for (Row row : rs) {
+            bots.add(new BotConfig(
+                    row.getLong("user_id"),
+                    row.getString("webhook_url"),
+                    row.getString("api_key"),
+                    row.getString("description"),
+                    row.getInstant("created_at"),
+                    row.getInstant("updated_at")));
+        }
+        return bots;
     }
 }

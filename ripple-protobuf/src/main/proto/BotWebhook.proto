@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.botwebhook";
+
+// Request sent to webhook dispatcher via Kafka
+message BotWebhookRequest {
+    int64 sender_user_id = 1;
+    int64 bot_user_id = 2;
+    string conversation_id = 3;
+    int64 message_id = 4;
+    string session_id = 5;
+    string message_text = 6;
+    int64 send_timestamp = 7;
+    string webhook_url = 8;
+    string api_key = 9;
+    reserved 10, 11;
+    reserved "timeout_ms", "sender_name";
+}
+
+// Bot webhook payload (used for Kafka transport)
+message BotWebhookPayload {
+    BotWebhookRequest request = 1;
+}
+
+// Internal representation of bot response (for push to user)
+message BotResponseData {
+    int64 sender_user_id = 1;      // Original message sender (user)
+    int64 bot_user_id = 2;          // Bot that responded
+    string conversation_id = 3;
+    int64 original_message_id = 4;  // ID of triggering message
+    string session_id = 5;
+    int64 response_message_id = 6;  // ID of bot's response message
+    string response_text = 7;       // Bot response text (delta or complete)
+    int64 response_timestamp = 8;
+    bool is_complete = 9;           // True if this is the final response
+}

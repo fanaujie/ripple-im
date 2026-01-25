@@ -21,6 +21,14 @@ enum MessageType {
   MESSAGE_TYPE_GROUP_MESSAGE = 2;
 }
 
+// SSE event types for bot streaming responses
+enum SSEEventType {
+  SSE_EVENT_TYPE_UNSPECIFIED = 0;
+  SSE_EVENT_TYPE_DELTA = 1;      // streaming fragment
+  SSE_EVENT_TYPE_DONE = 2;       // streaming complete, includes message_id
+  SSE_EVENT_TYPE_ERROR = 3;      // streaming error
+}
+
 
 message MultiNotifications {
   repeated UserNotificationType notification_types = 1;
@@ -43,9 +51,21 @@ message PushMessageData {
   SendMessageReq data = 4;
 }
 
+// SSE streaming data for bot responses
+message PushSSEData {
+  SSEEventType event_type = 1;
+  int64 send_user_id = 2;           // bot user id
+  repeated int64 receive_user_ids = 3;
+  string conversation_id = 4;
+  string content = 5;               // delta text / full text / error message
+  int64 message_id = 6;             // only set when event_type is DONE
+  int64 send_timestamp = 7;
+}
+
 message PushMessage {
   oneof payload {
     PushEventData event_data = 1;
     PushMessageData message_data = 2;
+    PushSSEData sse_data = 3;
   }
 }

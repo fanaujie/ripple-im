@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package com.fanaujie.ripple.protobuf;
+
+option java_multiple_files = true;
+option java_package = "com.fanaujie.ripple.protobuf.webhookservice";
+
+import "MessageDispatcher.proto";
+
+// Response for bot message dispatch
+message DispatchResponse {
+  bool accepted = 1;
+  string error_message = 2;
+}
+
+// gRPC service for dispatching bot messages to external webhooks
+service WebhookDispatcher {
+  // Dispatch a bot message to external webhook
+  // The service handles HTTP/SSE call, pushes responses to user, and saves to storage
+  rpc DispatchBotMessage(BotMessageData) returns (DispatchResponse);
+}

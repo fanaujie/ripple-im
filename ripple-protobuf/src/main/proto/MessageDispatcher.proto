@@ -26,11 +26,25 @@ message GroupCommandData {
   SendGroupCommandReq data = 3;
 }
 
+message BotMessageData {
+  int64 sender_user_id = 1;
+  int64 bot_user_id = 2;
+  string conversation_id = 3;
+  int64 message_id = 4;
+  string session_id = 5;
+  string message_text = 6;
+  int64 send_timestamp = 7;
+  string webhook_url = 8;
+  string api_key = 9;
+  reserved 10, 11;
+  reserved "timeout_ms", "sender_name";
+}
 
 message MessagePayload {
   oneof payload {
     EventData event_data = 1;
     MessageData message_data = 2;
     GroupCommandData group_command_data = 3;
+    BotMessageData bot_message_data = 4;
   }
 }

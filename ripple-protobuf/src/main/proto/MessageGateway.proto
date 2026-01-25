@@ -6,6 +6,7 @@ option java_multiple_files = true;
 option java_package = "com.fanaujie.ripple.protobuf.msggateway";
 
 import "MessageAPI.proto";
+import "Push.proto";
 
 // Event types that can be pushed to users via gateway
 enum PushEventType {
@@ -34,6 +35,15 @@ message PushMessagePayload {
   int32 unread_count = 3;  // recipient's unread count for this conversation
 }
 
+// SSE payload - for bot streaming responses
+message PushSSEPayload {
+  SSEEventType event_type = 1;
+  string conversation_id = 2;
+  string content = 3;               // delta text / full text / error message
+  int64 message_id = 4;             // only set when event_type is DONE
+  int64 send_timestamp = 5;
+}
+
 // Main request structure
 message PushMessageRequest {
   string send_user_id = 1;
@@ -43,6 +53,7 @@ message PushMessageRequest {
   oneof payload {
     PushEventPayload event_payload = 4;
     PushMessagePayload message_payload = 5;
+    PushSSEPayload sse_payload = 6;
   }
 }
 

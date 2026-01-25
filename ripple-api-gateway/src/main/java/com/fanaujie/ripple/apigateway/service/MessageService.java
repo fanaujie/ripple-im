@@ -165,6 +165,11 @@ public class MessageService {
                         ConversationUtils.generateConversationId(senderId, receiverId));
             }
             builder.setConversationId(request.getConversationId()).setReceiverId(receiverId);
+
+            // Pass sessionId for bot messages
+            if (request.getSessionId() != null && !request.getSessionId().isEmpty()) {
+                builder.setSessionId(request.getSessionId());
+            }
         }
 
         return res.getId();

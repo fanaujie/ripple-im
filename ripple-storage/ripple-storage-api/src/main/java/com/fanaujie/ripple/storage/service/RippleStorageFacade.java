@@ -67,6 +67,10 @@ public interface RippleStorageFacade {
 
     PagedConversationResult getConversations(long userId, String nextPageToken, int pageSize);
 
+    Conversation getConversation(long ownerId, String conversationId);
+
+    void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId);
+
     List<ConversationVersionChange> getConversationChanges(
             long userId, String afterVersion, int limit) throws InvalidVersionException;
 
@@ -156,4 +160,15 @@ public interface RippleStorageFacade {
             String commandData);
 
     int calculateUnreadCount(long userId, String conversationId);
+
+    // Bot Config Operations
+    BotConfig getBotConfig(long botUserId);
+
+    void saveBotConfig(BotConfig config);
+
+    void deleteBotConfig(long botUserId);
+
+    boolean isBot(long userId);
+
+    List<BotConfig> listAllBots();
 }

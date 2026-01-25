@@ -23,6 +23,7 @@ import java.util.Objects;
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public class User implements UserDetails {
     public static final String DEFAULT_ROLE_USER = "ROLE_user";
+    public static final String ROLE_BOT = "ROLE_bot";
     private long userId;
     private String account;
     private String password;
@@ -66,5 +67,10 @@ public class User implements UserDetails {
     @JsonIgnore
     public String getUsername() {
         return account;
+    }
+
+    @JsonIgnore
+    public boolean isBot() {
+        return ROLE_BOT.equals(role);
     }
 }

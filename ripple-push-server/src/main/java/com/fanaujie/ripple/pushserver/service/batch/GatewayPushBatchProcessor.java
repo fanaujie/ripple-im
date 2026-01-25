@@ -6,6 +6,7 @@ import com.fanaujie.ripple.protobuf.msggateway.*;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
 import com.fanaujie.ripple.protobuf.push.PushEventData;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
+import com.fanaujie.ripple.protobuf.push.PushSSEData;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
@@ -179,6 +180,25 @@ public class GatewayPushBatchProcessor
                             .setReceiveUserId(userInfo.getUserId())
                             .setReceiveDeviceId(userInfo.getDeviceId())
                             .setMessagePayload(messagePayload)
+                            .build();
+                }
+            case SSE_DATA:
+                {
+                    PushSSEData sseData = pushMessage.getSseData();
+
+                    PushSSEPayload ssePayload = PushSSEPayload.newBuilder()
+                            .setEventType(sseData.getEventType())
+                            .setConversationId(sseData.getConversationId())
+                            .setContent(sseData.getContent())
+                            .setMessageId(sseData.getMessageId())
+                            .setSendTimestamp(sseData.getSendTimestamp())
+                            .build();
+
+                    return PushMessageRequest.newBuilder()
+                            .setSendUserId(String.valueOf(sseData.getSendUserId()))
+                            .setReceiveUserId(userInfo.getUserId())
+                            .setReceiveDeviceId(userInfo.getDeviceId())
+                            .setSsePayload(ssePayload)
                             .build();
                 }
             default:

@@ -15,21 +15,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Message Business Flow Tests")
 public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
 
-    // Test users
-    protected static final long ALICE_ID = 1001L;
-    protected static final long BOB_ID = 2001L;
-    protected static final long CHARLIE_ID = 3001L;
+    protected long aliceId() {
+        return testIdBase + 1;
+    }
 
-    // Test group
-    protected static final long GROUP_ID = 10001L;
+    protected long bobId() {
+        return testIdBase + 2;
+    }
+
+    protected long charlieId() {
+        return testIdBase + 3;
+    }
+
+    protected long groupId() {
+        return testIdBase + 10001;
+    }
 
     private long messageIdCounter = 100000L;
 
     @BeforeEach
     void setUpTestUsers() {
-        createUser(ALICE_ID, "alice", "Alice", "alice-avatar.png");
-        createUser(BOB_ID, "bob", "Bob", "bob-avatar.png");
-        createUser(CHARLIE_ID, "charlie", "Charlie", "charlie-avatar.png");
+        createUser(aliceId(), "alice-" + testIdBase, "Alice", "alice-avatar.png");
+        createUser(bobId(), "bob-" + testIdBase, "Bob", "bob-avatar.png");
+        createUser(charlieId(), "charlie-" + testIdBase, "Charlie", "charlie-avatar.png");
     }
 
     private long nextMessageId() {
@@ -44,37 +52,38 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("When Alice sends a message to Bob, the message should be stored")
         void sendMessage_shouldStoreMessage() throws Exception {
             // Given: Alice and Bob are friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
             long messageId = nextMessageId();
 
             // When: Alice sends a message to Bob
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, messageId, "Hello Bob!");
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, messageId, "Hello Bob!");
 
             // Then: The message should be stored in the conversation
             Messages result = storageFacade.getMessages(conversationId, 0L, 10);
             List<Message> messages = result.getMessages();
             assertThat(messages).hasSize(1);
             assertThat(messages.get(0).getText()).isEqualTo("Hello Bob!");
-            assertThat(messages.get(0).getSenderId()).isEqualTo(ALICE_ID);
+            assertThat(messages.get(0).getSenderId()).isEqualTo(aliceId());
         }
 
         @Test
         @DisplayName("When users exchange multiple messages, all should be stored in order")
         void sendMultipleMessages_shouldStoreAllInOrder() throws Exception {
             // Given: Alice and Bob are friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
 
             // When: They exchange messages
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Hi Bob!");
-            executeSendMessageFlow(BOB_ID, ALICE_ID, conversationId, nextMessageId(), "Hi Alice!");
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, nextMessageId(), "Hi Bob!");
             executeSendMessageFlow(
-                    ALICE_ID, BOB_ID, conversationId, nextMessageId(), "How are you?");
+                    bobId(), aliceId(), conversationId, nextMessageId(), "Hi Alice!");
+            executeSendMessageFlow(
+                    aliceId(), bobId(), conversationId, nextMessageId(), "How are you?");
 
             // Then: All messages should be stored
             List<Message> messages =
@@ -86,20 +95,20 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("When Alice sends message to Bob, a conversation should be created for both")
         void sendMessage_shouldCreateConversation() throws Exception {
             // Given: Alice and Bob are friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
             long messageId = nextMessageId();
 
             // When: Alice sends a message to Bob
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, messageId, "Hello!");
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, messageId, "Hello!");
 
             // Then: Both users should have the conversation
             boolean aliceHasConversation =
-                    storageFacade.existsByConversationId(conversationId, ALICE_ID);
+                    storageFacade.existsByConversationId(conversationId, aliceId());
             boolean bobHasConversation =
-                    storageFacade.existsByConversationId(conversationId, BOB_ID);
+                    storageFacade.existsByConversationId(conversationId, bobId());
 
             assertThat(aliceHasConversation).isTrue();
             assertThat(bobHasConversation).isTrue();
@@ -109,15 +118,15 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("When a blocked user tries to send message, it should not be delivered")
         void sendMessage_whenBlocked_shouldNotDeliver() throws Exception {
             // Given: Alice and Bob are friends, but Bob blocks Alice
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
-            executeBlockFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
+            executeBlockFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
             long messageId = nextMessageId();
 
             // When: Alice tries to send a message to Bob
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, messageId, "Hello?");
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, messageId, "Hello?");
 
             // Then: The message should not be stored (blocked)
             List<Message> messages =
@@ -135,22 +144,24 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         void sendGroupMessage_shouldStoreMessage() throws Exception {
             // Given: A group with Alice, Bob, and Charlie
             createGroup(
-                    GROUP_ID, List.of(ALICE_ID, BOB_ID, CHARLIE_ID), System.currentTimeMillis());
+                    groupId(),
+                    List.of(aliceId(), bobId(), charlieId()),
+                    System.currentTimeMillis());
 
-            String conversationId = generateGroupConversationId(GROUP_ID);
+            String conversationId = generateGroupConversationId(groupId());
             long messageId = nextMessageId();
 
             // When: Alice sends a message to the group
             executeSendGroupMessageFlow(
-                    ALICE_ID, GROUP_ID, conversationId, messageId, "Hello everyone!");
+                    aliceId(), groupId(), conversationId, messageId, "Hello everyone!");
 
             // Then: The message should be stored
             List<Message> messages =
                     storageFacade.getMessages(conversationId, 0L, 10).getMessages();
             assertThat(messages).hasSize(1);
             assertThat(messages.get(0).getText()).isEqualTo("Hello everyone!");
-            assertThat(messages.get(0).getSenderId()).isEqualTo(ALICE_ID);
-            assertThat(messages.get(0).getGroupId()).isEqualTo(GROUP_ID);
+            assertThat(messages.get(0).getSenderId()).isEqualTo(aliceId());
+            assertThat(messages.get(0).getGroupId()).isEqualTo(groupId());
         }
 
         @Test
@@ -158,17 +169,19 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         void sendMultipleGroupMessages_shouldStoreAll() throws Exception {
             // Given: A group with Alice, Bob, and Charlie
             createGroup(
-                    GROUP_ID, List.of(ALICE_ID, BOB_ID, CHARLIE_ID), System.currentTimeMillis());
+                    groupId(),
+                    List.of(aliceId(), bobId(), charlieId()),
+                    System.currentTimeMillis());
 
-            String conversationId = generateGroupConversationId(GROUP_ID);
+            String conversationId = generateGroupConversationId(groupId());
 
             // When: Multiple members send messages
             executeSendGroupMessageFlow(
-                    ALICE_ID, GROUP_ID, conversationId, nextMessageId(), "Hello!");
+                    aliceId(), groupId(), conversationId, nextMessageId(), "Hello!");
             executeSendGroupMessageFlow(
-                    BOB_ID, GROUP_ID, conversationId, nextMessageId(), "Hi Alice!");
+                    bobId(), groupId(), conversationId, nextMessageId(), "Hi Alice!");
             executeSendGroupMessageFlow(
-                    CHARLIE_ID, GROUP_ID, conversationId, nextMessageId(), "Hey everyone!");
+                    charlieId(), groupId(), conversationId, nextMessageId(), "Hey everyone!");
 
             // Then: All messages should be stored
             List<Message> messages =
@@ -185,22 +198,22 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("When Alice sends message to Bob, Bob should have unread count")
         void sendMessage_shouldIncrementUnreadCount() throws Exception {
             // Given: Alice and Bob are friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
 
             // When: Alice sends messages to Bob
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Hello!");
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, nextMessageId(), "Hello!");
             executeSendMessageFlow(
-                    ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Are you there?");
+                    aliceId(), bobId(), conversationId, nextMessageId(), "Are you there?");
 
             // Then: Bob should have unread count (from mock storage)
-            int unreadCount = conversationSummaryStorage.getUnreadCount(BOB_ID, conversationId);
+            int unreadCount = conversationSummaryStorage.getUnreadCount(bobId(), conversationId);
             assertThat(unreadCount).isEqualTo(2);
 
             // And: Alice should have no unread (sender)
-            int aliceUnread = conversationSummaryStorage.getUnreadCount(ALICE_ID, conversationId);
+            int aliceUnread = conversationSummaryStorage.getUnreadCount(aliceId(), conversationId);
             assertThat(aliceUnread).isEqualTo(0);
         }
 
@@ -208,23 +221,23 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("When Bob reads the conversation, unread count should reset")
         void readConversation_shouldResetUnreadCount() throws Exception {
             // Given: Alice sends messages to Bob
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Hello!");
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
+            executeSendMessageFlow(aliceId(), bobId(), conversationId, nextMessageId(), "Hello!");
             executeSendMessageFlow(
-                    ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Hello again!");
+                    aliceId(), bobId(), conversationId, nextMessageId(), "Hello again!");
 
             // Verify Bob has unread
-            assertThat(conversationSummaryStorage.getUnreadCount(BOB_ID, conversationId))
+            assertThat(conversationSummaryStorage.getUnreadCount(bobId(), conversationId))
                     .isEqualTo(2);
 
             // When: Bob reads the conversation
-            conversationSummaryStorage.resetUnreadCount(BOB_ID, conversationId);
+            conversationSummaryStorage.resetUnreadCount(bobId(), conversationId);
 
             // Then: Bob should have no unread
-            assertThat(conversationSummaryStorage.getUnreadCount(BOB_ID, conversationId))
+            assertThat(conversationSummaryStorage.getUnreadCount(bobId(), conversationId))
                     .isEqualTo(0);
         }
     }
@@ -237,21 +250,25 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("User can have multiple conversations simultaneously")
         void multipleConversations() throws Exception {
             // Given: Alice is friends with both Bob and Charlie
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
-            executeAddFriendFlow(ALICE_ID, CHARLIE_ID);
-            executeAddFriendFlow(CHARLIE_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
+            executeAddFriendFlow(aliceId(), charlieId());
+            executeAddFriendFlow(charlieId(), aliceId());
 
-            String aliceBobConversation = generateSingleConversationId(ALICE_ID, BOB_ID);
-            String aliceCharlieConversation = generateSingleConversationId(ALICE_ID, CHARLIE_ID);
+            String aliceBobConversation = generateSingleConversationId(aliceId(), bobId());
+            String aliceCharlieConversation = generateSingleConversationId(aliceId(), charlieId());
 
             // When: Alice chats with both
             executeSendMessageFlow(
-                    ALICE_ID, BOB_ID, aliceBobConversation, nextMessageId(), "Hi Bob!");
+                    aliceId(), bobId(), aliceBobConversation, nextMessageId(), "Hi Bob!");
             executeSendMessageFlow(
-                    ALICE_ID, CHARLIE_ID, aliceCharlieConversation, nextMessageId(), "Hi Charlie!");
+                    aliceId(),
+                    charlieId(),
+                    aliceCharlieConversation,
+                    nextMessageId(),
+                    "Hi Charlie!");
             executeSendMessageFlow(
-                    BOB_ID, ALICE_ID, aliceBobConversation, nextMessageId(), "Hey Alice!");
+                    bobId(), aliceId(), aliceBobConversation, nextMessageId(), "Hey Alice!");
 
             // Then: Each conversation should have its own messages
             List<Message> bobMessages =
@@ -267,23 +284,25 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("Friend and group conversations are independent")
         void friendAndGroupConversations() throws Exception {
             // Given: Alice and Bob are friends, and they're in a group with Charlie
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
             createGroup(
-                    GROUP_ID, List.of(ALICE_ID, BOB_ID, CHARLIE_ID), System.currentTimeMillis());
+                    groupId(),
+                    List.of(aliceId(), bobId(), charlieId()),
+                    System.currentTimeMillis());
 
-            String singleConversation = generateSingleConversationId(ALICE_ID, BOB_ID);
-            String groupConversation = generateGroupConversationId(GROUP_ID);
+            String singleConversation = generateSingleConversationId(aliceId(), bobId());
+            String groupConversation = generateGroupConversationId(groupId());
 
             // When: Alice sends messages in both conversations
             executeSendMessageFlow(
-                    ALICE_ID,
-                    BOB_ID,
+                    aliceId(),
+                    bobId(),
                     singleConversation,
                     nextMessageId(),
                     "Private message to Bob");
             executeSendGroupMessageFlow(
-                    ALICE_ID, GROUP_ID, groupConversation, nextMessageId(), "Group message");
+                    aliceId(), groupId(), groupConversation, nextMessageId(), "Group message");
 
             // Then: Messages are in separate conversations
             List<Message> singleMessages =
@@ -302,14 +321,15 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
         @DisplayName("Complete messaging flow with friends becoming strangers")
         void friendsToStrangersMessaging() throws Exception {
             // Step 1: Alice and Bob become friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
-            String conversationId = generateSingleConversationId(ALICE_ID, BOB_ID);
+            String conversationId = generateSingleConversationId(aliceId(), bobId());
 
             // Step 2: They chat
-            executeSendMessageFlow(ALICE_ID, BOB_ID, conversationId, nextMessageId(), "Hi friend!");
-            executeSendMessageFlow(BOB_ID, ALICE_ID, conversationId, nextMessageId(), "Hi!");
+            executeSendMessageFlow(
+                    aliceId(), bobId(), conversationId, nextMessageId(), "Hi friend!");
+            executeSendMessageFlow(bobId(), aliceId(), conversationId, nextMessageId(), "Hi!");
 
             // Verify messages
             List<Message> messages =
@@ -317,7 +337,7 @@ public abstract class AbstractMessageFlowTest extends AbstractBusinessFlowTest {
             assertThat(messages).hasSize(2);
 
             // Step 3: Alice removes Bob
-            executeRemoveFriendFlow(ALICE_ID, BOB_ID);
+            executeRemoveFriendFlow(aliceId(), bobId());
 
             // Step 4: Alice can still see old messages
             messages = storageFacade.getMessages(conversationId, 0L, 10).getMessages();

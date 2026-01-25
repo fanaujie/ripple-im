@@ -46,8 +46,9 @@ public class SingleMessageContentProcessor implements Processor<SendMessageReq, 
     private SendMessageResp handleSingleMessage(SendMessageReq request, long senderId)
             throws Exception {
         long receiverId = request.getReceiverId();
-        // Check if receiver has blocked the sender
-        if (!this.storageFacade.isBlocked(receiverId, senderId)) {
+        // Bots never block anyone; skip block check if receiver is a bot
+        boolean isReceiverBot = this.storageFacade.isBot(receiverId);
+        if (isReceiverBot || !this.storageFacade.isBlocked(receiverId, senderId)) {
             MessageData.Builder b = MessageData.newBuilder().setSendUserId(senderId);
             b.addReceiveUserIds(receiverId);
             b.addReceiveUserIds(senderId); // also notify self for multi-device sync

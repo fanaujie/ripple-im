@@ -86,6 +86,11 @@ public class MockConversationSummaryStorage implements ConversationSummaryStorag
         summaries.clear();
     }
 
+    /** Helper method for tests to get a single conversation summary. */
+    public ConversationSummaryInfo getConversationSummary(long userId, String conversationId) {
+        return summaries.get(buildKey(userId, conversationId));
+    }
+
     private String buildKey(long userId, String conversationId) {
         return userId + ":" + conversationId;
     }

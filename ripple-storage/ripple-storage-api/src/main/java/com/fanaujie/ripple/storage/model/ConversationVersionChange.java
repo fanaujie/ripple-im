@@ -16,4 +16,5 @@ public class ConversationVersionChange {
     private String version;
     private String name;
     private String avatar;
+    private String botSessionId;
 }

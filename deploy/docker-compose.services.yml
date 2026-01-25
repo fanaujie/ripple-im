@@ -303,6 +303,59 @@ services:
     networks:
       - ripple-network
 
+  ripple-webhook-service:
+    container_name: ripple-webhook-service
+    image: ripple-webhook-service
+    build:
+      context: ..
+      dockerfile: ripple-webhook-service/Dockerfile
+      args:
+        - PROFILE=${STORAGE_PROFILE:-cassandra}
+    ports:
+      - "10104:10104"
+    environment:
+      OTEL_SERVICE_NAME: ripple-webhook-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_TRACES_EXPORTER: none
+      OTEL_INSTRUMENTATION_HTTP_SERVER_EMIT_EXPERIMENTAL_METRICS: "true"
+      OTEL_INSTRUMENTATION_RPC_SERVER_EMIT_EXPERIMENTAL_METRICS: "true"
+      GRPC_SERVER_PORT: 10104
+      BROKER_TOPIC_PUSH: ripple-push-notifications
+      BROKER_SERVER: kafka:9092
+      CASSANDRA_CONTACT_POINTS: cassandra:9042
+      CASSANDRA_KEYSPACE_NAME: ripple
+      CASSANDRA_LOCAL_DATACENTER: datacenter1
+      MONGODB_URI: mongodb://mongodb:27017
+      MONGODB_DATABASE: ripple
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    networks:
+      - ripple-network
+
+  ripple-bot-message-consumer:
+    container_name: ripple-bot-message-consumer
+    image: ripple-bot-message-consumer
+    build:
+      context: ..
+      dockerfile: ripple-bot-message-consumer/Dockerfile
+    environment:
+      OTEL_SERVICE_NAME: ripple-bot-message-consumer
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_TRACES_EXPORTER: none
+      OTEL_INSTRUMENTATION_HTTP_SERVER_EMIT_EXPERIMENTAL_METRICS: "true"
+      OTEL_INSTRUMENTATION_RPC_SERVER_EMIT_EXPERIMENTAL_METRICS: "true"
+      BROKER_TOPIC_BOT_WEBHOOK: ripple-bot-webhook
+      BROKER_SERVER: kafka:9092
+      WEBHOOK_SERVICE_ADDRESS: ripple-webhook-service:10104
+    networks:
+      - ripple-network
+
 networks:
   ripple-network:
     external: true

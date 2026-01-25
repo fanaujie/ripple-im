@@ -24,6 +24,8 @@
         <module>ripple-user-presence-server</module>
         <module>ripple-message-api-server</module>
         <module>ripple-push-server</module>
+        <module>ripple-webhook-service</module>
+        <module>ripple-bot-message-consumer</module>
         <module>ripple-integration-tests</module>
     </modules>
 

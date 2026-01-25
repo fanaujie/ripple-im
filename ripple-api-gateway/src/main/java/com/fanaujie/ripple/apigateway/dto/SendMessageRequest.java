@@ -16,6 +16,7 @@ public class SendMessageRequest {
     private String textContent;
     private String fileUrl;
     private String fileName;
+    private String sessionId;  // Required for bot messages
 
     public SingleMessageContent toSingleMessageContent() {
         SingleMessageContent.Builder builder = SingleMessageContent.newBuilder();

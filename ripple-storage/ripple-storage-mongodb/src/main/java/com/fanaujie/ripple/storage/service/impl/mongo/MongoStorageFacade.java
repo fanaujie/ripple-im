@@ -18,7 +18,9 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class MongoStorageFacade implements RippleStorageFacade {
@@ -40,6 +42,7 @@ public class MongoStorageFacade implements RippleStorageFacade {
     private final MongoCollection<Document> userGroupsCollection;
     private final MongoCollection<Document> userGroupVersionsCollection;
     private final MongoCollection<Document> userBlockedByCollection;
+    private final MongoCollection<Document> botConfigsCollection;
 
 
     public MongoStorageFacade(MongoStorageFacadeBuilder builder) {
@@ -58,6 +61,7 @@ public class MongoStorageFacade implements RippleStorageFacade {
         this.userGroupsCollection = database.getCollection("user_groups");
         this.userGroupVersionsCollection = database.getCollection("user_group_versions");
         this.userBlockedByCollection = database.getCollection("user_blocked_by");
+        this.botConfigsCollection = database.getCollection("bot_configs");
     }
 
     @Override
@@ -2013,5 +2017,107 @@ public class MongoStorageFacade implements RippleStorageFacade {
         );
 
         return (int) count;
+    }
+
+    @Override
+    public Conversation getConversation(long ownerId, String conversationId) {
+        Document doc = userConversationsCollection.find(
+                Filters.and(
+                        Filters.eq("user_id", ownerId),
+                        Filters.eq("conversation_id", conversationId)
+                )
+        ).first();
+
+        if (doc == null) {
+            return null;
+        }
+
+        Conversation conversation = new Conversation();
+        conversation.setOwnerId(ownerId);
+        conversation.setConversationId(doc.getString("conversation_id"));
+
+        Long peerId = doc.getLong("peer_id");
+        if (peerId != null) conversation.setPeerId(peerId);
+
+        Long groupId = doc.getLong("group_id");
+        if (groupId != null) conversation.setGroupId(groupId);
+
+        conversation.setLastReadMessageId(doc.getLong("last_read_message_id"));
+        conversation.setUnreadCount(0);
+        conversation.setName(doc.getString("name"));
+        conversation.setAvatar(doc.getString("avatar"));
+        conversation.setBotSessionId(doc.getString("bot_session_id"));
+        return conversation;
+    }
+
+    @Override
+    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId) {
+        userConversationsCollection.updateOne(
+                Filters.and(
+                        Filters.eq("user_id", ownerId),
+                        Filters.eq("conversation_id", conversationId)
+                ),
+                Updates.set("bot_session_id", botSessionId)
+        );
+    }
+
+    // ==================== Bot Config Operations ====================
+
+    @Override
+    public BotConfig getBotConfig(long botUserId) {
+        Document doc = botConfigsCollection.find(Filters.eq("_id", botUserId)).first();
+        if (doc == null) {
+            return null;
+        }
+        return documentToBotConfig(doc);
+    }
+
+    @Override
+    public void saveBotConfig(BotConfig config) {
+        Document doc = new Document("_id", config.getUserId())
+                .append("webhook_url", config.getWebhookUrl())
+                .append("api_key", config.getApiKey())
+                .append("description", config.getDescription())
+                .append("created_at", Date.from(config.getCreatedAt()))
+                .append("updated_at", Date.from(config.getUpdatedAt()));
+
+        botConfigsCollection.replaceOne(
+                Filters.eq("_id", config.getUserId()),
+                doc,
+                new com.mongodb.client.model.ReplaceOptions().upsert(true)
+        );
+    }
+
+    @Override
+    public void deleteBotConfig(long botUserId) {
+        botConfigsCollection.deleteOne(Filters.eq("_id", botUserId));
+    }
+
+    @Override
+    public boolean isBot(long userId) {
+        return botConfigsCollection.countDocuments(Filters.eq("_id", userId)) > 0;
+    }
+
+    @Override
+    public List<BotConfig> listAllBots() {
+        List<BotConfig> bots = new ArrayList<>();
+        botConfigsCollection.find().forEach(doc -> bots.add(documentToBotConfig(doc)));
+        return bots;
+    }
+
+    private BotConfig documentToBotConfig(Document doc) {
+        BotConfig config = new BotConfig();
+        config.setUserId(doc.getLong("_id"));
+        config.setWebhookUrl(doc.getString("webhook_url"));
+        config.setApiKey(doc.getString("api_key"));
+        config.setDescription(doc.getString("description"));
+
+        Date createdAt = doc.getDate("created_at");
+        if (createdAt != null) config.setCreatedAt(createdAt.toInstant());
+
+        Date updatedAt = doc.getDate("updated_at");
+        if (updatedAt != null) config.setUpdatedAt(updatedAt.toInstant());
+
+        return config;
     }
 }

@@ -14,17 +14,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Friend Relation Business Flow Tests")
 public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlowTest {
 
-    // Test users
-    protected static final long ALICE_ID = 1001L;
-    protected static final long BOB_ID = 2001L;
-    protected static final long CHARLIE_ID = 3001L;
+    protected long aliceId() {
+        return testIdBase + 1;
+    }
+
+    protected long bobId() {
+        return testIdBase + 2;
+    }
+
+    protected long charlieId() {
+        return testIdBase + 3;
+    }
 
     @BeforeEach
     void setUpTestUsers() {
         // Create test users that exist before any test scenario
-        createUser(ALICE_ID, "alice", "Alice", "alice-avatar.png");
-        createUser(BOB_ID, "bob", "Bob", "bob-avatar.png");
-        createUser(CHARLIE_ID, "charlie", "Charlie", "charlie-avatar.png");
+        createUser(aliceId(), "alice-" + testIdBase, "Alice", "alice-avatar.png");
+        createUser(bobId(), "bob-" + testIdBase, "Bob", "bob-avatar.png");
+        createUser(charlieId(), "charlie-" + testIdBase, "Charlie", "charlie-avatar.png");
     }
 
     @Nested
@@ -35,27 +42,27 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("When Alice adds Bob as friend, Bob should appear in Alice's friend list")
         void addFriend_oneWay_shouldCreateRelation() throws Exception {
             // When: Alice adds Bob as friend
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // Then: Alice should have Bob in her relations
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob).isNotNull();
             assertThat(RelationFlags.FRIEND.isSet(aliceToBob.getRelationFlags())).isTrue();
             assertThat(aliceToBob.getRelationNickName()).isEqualTo("Bob");
             assertThat(aliceToBob.getRelationAvatar()).isEqualTo("bob-avatar.png");
 
             // And: Alice's friend list should contain Bob
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
-            assertThat(aliceFriends.getUserIdsList()).contains(BOB_ID);
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
+            assertThat(aliceFriends.getUserIdsList()).contains(bobId());
 
             // But: Bob should NOT have Alice in his friend list (one-way friendship)
-            Relation bobToAlice = storageFacade.getRelationBetweenUser(BOB_ID, ALICE_ID);
+            Relation bobToAlice = storageFacade.getRelationBetweenUser(bobId(), aliceId());
             assertThat(bobToAlice).isNull();
 
-            UserIds bobFriends = storageFacade.getFriendIds(BOB_ID);
+            UserIds bobFriends = storageFacade.getFriendIds(bobId());
             // Bob has no friends, so either null or empty list
             if (bobFriends != null) {
-                assertThat(bobFriends.getUserIdsList()).doesNotContain(ALICE_ID);
+                assertThat(bobFriends.getUserIdsList()).doesNotContain(aliceId());
             }
         }
 
@@ -64,14 +71,14 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice and Bob add each other, both should be in each other's friend list with synced profiles")
         void addFriend_mutual_shouldCreateBidirectionalRelation() throws Exception {
             // When: Alice adds Bob first
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // And: Bob adds Alice back
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(bobId(), aliceId());
 
             // Then: Both should have each other as friends
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
-            Relation bobToAlice = storageFacade.getRelationBetweenUser(BOB_ID, ALICE_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
+            Relation bobToAlice = storageFacade.getRelationBetweenUser(bobId(), aliceId());
 
             assertThat(aliceToBob).isNotNull();
             assertThat(bobToAlice).isNotNull();
@@ -83,23 +90,24 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
             assertThat(bobToAlice.getRelationNickName()).isEqualTo("Alice");
 
             // And: Both friend lists should contain each other
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
-            UserIds bobFriends = storageFacade.getFriendIds(BOB_ID);
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
+            UserIds bobFriends = storageFacade.getFriendIds(bobId());
 
-            assertThat(aliceFriends.getUserIdsList()).contains(BOB_ID);
-            assertThat(bobFriends.getUserIdsList()).contains(ALICE_ID);
+            assertThat(aliceFriends.getUserIdsList()).contains(bobId());
+            assertThat(bobFriends.getUserIdsList()).contains(aliceId());
         }
 
         @Test
         @DisplayName("When Alice adds multiple friends, all should appear in her friend list")
         void addFriend_multiple_shouldCreateAllRelations() throws Exception {
             // When: Alice adds both Bob and Charlie
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(ALICE_ID, CHARLIE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(aliceId(), charlieId());
 
             // Then: Alice should have both as friends
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
-            assertThat(aliceFriends.getUserIdsList()).containsExactlyInAnyOrder(BOB_ID, CHARLIE_ID);
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
+            assertThat(aliceFriends.getUserIdsList())
+                    .containsExactlyInAnyOrder(bobId(), charlieId());
         }
     }
 
@@ -112,19 +120,19 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice removes Bob from friends, Bob should no longer appear in Alice's friend list")
         void removeFriend_shouldDeleteRelation() throws Exception {
             // Given: Alice and Bob are friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // When: Alice removes Bob
-            executeRemoveFriendFlow(ALICE_ID, BOB_ID);
+            executeRemoveFriendFlow(aliceId(), bobId());
 
             // Then: Bob should not be in Alice's relations
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob).isNull();
 
             // And: Alice's friend list should not contain Bob
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
             if (aliceFriends != null) {
-                assertThat(aliceFriends.getUserIdsList()).doesNotContain(BOB_ID);
+                assertThat(aliceFriends.getUserIdsList()).doesNotContain(bobId());
             }
         }
 
@@ -133,22 +141,22 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice removes Bob, Bob's friend list should still contain Alice if they were mutual friends")
         void removeFriend_mutual_shouldOnlyRemoveOneSide() throws Exception {
             // Given: Alice and Bob are mutual friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
             // When: Alice removes Bob
-            executeRemoveFriendFlow(ALICE_ID, BOB_ID);
+            executeRemoveFriendFlow(aliceId(), bobId());
 
             // Then: Alice should not have Bob as friend
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
             if (aliceFriends != null) {
-                assertThat(aliceFriends.getUserIdsList()).doesNotContain(BOB_ID);
+                assertThat(aliceFriends.getUserIdsList()).doesNotContain(bobId());
             }
 
             // But: Bob should still have Alice as friend (one-way removal)
-            UserIds bobFriends = storageFacade.getFriendIds(BOB_ID);
+            UserIds bobFriends = storageFacade.getFriendIds(bobId());
             assertThat(bobFriends).isNotNull();
-            assertThat(bobFriends.getUserIdsList()).contains(ALICE_ID);
+            assertThat(bobFriends.getUserIdsList()).contains(aliceId());
         }
     }
 
@@ -160,13 +168,13 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("When Alice sets a remark name for Bob, the remark should be saved")
         void updateRemarkName_shouldSaveRemark() throws Exception {
             // Given: Alice has Bob as friend
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // When: Alice sets a remark name for Bob
-            executeUpdateFriendRemarkNameFlow(ALICE_ID, BOB_ID, "Bobby");
+            executeUpdateFriendRemarkNameFlow(aliceId(), bobId(), "Bobby");
 
             // Then: The remark name should be saved
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob.getRelationRemarkName()).isEqualTo("Bobby");
 
             // And: Bob's original nickname should still be preserved
@@ -178,14 +186,14 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice changes Bob's remark name multiple times, the latest should be saved")
         void updateRemarkName_multiple_shouldKeepLatest() throws Exception {
             // Given: Alice has Bob as friend
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // When: Alice changes remark multiple times
-            executeUpdateFriendRemarkNameFlow(ALICE_ID, BOB_ID, "Bobby");
-            executeUpdateFriendRemarkNameFlow(ALICE_ID, BOB_ID, "Best Friend Bob");
+            executeUpdateFriendRemarkNameFlow(aliceId(), bobId(), "Bobby");
+            executeUpdateFriendRemarkNameFlow(aliceId(), bobId(), "Best Friend Bob");
 
             // Then: Only the latest remark should be saved
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob.getRelationRemarkName()).isEqualTo("Best Friend Bob");
         }
     }
@@ -199,13 +207,13 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice blocks Bob (who is a friend), Bob should be marked as blocked but still a friend")
         void blockFriend_shouldMarkAsBlocked() throws Exception {
             // Given: Alice has Bob as friend
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
 
             // When: Alice blocks Bob
-            executeBlockFriendFlow(ALICE_ID, BOB_ID);
+            executeBlockFriendFlow(aliceId(), bobId());
 
             // Then: Bob should be marked as both friend and blocked
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob).isNotNull();
             assertThat(RelationFlags.FRIEND.isSet(aliceToBob.getRelationFlags())).isTrue();
             assertThat(RelationFlags.BLOCKED.isSet(aliceToBob.getRelationFlags())).isTrue();
@@ -215,14 +223,14 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("When Alice blocks Bob and then unblocks, Bob should only be a friend")
         void blockAndUnblock_shouldRestoreFriendStatus() throws Exception {
             // Given: Alice has Bob as friend and blocks him
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeBlockFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeBlockFriendFlow(aliceId(), bobId());
 
             // When: Alice unblocks Bob
-            executeUnblockUserFlow(ALICE_ID, BOB_ID);
+            executeUnblockUserFlow(aliceId(), bobId());
 
             // Then: Bob should only be a friend (not blocked)
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob).isNotNull();
             assertThat(RelationFlags.FRIEND.isSet(aliceToBob.getRelationFlags())).isTrue();
             assertThat(RelationFlags.BLOCKED.isSet(aliceToBob.getRelationFlags())).isFalse();
@@ -239,10 +247,10 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
             // Given: Alice and Charlie have no relationship
 
             // When: Alice blocks Charlie
-            executeBlockStrangerFlow(ALICE_ID, CHARLIE_ID);
+            executeBlockStrangerFlow(aliceId(), charlieId());
 
             // Then: Charlie should be marked as blocked (not friend)
-            Relation aliceToCharlie = storageFacade.getRelationBetweenUser(ALICE_ID, CHARLIE_ID);
+            Relation aliceToCharlie = storageFacade.getRelationBetweenUser(aliceId(), charlieId());
             assertThat(aliceToCharlie).isNotNull();
             assertThat(RelationFlags.BLOCKED.isSet(aliceToCharlie.getRelationFlags())).isTrue();
             assertThat(RelationFlags.FRIEND.isSet(aliceToCharlie.getRelationFlags())).isFalse();
@@ -252,13 +260,13 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("When Alice unblocks a stranger, the relation should be completely removed")
         void unblockStranger_shouldRemoveRelation() throws Exception {
             // Given: Alice has blocked Charlie (a stranger)
-            executeBlockStrangerFlow(ALICE_ID, CHARLIE_ID);
+            executeBlockStrangerFlow(aliceId(), charlieId());
 
             // When: Alice unblocks Charlie
-            executeUnblockUserFlow(ALICE_ID, CHARLIE_ID);
+            executeUnblockUserFlow(aliceId(), charlieId());
 
             // Then: The relation should be completely removed
-            Relation aliceToCharlie = storageFacade.getRelationBetweenUser(ALICE_ID, CHARLIE_ID);
+            Relation aliceToCharlie = storageFacade.getRelationBetweenUser(aliceId(), charlieId());
             assertThat(aliceToCharlie).isNull();
         }
     }
@@ -272,14 +280,14 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
                 "When Alice hides a blocked friend, the friend flag should be removed and hidden flag set")
         void hideBlockedFriend_shouldRemoveFriendAndSetHidden() throws Exception {
             // Given: Alice has Bob as friend and blocks him
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeBlockFriendFlow(ALICE_ID, BOB_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeBlockFriendFlow(aliceId(), bobId());
 
             // When: Alice hides the blocked user
-            executeHideBlockedUserFlow(ALICE_ID, BOB_ID);
+            executeHideBlockedUserFlow(aliceId(), bobId());
 
             // Then: Bob should be blocked and hidden, but no longer a friend
-            Relation aliceToBob = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            Relation aliceToBob = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(aliceToBob).isNotNull();
             assertThat(RelationFlags.BLOCKED.isSet(aliceToBob.getRelationFlags())).isTrue();
             assertThat(RelationFlags.HIDDEN.isSet(aliceToBob.getRelationFlags())).isTrue();
@@ -295,33 +303,33 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("Complete friend lifecycle: add -> remark -> block -> unblock -> remove")
         void completeFriendLifecycle() throws Exception {
             // Step 1: Alice adds Bob as friend
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            UserIds aliceFriends = storageFacade.getFriendIds(ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            UserIds aliceFriends = storageFacade.getFriendIds(aliceId());
             assertThat(aliceFriends).isNotNull();
-            assertThat(aliceFriends.getUserIdsList()).contains(BOB_ID);
+            assertThat(aliceFriends.getUserIdsList()).contains(bobId());
 
             // Step 2: Alice sets a remark for Bob
-            executeUpdateFriendRemarkNameFlow(ALICE_ID, BOB_ID, "Best Friend");
-            Relation relation = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            executeUpdateFriendRemarkNameFlow(aliceId(), bobId(), "Best Friend");
+            Relation relation = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(relation.getRelationRemarkName()).isEqualTo("Best Friend");
 
             // Step 3: Alice blocks Bob (after an argument)
-            executeBlockFriendFlow(ALICE_ID, BOB_ID);
-            relation = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            executeBlockFriendFlow(aliceId(), bobId());
+            relation = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(RelationFlags.BLOCKED.isSet(relation.getRelationFlags())).isTrue();
 
             // Step 4: Alice unblocks Bob (they made up)
-            executeUnblockUserFlow(ALICE_ID, BOB_ID);
-            relation = storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID);
+            executeUnblockUserFlow(aliceId(), bobId());
+            relation = storageFacade.getRelationBetweenUser(aliceId(), bobId());
             assertThat(RelationFlags.BLOCKED.isSet(relation.getRelationFlags())).isFalse();
             assertThat(RelationFlags.FRIEND.isSet(relation.getRelationFlags())).isTrue();
 
             // Step 5: Alice removes Bob (they drifted apart)
-            executeRemoveFriendFlow(ALICE_ID, BOB_ID);
-            assertThat(storageFacade.getRelationBetweenUser(ALICE_ID, BOB_ID)).isNull();
-            aliceFriends = storageFacade.getFriendIds(ALICE_ID);
+            executeRemoveFriendFlow(aliceId(), bobId());
+            assertThat(storageFacade.getRelationBetweenUser(aliceId(), bobId())).isNull();
+            aliceFriends = storageFacade.getFriendIds(aliceId());
             if (aliceFriends != null) {
-                assertThat(aliceFriends.getUserIdsList()).doesNotContain(BOB_ID);
+                assertThat(aliceFriends.getUserIdsList()).doesNotContain(bobId());
             }
         }
 
@@ -329,41 +337,41 @@ public abstract class AbstractFriendRelationFlowTest extends AbstractBusinessFlo
         @DisplayName("Social network expansion: Alice introduces Bob to Charlie")
         void socialNetworkExpansion() throws Exception {
             // Alice and Bob become mutual friends
-            executeAddFriendFlow(ALICE_ID, BOB_ID);
-            executeAddFriendFlow(BOB_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), bobId());
+            executeAddFriendFlow(bobId(), aliceId());
 
             // Alice and Charlie become mutual friends
-            executeAddFriendFlow(ALICE_ID, CHARLIE_ID);
-            executeAddFriendFlow(CHARLIE_ID, ALICE_ID);
+            executeAddFriendFlow(aliceId(), charlieId());
+            executeAddFriendFlow(charlieId(), aliceId());
 
             // Bob and Charlie become mutual friends (through Alice's introduction)
-            executeAddFriendFlow(BOB_ID, CHARLIE_ID);
-            executeAddFriendFlow(CHARLIE_ID, BOB_ID);
+            executeAddFriendFlow(bobId(), charlieId());
+            executeAddFriendFlow(charlieId(), bobId());
 
             // Verify: Everyone is friends with everyone
-            assertThat(storageFacade.getFriendIds(ALICE_ID).getUserIdsList())
-                    .containsExactlyInAnyOrder(BOB_ID, CHARLIE_ID);
-            assertThat(storageFacade.getFriendIds(BOB_ID).getUserIdsList())
-                    .containsExactlyInAnyOrder(ALICE_ID, CHARLIE_ID);
-            assertThat(storageFacade.getFriendIds(CHARLIE_ID).getUserIdsList())
-                    .containsExactlyInAnyOrder(ALICE_ID, BOB_ID);
+            assertThat(storageFacade.getFriendIds(aliceId()).getUserIdsList())
+                    .containsExactlyInAnyOrder(bobId(), charlieId());
+            assertThat(storageFacade.getFriendIds(bobId()).getUserIdsList())
+                    .containsExactlyInAnyOrder(aliceId(), charlieId());
+            assertThat(storageFacade.getFriendIds(charlieId()).getUserIdsList())
+                    .containsExactlyInAnyOrder(aliceId(), bobId());
         }
 
         @Test
         @DisplayName("Conflict resolution: Block stranger who then becomes friend")
         void blockStrangerThenBecomeFriend() throws Exception {
             // Alice blocks Charlie (a stranger who was spamming)
-            executeBlockStrangerFlow(ALICE_ID, CHARLIE_ID);
-            Relation relation = storageFacade.getRelationBetweenUser(ALICE_ID, CHARLIE_ID);
+            executeBlockStrangerFlow(aliceId(), charlieId());
+            Relation relation = storageFacade.getRelationBetweenUser(aliceId(), charlieId());
             assertThat(RelationFlags.BLOCKED.isSet(relation.getRelationFlags())).isTrue();
 
             // Later, Alice realizes Charlie is a friend's friend and unblocks
-            executeUnblockUserFlow(ALICE_ID, CHARLIE_ID);
-            assertThat(storageFacade.getRelationBetweenUser(ALICE_ID, CHARLIE_ID)).isNull();
+            executeUnblockUserFlow(aliceId(), charlieId());
+            assertThat(storageFacade.getRelationBetweenUser(aliceId(), charlieId())).isNull();
 
             // Now Alice adds Charlie as friend
-            executeAddFriendFlow(ALICE_ID, CHARLIE_ID);
-            relation = storageFacade.getRelationBetweenUser(ALICE_ID, CHARLIE_ID);
+            executeAddFriendFlow(aliceId(), charlieId());
+            relation = storageFacade.getRelationBetweenUser(aliceId(), charlieId());
             assertThat(RelationFlags.FRIEND.isSet(relation.getRelationFlags())).isTrue();
             assertThat(RelationFlags.BLOCKED.isSet(relation.getRelationFlags())).isFalse();
         }

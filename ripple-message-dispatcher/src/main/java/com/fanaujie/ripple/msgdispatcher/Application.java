@@ -1,7 +1,9 @@
 package com.fanaujie.ripple.msgdispatcher;
 
 import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisBotConfigStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
@@ -49,6 +51,7 @@ public class Application {
         String topicMessageClientId = config.getString("ripple.topic.message.consumer.client.id");
         String pushTopic = config.getString("broker.topic.push");
         String storageUpdateTopic = config.getString("broker.topic.storage-updates");
+        String botWebhookTopic = config.getString("broker.topic.bot-webhook");
         String redisHost = config.getString("redis.host");
         int redisPort = config.getInt("redis.port");
         // Load Kafka consumer batch configuration
@@ -63,6 +66,7 @@ public class Application {
         logger.info("Message Topic: {}", messageTopic);
         logger.info("Push Topic: {}", pushTopic);
         logger.info("Storage Update Topic: {}", storageUpdateTopic);
+        logger.info("Bot Webhook Topic: {}", botWebhookTopic);
         logger.info("Message Topic Consumer Group ID: {}", topicMessageGroupId);
         logger.info("Message Topic Consumer Client ID: {}", topicMessageClientId);
         logger.info(
@@ -75,6 +79,8 @@ public class Application {
         RedissonClient redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
         RedisUserProfileStorage userProfileCache =
                 new RedisUserProfileStorage(redissonClient, userStorageFacade);
+        BotConfigStorage botConfigStorage =
+                new RedisBotConfigStorage(redissonClient, userStorageFacade);
 
         // Create ConversationStorage facade with simplified constructor
         ConversationSummaryStorage conversationStorage =
@@ -84,10 +90,13 @@ public class Application {
                 createKeyedPayloadHandler(
                         pushTopic,
                         storageUpdateTopic,
+                        botWebhookTopic,
                         createPushMessageProducer(brokerServer),
                         createStorageUpdateProducer(brokerServer),
+                        createBotWebhookProducer(brokerServer),
                         userStorageFacade,
                         userProfileCache,
+                        botConfigStorage,
                         conversationStorage);
         MessageConsumer msgProcessor = new MessageConsumer(payloadRouter);
         GenericConsumer<String, MessagePayload> messageTopicConsumer =
@@ -150,13 +159,21 @@ public class Application {
                 KafkaProducerConfigFactory.createStorageUpdatePayloadProducerConfig(brokerServer));
     }
 
+    private GenericProducer<String, MessagePayload> createBotWebhookProducer(String brokerServer) {
+        return new KafkaGenericProducer<String, MessagePayload>(
+                KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
+    }
+
     private DefaultKeyedPayloadHandler createKeyedPayloadHandler(
             String pushTopic,
             String storageUpdateTopic,
+            String botWebhookTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
+            GenericProducer<String, MessagePayload> botWebhookProducer,
             RippleStorageFacade userStorageFacade,
             RedisUserProfileStorage userProfileCache,
+            BotConfigStorage botConfigStorage,
             ConversationSummaryStorage conversationStorage) {
 
         ProcessorDispatcher<SendMessageReq.MessageCase, MessageData, Void> messageDispatcher =
@@ -164,7 +181,13 @@ public class Application {
         messageDispatcher.RegisterProcessor(
                 SendMessageReq.MessageCase.SINGLE_MESSAGE_CONTENT,
                 new SingleMessagePayloadProcessor(
-                        userStorageFacade, conversationStorage, pushMessageProducer, pushTopic));
+                        userStorageFacade,
+                        botConfigStorage,
+                        conversationStorage,
+                        pushMessageProducer,
+                        pushTopic,
+                        botWebhookProducer,
+                        botWebhookTopic));
 
         ProcessorDispatcher<SendEventReq.EventCase, EventData, Void> eventDispatcher =
                 new DefaultProcessorDispatcher<>();

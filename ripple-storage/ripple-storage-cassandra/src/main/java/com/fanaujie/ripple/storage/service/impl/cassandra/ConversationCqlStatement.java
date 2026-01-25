@@ -24,6 +24,8 @@ public class ConversationCqlStatement {
     private final PreparedStatement deleteConversationStmt;
     private final PreparedStatement selectLastReadMessageIdStmt;
     private final PreparedStatement countUnreadMessagesStmt;
+    private final PreparedStatement updateBotSessionIdStmt;
+    private final PreparedStatement selectConversationStmt;
 
     public ConversationCqlStatement(CqlSession session) {
         this.existsConversationStmt =
@@ -52,8 +54,8 @@ public class ConversationCqlStatement {
                 session.prepare(
                         "INSERT INTO ripple.user_conversations_version "
                                 + "(user_id, version, conversation_id, peer_id, group_id, operation, "
-                                + "last_read_message_id, name, avatar) "
-                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                + "last_read_message_id, name, avatar, bot_session_id) "
+                                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         this.updateNameStmt =
                 session.prepare(
                         "UPDATE ripple.user_conversations "
@@ -87,21 +89,21 @@ public class ConversationCqlStatement {
         this.selectConversationsFirstPageStmt =
                 session.prepare(
                         "SELECT conversation_id, peer_id, group_id,"
-                                + "last_read_message_id, name, avatar "
+                                + "last_read_message_id, name, avatar, bot_session_id "
                                 + "FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? LIMIT ?");
 
         this.selectConversationsNextPageStmt =
                 session.prepare(
                         "SELECT conversation_id, peer_id, group_id,"
-                                + "last_read_message_id, name, avatar "
+                                + "last_read_message_id, name, avatar, bot_session_id "
                                 + "FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? AND conversation_id > ? LIMIT ?");
 
         this.selectConversationChangesStmt =
                 session.prepare(
                         "SELECT version, conversation_id, peer_id, group_id, operation, "
-                                + "last_read_message_id, name, avatar "
+                                + "last_read_message_id, name, avatar, bot_session_id "
                                 + "FROM ripple.user_conversations_version "
                                 + "WHERE user_id = ? AND version > ? LIMIT ?");
 
@@ -136,6 +138,19 @@ public class ConversationCqlStatement {
         this.deleteConversationStmt =
                 session.prepare(
                         "DELETE FROM ripple.user_conversations "
+                                + "WHERE owner_id = ? AND conversation_id = ?");
+
+        this.updateBotSessionIdStmt =
+                session.prepare(
+                        "UPDATE ripple.user_conversations "
+                                + "SET bot_session_id = ? "
+                                + "WHERE owner_id = ? AND conversation_id = ?");
+
+        this.selectConversationStmt =
+                session.prepare(
+                        "SELECT conversation_id, peer_id, group_id, "
+                                + "last_read_message_id, name, avatar, bot_session_id "
+                                + "FROM ripple.user_conversations "
                                 + "WHERE owner_id = ? AND conversation_id = ?");
     }
 }
