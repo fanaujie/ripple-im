@@ -3,6 +3,7 @@ package com.fanaujie.ripple.integration.message;
 import com.fanaujie.ripple.integration.base.AbstractBusinessFlowTest;
 import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.model.ConversationSummaryInfo;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.storage.model.Message;
@@ -396,6 +397,111 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
             MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
             BotMessageData data = payload.getBotMessageData();
             assertEquals("", data.getApiKey());
+        }
+
+        @Test
+        void webhookPayloadContainsResponseModeStreaming() throws Exception {
+            // Given - Bot with STREAMING response mode
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.STREAMING);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1018L, "Hello", "session-1");
+
+            // Then
+            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            BotMessageData data = payload.getBotMessageData();
+            assertEquals("STREAMING", data.getResponseMode());
+        }
+
+        @Test
+        void webhookPayloadContainsResponseModeBatch() throws Exception {
+            // Given - Bot with BATCH response mode
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1019L, "Hello", "session-1");
+
+            // Then
+            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            BotMessageData data = payload.getBotMessageData();
+            assertEquals("BATCH", data.getResponseMode());
+        }
+
+        @Test
+        void webhookPayloadDefaultsToStreamingMode() throws Exception {
+            // Given - Bot registered without explicit response mode (uses default)
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1020L, "Hello", "session-1");
+
+            // Then - Default should be STREAMING
+            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            BotMessageData data = payload.getBotMessageData();
+            assertEquals("STREAMING", data.getResponseMode());
+        }
+    }
+
+    // ==================== Response Mode Tests ====================
+
+    @Nested
+    class ResponseModeTests {
+
+        @Test
+        void botWithStreamingModeReceivesMessage() throws Exception {
+            // Given
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.STREAMING);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1021L, "Hello streaming", "session-1");
+
+            // Then
+            assertTrue(botWebhookProducer.hasMessages());
+            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            assertEquals("STREAMING", payload.getBotMessageData().getResponseMode());
+        }
+
+        @Test
+        void botWithBatchModeReceivesMessage() throws Exception {
+            // Given
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1022L, "Hello batch", "session-1");
+
+            // Then
+            assertTrue(botWebhookProducer.hasMessages());
+            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            assertEquals("BATCH", payload.getBotMessageData().getResponseMode());
+        }
+
+        @Test
+        void responseModeIsPersistentAcrossMessages() throws Exception {
+            // Given
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
+            String conversationId = generateSingleConversationId(aliceId(), botId());
+
+            // When - Send multiple messages
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1023L, "First message", "session-1");
+            executeSendBotMessageFlow(
+                    aliceId(), botId(), conversationId, 1024L, "Second message", "session-1");
+
+            // Then - Both messages should have BATCH response mode
+            assertEquals(2, botWebhookProducer.messageCount());
+            for (var msg : botWebhookProducer.getCapturedMessages()) {
+                assertEquals("BATCH", msg.value().getBotMessageData().getResponseMode());
+            }
         }
     }
 }

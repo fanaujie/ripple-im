@@ -16,4 +16,5 @@ public class ConversationChange {
     private String lastReadMessageId;
     private String name;
     private String avatar;
+    private String botSessionId; // nullable, only present for bot conversations
 }

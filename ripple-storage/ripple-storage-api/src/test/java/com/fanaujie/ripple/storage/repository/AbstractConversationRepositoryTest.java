@@ -545,6 +545,60 @@ public abstract class AbstractConversationRepositoryTest {
         assertEquals(0, unreadCount);
     }
 
+    // ==================== updateConversationBotSessionId Tests ====================
+
+    @Test
+    void updateConversationBotSessionId_shouldRecordVersionChange() throws Exception {
+        long userId = 4001L;
+        long peerId = 5001L;
+        createUserProfile(userId, "owner_bot1", "Owner Bot One", "avatar.png");
+        createUserProfile(peerId, "peer_bot1", "Peer Bot One", "avatar2.png");
+
+        String conversationId =
+                com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
+                        userId, peerId);
+        getStorageFacade().createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
+
+        Thread.sleep(10);
+        long versionBefore = System.currentTimeMillis();
+        Thread.sleep(10);
+
+        String botSessionId = "test-session-123";
+        getStorageFacade().updateConversationBotSessionId(userId, conversationId, botSessionId, System.currentTimeMillis());
+
+        String afterVersion = String.valueOf(versionBefore);
+
+        List<ConversationVersionChange> changes =
+                getStorageFacade().getConversationChanges(userId, afterVersion, 10);
+
+        assertNotNull(changes);
+        assertEquals(1, changes.size());
+        assertEquals(conversationId, changes.get(0).getConversationId());
+        assertEquals(ConversationOperation.UPDATE_BOT_SESSION_ID.getValue(), changes.get(0).getOperation());
+        assertEquals(botSessionId, changes.get(0).getBotSessionId());
+    }
+
+    @Test
+    void updateConversationBotSessionId_shouldUpdateBotSessionIdInConversation() throws Exception {
+        long userId = 4002L;
+        long peerId = 5002L;
+        createUserProfile(userId, "owner_bot2", "Owner Bot Two", "avatar.png");
+        createUserProfile(peerId, "peer_bot2", "Peer Bot Two", "avatar2.png");
+
+        String conversationId =
+                com.fanaujie.ripple.storage.service.utils.ConversationUtils.generateConversationId(
+                        userId, peerId);
+        getStorageFacade().createSingeMessageConversation(conversationId, userId, peerId, System.currentTimeMillis());
+
+        String botSessionId = "test-session-456";
+        getStorageFacade().updateConversationBotSessionId(userId, conversationId, botSessionId, System.currentTimeMillis());
+
+        Conversation conversation = getStorageFacade().getConversation(userId, conversationId);
+
+        assertNotNull(conversation);
+        assertEquals(botSessionId, conversation.getBotSessionId());
+    }
+
     // ==================== Helper Methods ====================
 
     protected void createConversationsForPagination(long userId, int count)

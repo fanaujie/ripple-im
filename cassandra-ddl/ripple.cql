@@ -150,12 +150,13 @@ CREATE TABLE IF NOT EXISTS "ripple"."user_group_version"
 -- Bot configuration table
 CREATE TABLE IF NOT EXISTS "ripple"."bot_config"
 (
-    "user_id"     bigint, -- FK to user table (bot's user_id)
-    "webhook_url" text,   -- External webhook endpoint
-    "api_key"     text,   -- Optional API key for auth
-    "description" text,   -- Bot description
-    "created_at"  timestamp,
-    "updated_at"  timestamp,
+    "user_id"       bigint,    -- FK to user table (bot's user_id)
+    "webhook_url"   text,      -- External webhook endpoint
+    "api_key"       text,      -- Optional API key for auth
+    "description"   text,      -- Bot description
+    "response_mode" text,      -- STREAMING or BATCH
+    "created_at"    timestamp,
+    "updated_at"    timestamp,
     primary key ( user_id )
 );
 

@@ -16,6 +16,7 @@ import com.fanaujie.ripple.storage.model.User;
 import com.fanaujie.ripple.storage.model.UserProfile;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.model.BotConfig;
+import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.service.utils.ConversationUtils;
 import com.fanaujie.ripple.storageupdater.consumer.processor.FriendStorageUpdatePayloadProcessor;
 import org.junit.jupiter.api.AfterEach;
@@ -160,16 +161,22 @@ public abstract class AbstractBusinessFlowTest {
         createUser(userId, account, nickName, "default-avatar.png");
     }
 
-    /** Registers a bot for testing. */
-    protected void registerBot(long botId, String webhookUrl, String apiKey) {
+    /** Registers a bot for testing with response mode. */
+    protected void registerBot(long botId, String webhookUrl, String apiKey, BotResponseMode responseMode) {
         BotConfig config = new BotConfig();
         config.setUserId(botId);
         config.setWebhookUrl(webhookUrl);
         config.setApiKey(apiKey);
         config.setDescription("Test bot");
+        config.setResponseMode(responseMode);
         config.setCreatedAt(Instant.now());
         config.setUpdatedAt(Instant.now());
         botConfigStorage.registerBot(botId, config);
+    }
+
+    /** Registers a bot for testing with default STREAMING mode. */
+    protected void registerBot(long botId, String webhookUrl, String apiKey) {
+        registerBot(botId, webhookUrl, apiKey, BotResponseMode.STREAMING);
     }
 
     /** Registers a bot with default configuration. */

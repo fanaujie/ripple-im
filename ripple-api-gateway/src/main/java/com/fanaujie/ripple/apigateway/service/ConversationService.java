@@ -140,7 +140,8 @@ public class ConversationService {
                 conversation.getAvatar(),
                 lastMsg != null ? lastMsg.getText() : null,
                 lastMsg != null ? lastMsg.getTimestamp() : 0L,
-                lastMsg != null ? lastMsg.getMessageId() : null);
+                lastMsg != null ? lastMsg.getMessageId() : null,
+                conversation.getBotSessionId());
     }
 
     private ConversationSummary toConversationSummary(
@@ -166,6 +167,7 @@ public class ConversationService {
                         ? String.valueOf(record.getLastReadMessageId())
                         : null,
                 record.getName(),
-                record.getAvatar());
+                record.getAvatar(),
+                record.getBotSessionId());
     }
 }

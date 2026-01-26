@@ -14,6 +14,11 @@ public class BotConfig {
     private String webhookUrl;
     private String apiKey;
     private String description;
+    private BotResponseMode responseMode;
     private Instant createdAt;
     private Instant updatedAt;
+
+    public BotResponseMode getResponseModeOrDefault() {
+        return responseMode != null ? responseMode : BotResponseMode.STREAMING;
+    }
 }

@@ -639,6 +639,7 @@ public class MongoStorageFacade implements RippleStorageFacade {
 
             record.setName(doc.getString("name"));
             record.setAvatar(doc.getString("avatar"));
+            record.setBotSessionId(doc.getString("bot_session_id"));
             changes.add(record);
         }
         return changes;
@@ -2051,14 +2052,34 @@ public class MongoStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId) {
-        userConversationsCollection.updateOne(
-                Filters.and(
-                        Filters.eq("user_id", ownerId),
-                        Filters.eq("conversation_id", conversationId)
-                ),
-                Updates.set("bot_session_id", botSessionId)
-        );
+    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId, long version) {
+        ClientSession session = mongoClient.startSession();
+        try {
+            session.startTransaction();
+
+            userConversationsCollection.updateOne(session,
+                    Filters.and(
+                            Filters.eq("user_id", ownerId),
+                            Filters.eq("conversation_id", conversationId)
+                    ),
+                    Updates.set("bot_session_id", botSessionId)
+            );
+
+            Document versionDoc = new Document("user_id", ownerId)
+                    .append("version", version)
+                    .append("conversation_id", conversationId)
+                    .append("operation", (int) ConversationOperation.UPDATE_BOT_SESSION_ID.getValue())
+                    .append("bot_session_id", botSessionId);
+
+            userConversationsVersionsCollection.insertOne(session, versionDoc);
+
+            session.commitTransaction();
+        } catch (Exception e) {
+            session.abortTransaction();
+            throw e;
+        } finally {
+            session.close();
+        }
     }
 
     // ==================== Bot Config Operations ====================
@@ -2074,10 +2095,14 @@ public class MongoStorageFacade implements RippleStorageFacade {
 
     @Override
     public void saveBotConfig(BotConfig config) {
+        String responseModeStr = config.getResponseMode() != null
+                ? config.getResponseMode().name()
+                : BotResponseMode.STREAMING.name();
         Document doc = new Document("_id", config.getUserId())
                 .append("webhook_url", config.getWebhookUrl())
                 .append("api_key", config.getApiKey())
                 .append("description", config.getDescription())
+                .append("response_mode", responseModeStr)
                 .append("created_at", Date.from(config.getCreatedAt()))
                 .append("updated_at", Date.from(config.getUpdatedAt()));
 
@@ -2111,6 +2136,7 @@ public class MongoStorageFacade implements RippleStorageFacade {
         config.setWebhookUrl(doc.getString("webhook_url"));
         config.setApiKey(doc.getString("api_key"));
         config.setDescription(doc.getString("description"));
+        config.setResponseMode(parseResponseMode(doc.getString("response_mode")));
 
         Date createdAt = doc.getDate("created_at");
         if (createdAt != null) config.setCreatedAt(createdAt.toInstant());
@@ -2119,5 +2145,16 @@ public class MongoStorageFacade implements RippleStorageFacade {
         if (updatedAt != null) config.setUpdatedAt(updatedAt.toInstant());
 
         return config;
+    }
+
+    private BotResponseMode parseResponseMode(String value) {
+        if (value == null || value.isEmpty()) {
+            return BotResponseMode.STREAMING;
+        }
+        try {
+            return BotResponseMode.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return BotResponseMode.STREAMING;
+        }
     }
 }

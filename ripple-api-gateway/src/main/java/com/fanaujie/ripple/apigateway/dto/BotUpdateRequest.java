@@ -11,4 +11,5 @@ public class BotUpdateRequest {
     private String webhookUrl;
     private String apiKey;
     private String description;
+    private String responseMode;
 }

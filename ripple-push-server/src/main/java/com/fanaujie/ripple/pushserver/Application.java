@@ -3,8 +3,8 @@ package com.fanaujie.ripple.pushserver;
 import com.fanaujie.ripple.cache.driver.RedisDriver;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import com.fanaujie.ripple.cache.service.impl.RedisConversationSummaryStorage;
-import com.fanaujie.ripple.cache.service.impl.RedisUserProfileStorage;
 import com.fanaujie.ripple.communication.batch.Config;
+import com.fanaujie.ripple.communication.gateway.GatewayConnectionManager;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
@@ -12,7 +12,6 @@ import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.PushService;
-import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.typesafe.config.ConfigFactory;
@@ -80,7 +79,7 @@ public class Application {
         Config batchConfig =
                 new Config(batchQueueSize, batchWorkerSize, batchMaxSize, batchTimeoutMs);
 
-        MessageGatewayClientManager messageGatewayManager = null;
+        GatewayConnectionManager gatewayConnectionManager = null;
         PushService pushService = null;
         RedissonClient redissonClient = null;
         ConversationSummaryStorage conversationStorage = null;
@@ -90,19 +89,19 @@ public class Application {
             conversationStorage =
                     new RedisConversationSummaryStorage(redissonClient, storageFacade);
             logger.info("ConversationStorage initialized successfully");
-            messageGatewayManager =
-                    new MessageGatewayClientManager(
+            gatewayConnectionManager =
+                    new GatewayConnectionManager(
                             zookeeperAddress,
                             messageGatewayDiscoveryPath,
                             zookeeperSessionTimeoutMs,
                             zookeeperConnectionTimeoutMs);
-            messageGatewayManager.start();
-            logger.info("MessageGatewayClientManager initialized with ZooKeeper connection monitoring");
+            gatewayConnectionManager.start();
+            logger.info("GatewayConnectionManager initialized with ZooKeeper connection monitoring");
 
             pushService =
                     createPushService(
                             userPresenceServer,
-                            messageGatewayManager,
+                            gatewayConnectionManager,
                             batchConfig,
                             conversationStorage);
 
@@ -120,7 +119,7 @@ public class Application {
             pushConsumerThread.start();
 
             // Add shutdown hook for graceful cleanup
-            final MessageGatewayClientManager finalManager = messageGatewayManager;
+            final GatewayConnectionManager finalConnectionManager = gatewayConnectionManager;
             final PushService finalPushService = pushService;
             final RedissonClient finalRedissonClient = redissonClient;
             Runtime.getRuntime()
@@ -130,7 +129,7 @@ public class Application {
                                         logger.info("Shutting down application...");
                                         try {
                                             finalPushService.close();
-                                            finalManager.close();
+                                            finalConnectionManager.close();
                                             if (finalRedissonClient != null) {
                                                 finalRedissonClient.shutdown();
                                             }
@@ -148,8 +147,8 @@ public class Application {
                 if (pushService != null) {
                     pushService.close();
                 }
-                if (messageGatewayManager != null) {
-                    messageGatewayManager.close();
+                if (gatewayConnectionManager != null) {
+                    gatewayConnectionManager.close();
                 }
                 if (redissonClient != null) {
                     redissonClient.shutdown();
@@ -167,13 +166,13 @@ public class Application {
 
     private PushService createPushService(
             String userPresenceServer,
-            MessageGatewayClientManager messageGatewayManager,
+            GatewayConnectionManager gatewayConnectionManager,
             Config batchConfig,
             ConversationSummaryStorage conversationStorage) {
         GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClient =
                 new GrpcClient<>(userPresenceServer, UserPresenceGrpc::newBlockingStub);
         return new PushService(
-                userPresenceClient, messageGatewayManager, batchConfig, conversationStorage);
+                userPresenceClient, gatewayConnectionManager, batchConfig, conversationStorage);
     }
 
     private GenericConsumer<String, PushMessage> createPushTopicConsumer(

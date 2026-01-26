@@ -122,10 +122,9 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
 
         // Update bot session ID in conversation if it differs from the provided session ID
         Conversation conversation = this.storageFacade.getConversation(senderId, conversationId);
-        if (conversation != null
-                && !providedSessionId.equals(conversation.getBotSessionId())) {
+        if (conversation != null && !providedSessionId.equals(conversation.getBotSessionId())) {
             this.storageFacade.updateConversationBotSessionId(
-                    senderId, conversationId, providedSessionId);
+                    senderId, conversationId, providedSessionId, sendMessageReq.getSendTimestamp());
             logger.debug(
                     "Updated bot session ID for conversation {}: {} -> {}",
                     conversationId,
@@ -145,15 +144,17 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                             .setSendTimestamp(sendMessageReq.getSendTimestamp())
                             .setWebhookUrl(botConfig.getWebhookUrl())
                             .setApiKey(botConfig.getApiKey() != null ? botConfig.getApiKey() : "")
+                            .setResponseMode(botConfig.getResponseModeOrDefault().name())
                             .build();
 
             MessagePayload payload =
                     MessagePayload.newBuilder().setBotMessageData(botMessageData).build();
             this.botWebhookProducer.send(this.botWebhookTopic, String.valueOf(senderId), payload);
             logger.info(
-                    "Dispatched message {} to bot webhook topic for bot {}",
+                    "Dispatched message {} to bot webhook topic for bot {} (responseMode={})",
                     sendMessageReq.getMessageId(),
-                    botId);
+                    botId,
+                    botConfig.getResponseModeOrDefault());
         } else {
             logger.warn("Bot webhook producer not configured, cannot dispatch to bot {}", botId);
         }

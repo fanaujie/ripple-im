@@ -69,7 +69,7 @@ public interface RippleStorageFacade {
 
     Conversation getConversation(long ownerId, String conversationId);
 
-    void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId);
+    void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId, long version);
 
     List<ConversationVersionChange> getConversationChanges(
             long userId, String afterVersion, int limit) throws InvalidVersionException;

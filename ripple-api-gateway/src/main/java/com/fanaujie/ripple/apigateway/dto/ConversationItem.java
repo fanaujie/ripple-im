@@ -18,4 +18,5 @@ public class ConversationItem {
     private String lastMessageText;
     private long lastMessageTimestamp;
     private String lastMessageId;
+    private String botSessionId; // nullable, only present for bot conversations
 }

@@ -2,6 +2,7 @@ package com.fanaujie.ripple.pushserver.service;
 
 import com.fanaujie.ripple.communication.batch.BatchExecutorService;
 import com.fanaujie.ripple.communication.batch.Config;
+import com.fanaujie.ripple.communication.gateway.GatewayConnectionManager;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.MessageRecord;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
@@ -11,7 +12,6 @@ import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.pushserver.service.batch.GatewayPushBatchProcessorFactory;
 import com.fanaujie.ripple.pushserver.service.batch.GatewayPushTask;
-import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,7 +28,7 @@ public class PushService {
 
     public PushService(
             GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClientPool,
-            MessageGatewayClientManager messageGatewayManager,
+            GatewayConnectionManager gatewayConnectionManager,
             Config batchConfig,
             ConversationSummaryStorage conversationStorage) {
         this.userPresenceClient = userPresenceClientPool;
@@ -36,7 +36,7 @@ public class PushService {
                 new BatchExecutorService<>(
                         batchConfig,
                         new GatewayPushBatchProcessorFactory(
-                                messageGatewayManager, conversationStorage));
+                                gatewayConnectionManager, conversationStorage));
         logger.info(
                 "PushService initialized with batch config: queueSize={}, workerSize={}, "
                         + "batchMaxSize={}, timeoutMs={}",

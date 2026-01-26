@@ -1,4 +1,4 @@
-package com.fanaujie.ripple.pushserver.service.grpc;
+package com.fanaujie.ripple.communication.gateway;
 
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.zookeeper.ServiceChangeListener;
@@ -10,6 +10,7 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -17,20 +18,20 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class MessageGatewayClientManager implements ServiceChangeListener {
-    private static final Logger logger = LoggerFactory.getLogger(MessageGatewayClientManager.class);
+public class GatewayConnectionManager implements ServiceChangeListener, Closeable {
+    private static final Logger logger = LoggerFactory.getLogger(GatewayConnectionManager.class);
 
     private final ZookeeperDiscoverService discoveryService;
     private final Map<String, GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> clients;
     private final AtomicBoolean connected = new AtomicBoolean(false);
 
-    public MessageGatewayClientManager(String zookeeperAddress, String discoveryPath)
+    public GatewayConnectionManager(String zookeeperAddress, String discoveryPath)
             throws Exception {
         this.discoveryService = new ZookeeperDiscoverService(zookeeperAddress, discoveryPath);
         this.clients = new ConcurrentHashMap<>();
     }
 
-    public MessageGatewayClientManager(
+    public GatewayConnectionManager(
             String zookeeperAddress,
             String discoveryPath,
             int sessionTimeoutMs,
@@ -45,12 +46,16 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
     public void start() throws Exception {
         discoveryService.discoverService(this);
         connected.set(true);
-        logger.info("MessageGatewayClientManager started");
+        logger.info("GatewayConnectionManager started");
     }
 
     public Optional<GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> getClient(
             String serverAddress) {
         return Optional.ofNullable(clients.get(serverAddress));
+    }
+
+    public boolean isConnected() {
+        return connected.get();
     }
 
     @Override
@@ -63,10 +68,10 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
                 handleServiceRemoved(event);
                 break;
             case CHILD_UPDATED:
-                handleServiceUpdated(event);
+                // Not handling updates for now
                 break;
             default:
-                throw new IllegalArgumentException("Unknown event type: " + event.getType());
+                logger.warn("Unknown event type: {}", event.getType());
         }
     }
 
@@ -91,10 +96,6 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
         }
     }
 
-    private void handleServiceUpdated(PathChildrenCacheEvent event) {
-        // not handling updates for now
-    }
-
     @Override
     public void onConnectionStateChanged(CuratorFramework client, ConnectionState newState) {
         switch (newState) {
@@ -102,7 +103,7 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
             case RECONNECTED:
                 connected.set(true);
                 logger.info(
-                        "ZooKeeper connection {} - MessageGatewayClientManager is ready",
+                        "ZooKeeper connection {} - GatewayConnectionManager is ready",
                         newState == ConnectionState.CONNECTED ? "established" : "restored");
                 break;
             case SUSPENDED:
@@ -113,7 +114,6 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
                 connected.set(false);
                 logger.error(
                         "ZooKeeper connection LOST - clearing cached clients and waiting for reconnection");
-                // Clear all clients as they may be stale
                 clearAllClients();
                 break;
             case READ_ONLY:
@@ -136,10 +136,6 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
         logger.info("All cached MessageGateway clients cleared");
     }
 
-    public boolean isConnected() {
-        return connected.get();
-    }
-
     private String extractServerAddress(PathChildrenCacheEvent event) {
         if (event.getData() == null || event.getData().getData() == null) {
             return null;
@@ -147,14 +143,12 @@ public class MessageGatewayClientManager implements ServiceChangeListener {
         return new String(event.getData().getData(), StandardCharsets.UTF_8);
     }
 
+    @Override
     public void close() throws IOException {
-        logger.info("Closing MessageGatewayClientManager");
-        clients.forEach(
-                (address, c) -> {
-                    c.getChannel().shutdown();
-                });
+        logger.info("Closing GatewayConnectionManager");
+        clients.forEach((address, c) -> c.getChannel().shutdown());
         clients.clear();
         discoveryService.close();
-        logger.info("MessageGatewayClientManager closed");
+        logger.info("GatewayConnectionManager closed");
     }
 }

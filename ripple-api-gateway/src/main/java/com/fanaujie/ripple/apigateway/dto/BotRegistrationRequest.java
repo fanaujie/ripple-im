@@ -23,4 +23,6 @@ public class BotRegistrationRequest {
     private String apiKey;
 
     private String description;
+
+    private String responseMode;
 }

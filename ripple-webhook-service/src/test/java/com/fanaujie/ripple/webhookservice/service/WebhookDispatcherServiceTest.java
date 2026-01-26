@@ -1,19 +1,17 @@
 package com.fanaujie.ripple.webhookservice.service;
 
-import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
+import com.fanaujie.ripple.communication.gateway.GatewayPusher;
 import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
-import com.fanaujie.ripple.protobuf.push.PushMessage;
-import com.fanaujie.ripple.protobuf.push.PushSSEData;
 import com.fanaujie.ripple.protobuf.push.SSEEventType;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.webhookservice.http.WebhookHttpClient;
 import com.fanaujie.ripple.webhookservice.model.SSEEvent;
-import com.fanaujie.ripple.webhookservice.model.WebhookRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -27,10 +25,9 @@ class WebhookDispatcherServiceTest {
 
     private WebhookHttpClient mockHttpClient;
     private RippleStorageFacade mockStorageFacade;
-    private GenericProducer<String, PushMessage> mockPushProducer;
+    private GatewayPusher mockGatewayPusher;
     private WebhookDispatcherService service;
 
-    private static final String PUSH_TOPIC = "ripple-push-notifications";
     private static final long SENDER_ID = 1001L;
     private static final long BOT_ID = 5001L;
     private static final String CONVERSATION_ID = "conv-123";
@@ -44,16 +41,17 @@ class WebhookDispatcherServiceTest {
     void setUp() {
         mockHttpClient = mock(WebhookHttpClient.class);
         mockStorageFacade = mock(RippleStorageFacade.class);
-        mockPushProducer = mock(GenericProducer.class);
+        mockGatewayPusher = mock(GatewayPusher.class);
 
-        service = new WebhookDispatcherService(
-                mockHttpClient,
-                mockStorageFacade,
-                mockPushProducer,
-                PUSH_TOPIC);
+        service =
+                new WebhookDispatcherService(mockHttpClient, mockStorageFacade, mockGatewayPusher);
     }
 
     private BotMessageData createBotMessageData() {
+        return createBotMessageData("STREAMING");
+    }
+
+    private BotMessageData createBotMessageData(String responseMode) {
         return BotMessageData.newBuilder()
                 .setSenderUserId(SENDER_ID)
                 .setBotUserId(BOT_ID)
@@ -61,91 +59,344 @@ class WebhookDispatcherServiceTest {
                 .setMessageId(MESSAGE_ID)
                 .setSessionId(SESSION_ID)
                 .setMessageText(MESSAGE_TEXT)
-                .setSendTimestamp(System.currentTimeMillis())
+                .setSendTimestamp(Instant.now().toEpochMilli())
                 .setWebhookUrl(WEBHOOK_URL)
                 .setApiKey(API_KEY)
+                .setResponseMode(responseMode)
                 .build();
     }
 
     @Nested
-    class DeltaStreamingTests {
+    class ResponseModeTests {
 
         @Test
-        void dispatch_WithDeltaEvents_PushesToUser() {
+        void streamingMode_pushesDeltaAndDone() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
-            List<PushMessage> capturedMessages = new ArrayList<>();
+            BotMessageData botMessage = createBotMessageData("STREAMING");
+            List<SSEEventType> pushedEventTypes = new ArrayList<>();
 
-            // Mock HTTP client to simulate SSE streaming
-            when(mockHttpClient.sendWithSSE(eq(WEBHOOK_URL), eq(API_KEY), any(WebhookRequest.class), any()))
-                    .thenAnswer(invocation -> {
-                        Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                        // Simulate streaming delta events
-                        eventHandler.accept(SSEEvent.delta("Hel"));
-                        eventHandler.accept(SSEEvent.delta("lo "));
-                        eventHandler.accept(SSEEvent.delta("World"));
-                        return CompletableFuture.completedFuture("Hello World");
-                    });
-
-            doAnswer(invocation -> {
-                capturedMessages.add(invocation.getArgument(2));
-                return null;
-            }).when(mockPushProducer).send(eq(PUSH_TOPIC), anyString(), any(PushMessage.class));
-
-            // When
-            service.dispatch(botMessage);
-
-            // Then - Verify 3 delta messages + 1 done message were sent
-            // Wait briefly for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
-
-            // At minimum, verify delta pushes were called
-            verify(mockPushProducer, atLeast(3)).send(eq(PUSH_TOPIC), anyString(), any(PushMessage.class));
-
-            // Verify delta content
-            List<PushMessage> deltaMessages = capturedMessages.stream()
-                    .filter(m -> m.getSseData().getEventType() == SSEEventType.SSE_EVENT_TYPE_DELTA)
-                    .toList();
-            assertEquals(3, deltaMessages.size());
-            assertEquals("Hel", deltaMessages.get(0).getSseData().getContent());
-            assertEquals("lo ", deltaMessages.get(1).getSseData().getContent());
-            assertEquals("World", deltaMessages.get(2).getSseData().getContent());
-        }
-
-        @Test
-        void dispatch_DeltaEvents_ContainCorrectMetadata() {
-            // Given
-            BotMessageData botMessage = createBotMessageData();
+            doAnswer(
+                            invocation -> {
+                                pushedEventTypes.add(invocation.getArgument(3));
+                                return null;
+                            })
+                    .when(mockGatewayPusher)
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenAnswer(invocation -> {
-                        Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                        eventHandler.accept(SSEEvent.delta("Test"));
-                        return CompletableFuture.completedFuture("Test");
-                    });
-
-            ArgumentCaptor<PushMessage> messageCaptor = ArgumentCaptor.forClass(PushMessage.class);
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Hello "));
+                                eventHandler.accept(SSEEvent.delta("World"));
+                                return CompletableFuture.completedFuture("Hello World");
+                            });
 
             // When
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - should have 2 deltas + 1 done
+            verify(mockGatewayPusher, times(3))
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            assertEquals(
+                    2,
+                    pushedEventTypes.stream()
+                            .filter(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA)
+                            .count());
+            assertEquals(
+                    1,
+                    pushedEventTypes.stream()
+                            .filter(t -> t == SSEEventType.SSE_EVENT_TYPE_DONE)
+                            .count());
+        }
+
+        @Test
+        void batchMode_pushesDoneOnly() {
+            // Given
+            BotMessageData botMessage = createBotMessageData("BATCH");
+            List<SSEEventType> pushedEventTypes = new ArrayList<>();
+
+            doAnswer(
+                            invocation -> {
+                                pushedEventTypes.add(invocation.getArgument(3));
+                                return null;
+                            })
+                    .when(mockGatewayPusher)
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Hello "));
+                                eventHandler.accept(SSEEvent.delta("World"));
+                                return CompletableFuture.completedFuture("Hello World");
+                            });
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - should have only 1 done (no deltas)
+            verify(mockGatewayPusher, times(1))
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            assertEquals(
+                    0,
+                    pushedEventTypes.stream()
+                            .filter(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA)
+                            .count());
+            assertEquals(
+                    1,
+                    pushedEventTypes.stream()
+                            .filter(t -> t == SSEEventType.SSE_EVENT_TYPE_DONE)
+                            .count());
+        }
+
+        @Test
+        void defaultResponseMode_isStreaming() {
+            // Given - no responseMode set (empty string)
+            BotMessageData botMessage = createBotMessageData("");
+            List<SSEEventType> pushedEventTypes = new ArrayList<>();
+
+            doAnswer(
+                            invocation -> {
+                                pushedEventTypes.add(invocation.getArgument(3));
+                                return null;
+                            })
+                    .when(mockGatewayPusher)
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Test"));
+                                return CompletableFuture.completedFuture("Test");
+                            });
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - should push delta (streaming is default)
+            assertTrue(
+                    pushedEventTypes.stream()
+                            .anyMatch(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA));
+        }
+
+        @Test
+        void invalidResponseMode_defaultsToStreaming() {
+            // Given - invalid responseMode
+            BotMessageData botMessage = createBotMessageData("INVALID_MODE");
+            List<SSEEventType> pushedEventTypes = new ArrayList<>();
+
+            doAnswer(
+                            invocation -> {
+                                pushedEventTypes.add(invocation.getArgument(3));
+                                return null;
+                            })
+                    .when(mockGatewayPusher)
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Test"));
+                                return CompletableFuture.completedFuture("Test");
+                            });
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - should push delta (streaming is default for invalid mode)
+            assertTrue(
+                    pushedEventTypes.stream()
+                            .anyMatch(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA));
+        }
+    }
+
+    @Nested
+    class DirectGatewayPushTests {
+
+        @Test
+        void deltaEvent_isPushedViaDirectGatewayPusher() {
+            // Given
+            BotMessageData botMessage = createBotMessageData("STREAMING");
+
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Test delta"));
+                                return CompletableFuture.completedFuture("Test delta");
+                            });
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then
-            verify(mockPushProducer, atLeast(1)).send(eq(PUSH_TOPIC), eq(String.valueOf(SENDER_ID)), messageCaptor.capture());
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_DELTA),
+                            eq("Test delta"),
+                            eq(0L),
+                            anyLong());
+        }
 
-            PushMessage captured = messageCaptor.getAllValues().stream()
-                    .filter(m -> m.getSseData().getEventType() == SSEEventType.SSE_EVENT_TYPE_DELTA)
-                    .findFirst()
-                    .orElse(null);
+        @Test
+        void doneEvent_isPushedWithMessageIdAndContent() {
+            // Given
+            BotMessageData botMessage = createBotMessageData();
+            String fullResponse = "Complete response";
 
-            assertNotNull(captured);
-            PushSSEData sseData = captured.getSseData();
-            assertEquals(SSEEventType.SSE_EVENT_TYPE_DELTA, sseData.getEventType());
-            assertEquals(BOT_ID, sseData.getSendUserId());
-            assertEquals(SENDER_ID, sseData.getReceiveUserIds(0));
-            assertEquals(CONVERSATION_ID, sseData.getConversationId());
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(fullResponse));
+
+            ArgumentCaptor<Long> messageIdCaptor = ArgumentCaptor.forClass(Long.class);
+            ArgumentCaptor<String> contentCaptor = ArgumentCaptor.forClass(String.class);
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_DONE),
+                            contentCaptor.capture(),
+                            messageIdCaptor.capture(),
+                            anyLong());
+
+            assertEquals(fullResponse, contentCaptor.getValue());
+            assertTrue(messageIdCaptor.getValue() > 0);
+        }
+
+        @Test
+        void pusherFailure_continuesProcessing() {
+            // Given
+            BotMessageData botMessage = createBotMessageData();
+
+            doThrow(new RuntimeException("Push failed"))
+                    .when(mockGatewayPusher)
+                    .pushSSE(
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            eq(SSEEventType.SSE_EVENT_TYPE_DELTA),
+                            anyString(),
+                            anyLong(),
+                            anyLong());
+
+            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Test"));
+                                return CompletableFuture.completedFuture("Test");
+                            });
+
+            // When - should not throw
+            assertDoesNotThrow(
+                    () -> {
+                        service.dispatch(botMessage);
+                        Thread.sleep(100);
+                    });
+
+            // Then - storage should still be called
+            verify(mockStorageFacade)
+                    .saveTextMessage(
+                            anyString(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            any());
         }
     }
 
@@ -159,43 +410,45 @@ class WebhookDispatcherServiceTest {
             String fullResponse = "Hello World";
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenAnswer(invocation -> {
-                        Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                        eventHandler.accept(SSEEvent.done(fullResponse));
-                        return CompletableFuture.completedFuture(fullResponse);
-                    });
-
-            ArgumentCaptor<PushMessage> messageCaptor = ArgumentCaptor.forClass(PushMessage.class);
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.done(fullResponse));
+                                return CompletableFuture.completedFuture(fullResponse);
+                            });
 
             // When
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then - Verify response was saved
-            verify(mockStorageFacade).saveTextMessage(
-                    eq(CONVERSATION_ID),
-                    anyLong(),      // messageId
-                    eq(BOT_ID),     // sender is bot
-                    eq(SENDER_ID),  // receiver is user
-                    anyLong(),      // timestamp
-                    eq(fullResponse),
-                    isNull(),       // no file URL
-                    isNull()        // no file name
-            );
+            verify(mockStorageFacade)
+                    .saveTextMessage(
+                            eq(CONVERSATION_ID),
+                            anyLong(), // messageId
+                            eq(BOT_ID), // sender is bot
+                            eq(SENDER_ID), // receiver is user
+                            anyLong(), // timestamp
+                            eq(fullResponse),
+                            isNull(), // no file URL
+                            isNull() // no file name
+                            );
 
-            // Verify DONE event was pushed
-            verify(mockPushProducer, atLeast(1)).send(eq(PUSH_TOPIC), anyString(), messageCaptor.capture());
-
-            PushMessage doneMessage = messageCaptor.getAllValues().stream()
-                    .filter(m -> m.getSseData().getEventType() == SSEEventType.SSE_EVENT_TYPE_DONE)
-                    .findFirst()
-                    .orElse(null);
-
-            assertNotNull(doneMessage);
-            assertEquals(fullResponse, doneMessage.getSseData().getContent());
-            assertTrue(doneMessage.getSseData().getMessageId() > 0);
+            // Verify DONE event was pushed via direct gateway
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_DONE),
+                            eq(fullResponse),
+                            anyLong(),
+                            anyLong());
         }
 
         @Test
@@ -213,19 +466,22 @@ class WebhookDispatcherServiceTest {
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(200); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then - verify message IDs are different
-            verify(mockStorageFacade, times(2)).saveTextMessage(
-                    anyString(),
-                    messageIdCaptor.capture(),
-                    anyLong(),
-                    anyLong(),
-                    anyLong(),
-                    anyString(),
-                    any(),
-                    any()
-            );
+            verify(mockStorageFacade, times(2))
+                    .saveTextMessage(
+                            anyString(),
+                            messageIdCaptor.capture(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            any());
 
             List<Long> messageIds = messageIdCaptor.getAllValues();
             assertEquals(2, messageIds.size());
@@ -242,26 +498,29 @@ class WebhookDispatcherServiceTest {
             BotMessageData botMessage = createBotMessageData();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Connection failed")));
-
-            ArgumentCaptor<PushMessage> messageCaptor = ArgumentCaptor.forClass(PushMessage.class);
+                    .thenReturn(
+                            CompletableFuture.failedFuture(
+                                    new RuntimeException("Connection failed")));
 
             // When
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then
-            verify(mockPushProducer, atLeast(1)).send(eq(PUSH_TOPIC), anyString(), messageCaptor.capture());
-
-            PushMessage errorMessage = messageCaptor.getAllValues().stream()
-                    .filter(m -> m.getSseData().getEventType() == SSEEventType.SSE_EVENT_TYPE_ERROR)
-                    .findFirst()
-                    .orElse(null);
-
-            assertNotNull(errorMessage);
-            assertEquals("Bot is currently unavailable", errorMessage.getSseData().getContent());
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_ERROR),
+                            eq("Bot is currently unavailable"),
+                            eq(0L),
+                            anyLong());
         }
 
         @Test
@@ -276,12 +535,22 @@ class WebhookDispatcherServiceTest {
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then - verify no message was saved
-            verify(mockStorageFacade, never()).saveTextMessage(
-                    anyString(), anyLong(), anyLong(), anyLong(),
-                    anyLong(), anyString(), any(), any());
+            verify(mockStorageFacade, never())
+                    .saveTextMessage(
+                            anyString(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyString(),
+                            any(),
+                            any());
         }
     }
 
@@ -301,19 +570,22 @@ class WebhookDispatcherServiceTest {
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then
-            verify(mockStorageFacade).saveTextMessage(
-                    eq(CONVERSATION_ID),
-                    anyLong(),
-                    eq(BOT_ID),          // sender is bot
-                    eq(SENDER_ID),       // receiver is user
-                    anyLong(),
-                    eq(responseText),
-                    isNull(),
-                    isNull()
-            );
+            verify(mockStorageFacade)
+                    .saveTextMessage(
+                            eq(CONVERSATION_ID),
+                            anyLong(),
+                            eq(BOT_ID), // sender is bot
+                            eq(SENDER_ID), // receiver is user
+                            anyLong(),
+                            eq(responseText),
+                            isNull(),
+                            isNull());
         }
 
         @Test
@@ -322,12 +594,13 @@ class WebhookDispatcherServiceTest {
             BotMessageData botMessage = createBotMessageData();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenAnswer(invocation -> {
-                        Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                        eventHandler.accept(SSEEvent.delta("Hello "));
-                        eventHandler.accept(SSEEvent.delta("World"));
-                        return CompletableFuture.completedFuture(null); // null fullText
-                    });
+                    .thenAnswer(
+                            invocation -> {
+                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
+                                eventHandler.accept(SSEEvent.delta("Hello "));
+                                eventHandler.accept(SSEEvent.delta("World"));
+                                return CompletableFuture.completedFuture(null); // null fullText
+                            });
 
             ArgumentCaptor<String> textCaptor = ArgumentCaptor.forClass(String.class);
 
@@ -335,19 +608,22 @@ class WebhookDispatcherServiceTest {
             service.dispatch(botMessage);
 
             // Wait for async processing
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
 
             // Then - should use accumulated text
-            verify(mockStorageFacade).saveTextMessage(
-                    anyString(),
-                    anyLong(),
-                    anyLong(),
-                    anyLong(),
-                    anyLong(),
-                    textCaptor.capture(),
-                    any(),
-                    any()
-            );
+            verify(mockStorageFacade)
+                    .saveTextMessage(
+                            anyString(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            anyLong(),
+                            textCaptor.capture(),
+                            any(),
+                            any());
 
             assertEquals("Hello World", textCaptor.getValue());
         }

@@ -1,9 +1,10 @@
 package com.fanaujie.ripple.webhookservice;
 
-import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
-import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericProducer;
-import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaProducerConfigFactory;
-import com.fanaujie.ripple.protobuf.push.PushMessage;
+import com.fanaujie.ripple.communication.gateway.DirectGatewayPusher;
+import com.fanaujie.ripple.communication.gateway.GatewayConnectionManager;
+import com.fanaujie.ripple.communication.gateway.GatewayPusher;
+import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
+import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
 import com.fanaujie.ripple.webhookservice.http.WebhookHttpClient;
@@ -24,6 +25,7 @@ public class Application {
 
     private Server server;
     private WebhookHttpClient httpClient;
+    private GatewayConnectionManager gatewayConnectionManager;
 
     private void run() throws Exception {
         Config config = ConfigFactory.load();
@@ -31,9 +33,12 @@ public class Application {
         // gRPC Server Configuration
         int grpcPort = config.getInt("grpc.server.port");
 
-        // Kafka Configuration
-        String pushTopic = config.getString("broker.topic.push");
-        String brokerServer = config.getString("broker.server");
+        // ZooKeeper Configuration
+        String zookeeperAddress = config.getString("zookeeper.address");
+        String gatewayDiscoveryPath = config.getString("zookeeper.discovery.message-gateway");
+
+        // User Presence Configuration
+        String userPresenceAddress = config.getString("grpc.client.user-presence.address");
 
         // Webhook HTTP Configuration
         int connectTimeoutMs = config.getInt("webhook.http.connect-timeout-ms");
@@ -41,8 +46,9 @@ public class Application {
 
         logger.info("Starting Webhook Service...");
         logger.info("gRPC Port: {}", grpcPort);
-        logger.info("Push Topic: {}", pushTopic);
-        logger.info("Broker Server: {}", brokerServer);
+        logger.info("ZooKeeper: {}", zookeeperAddress);
+        logger.info("Gateway Discovery Path: {}", gatewayDiscoveryPath);
+        logger.info("User Presence Address: {}", userPresenceAddress);
         logger.info("HTTP Connect Timeout: {}ms, Read Timeout: {}ms", connectTimeoutMs, readTimeoutMs);
 
         // Initialize storage
@@ -51,16 +57,23 @@ public class Application {
         // Initialize HTTP client
         httpClient = new WebhookHttpClient(connectTimeoutMs, readTimeoutMs);
 
-        // Initialize push producer
-        GenericProducer<String, PushMessage> pushProducer = new KafkaGenericProducer<>(
-                KafkaProducerConfigFactory.createPushMessageProducerConfig(brokerServer));
+        // Initialize user presence client
+        GrpcClient<UserPresenceGrpc.UserPresenceBlockingStub> userPresenceClient =
+                new GrpcClient<>(userPresenceAddress, UserPresenceGrpc::newBlockingStub);
+
+        // Initialize gateway connection manager (shared from ripple-communication)
+        gatewayConnectionManager = new GatewayConnectionManager(zookeeperAddress, gatewayDiscoveryPath);
+        gatewayConnectionManager.start();
+
+        // Initialize direct gateway pusher for low-latency SSE push
+        GatewayPusher gatewayPusher = new DirectGatewayPusher(
+                gatewayConnectionManager, userPresenceClient);
 
         // Initialize dispatcher service
         WebhookDispatcherService dispatcherService = new WebhookDispatcherService(
                 httpClient,
                 storageFacade,
-                pushProducer,
-                pushTopic);
+                gatewayPusher);
 
         // Create gRPC service implementation
         WebhookDispatcherServiceImpl grpcService = new WebhookDispatcherServiceImpl(dispatcherService);
@@ -79,9 +92,8 @@ public class Application {
             logger.info("Shutting down Webhook Service...");
             try {
                 stop();
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 logger.error("Error during shutdown", e);
-                Thread.currentThread().interrupt();
             }
         }));
 
@@ -89,13 +101,17 @@ public class Application {
         server.awaitTermination();
     }
 
-    private void stop() throws InterruptedException {
+    private void stop() throws Exception {
         if (server != null) {
             server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
             logger.info("gRPC server stopped");
         }
         if (httpClient != null) {
             httpClient.close();
+        }
+        if (gatewayConnectionManager != null) {
+            gatewayConnectionManager.close();
+            logger.info("Gateway connection manager closed");
         }
     }
 

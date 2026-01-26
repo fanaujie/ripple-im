@@ -4,6 +4,7 @@ import com.fanaujie.ripple.apigateway.dto.*;
 import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.model.BotConfig;
+import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.storage.model.User;
 import com.fanaujie.ripple.storage.model.UserProfile;
@@ -52,7 +53,7 @@ public class BotService {
             BotSessionData data = new BotSessionData();
             data.setSessionId(sessionId);
             data.setBotId(String.valueOf(botId));
-            data.setCreatedAt(System.currentTimeMillis());
+            data.setCreatedAt(Instant.now().toEpochMilli());
 
             return ResponseEntity.ok(new BotSessionResponse(200, "success", data));
         } catch (Exception e) {
@@ -109,6 +110,8 @@ public class BotService {
                                         BotData data = new BotData();
                                         data.setBotId(String.valueOf(config.getUserId()));
                                         data.setDescription(config.getDescription());
+                                        data.setResponseMode(
+                                                config.getResponseModeOrDefault().name());
                                         try {
                                             UserProfile profile =
                                                     storageFacade.getUserProfile(
@@ -142,9 +145,23 @@ public class BotService {
                         .body(new BotRegistrationResponse(400, "Account already exists", null));
             }
 
-            // Generate bot user ID (in production, use Snowflake ID service)
-            long botUserId = System.currentTimeMillis();
+            // Validate responseMode if provided
+            BotResponseMode responseMode = BotResponseMode.STREAMING; // default
+            if (request.getResponseMode() != null && !request.getResponseMode().isEmpty()) {
+                try {
+                    responseMode = BotResponseMode.valueOf(request.getResponseMode().toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.status(400)
+                            .body(
+                                    new BotRegistrationResponse(
+                                            400,
+                                            "Invalid responseMode. Valid values: STREAMING, BATCH",
+                                            null));
+                }
+            }
 
+            long botUserId =
+                    snowflakeIdClient.requestSnowflakeId().get(5, TimeUnit.SECONDS).getId();
             // Create bot user
             User botUser = new User();
             botUser.setUserId(botUserId);
@@ -162,6 +179,7 @@ public class BotService {
             config.setWebhookUrl(request.getWebhookUrl());
             config.setApiKey(request.getApiKey());
             config.setDescription(request.getDescription());
+            config.setResponseMode(responseMode);
             config.setCreatedAt(now);
             config.setUpdatedAt(now);
 
@@ -170,6 +188,7 @@ public class BotService {
             BotRegistrationData data = new BotRegistrationData();
             data.setBotId(String.valueOf(botUserId));
             data.setAccount(request.getAccount());
+            data.setResponseMode(responseMode.name());
 
             return ResponseEntity.ok(new BotRegistrationResponse(200, "success", data));
         } catch (Exception e) {
@@ -184,6 +203,21 @@ public class BotService {
             BotConfig config = storageFacade.getBotConfig(botId);
             if (config == null) {
                 return ResponseEntity.status(404).body(new CommonResponse(404, "Bot not found"));
+            }
+
+            // Validate responseMode if provided
+            if (request.getResponseMode() != null && !request.getResponseMode().isEmpty()) {
+                try {
+                    BotResponseMode responseMode =
+                            BotResponseMode.valueOf(request.getResponseMode().toUpperCase());
+                    config.setResponseMode(responseMode);
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.status(400)
+                            .body(
+                                    new CommonResponse(
+                                            400,
+                                            "Invalid responseMode. Valid values: STREAMING, BATCH"));
+                }
             }
 
             // Update config

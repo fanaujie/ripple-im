@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class BotRegistrationData {
     private String botId;
     private String account;
+    private String responseMode;
 }

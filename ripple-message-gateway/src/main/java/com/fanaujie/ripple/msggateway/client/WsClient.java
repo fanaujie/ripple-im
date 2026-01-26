@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,7 +80,7 @@ public class WsClient {
             return future;
         }
 
-        long timestamp = System.currentTimeMillis();
+        long timestamp = Instant.now().toEpochMilli();
         responseFutures.put(userId, future);
 
         try {

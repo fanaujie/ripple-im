@@ -1,6 +1,7 @@
 package com.fanaujie.ripple.pushserver.service.batch;
 
 import com.fanaujie.ripple.communication.batch.BatchProcessorFactory;
+import com.fanaujie.ripple.communication.gateway.GatewayConnectionManager;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.protobuf.msggateway.*;
 import com.fanaujie.ripple.protobuf.push.MultiNotifications;
@@ -9,7 +10,6 @@ import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.push.PushSSEData;
 import com.fanaujie.ripple.protobuf.userpresence.UserOnlineInfo;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
-import com.fanaujie.ripple.pushserver.service.grpc.MessageGatewayClientManager;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,13 +23,13 @@ public class GatewayPushBatchProcessor
         implements BatchProcessorFactory.BatchProcessor<GatewayPushTask> {
     private static final Logger logger = LoggerFactory.getLogger(GatewayPushBatchProcessor.class);
 
-    private final MessageGatewayClientManager messageGatewayManager;
+    private final GatewayConnectionManager gatewayConnectionManager;
     private final ConversationSummaryStorage conversationStorage;
 
     public GatewayPushBatchProcessor(
-            MessageGatewayClientManager messageGatewayManager,
+            GatewayConnectionManager gatewayConnectionManager,
             ConversationSummaryStorage conversationStorage) {
-        this.messageGatewayManager = messageGatewayManager;
+        this.gatewayConnectionManager = gatewayConnectionManager;
         this.conversationStorage = conversationStorage;
     }
 
@@ -46,10 +46,10 @@ public class GatewayPushBatchProcessor
     }
 
     private void processServerTasks(String serverAddress, List<GatewayPushTask> tasks) {
-        Optional<GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> c =
-                messageGatewayManager.getClient(serverAddress);
+        Optional<GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> clientOpt =
+                gatewayConnectionManager.getClient(serverAddress);
 
-        if (c.isEmpty()) {
+        if (clientOpt.isEmpty()) {
             logger.warn(
                     "processServerTasks: No client found for MessageGateway server: {}. Skipping {} tasks.",
                     serverAddress,
@@ -58,7 +58,7 @@ public class GatewayPushBatchProcessor
         }
         try {
             for (GatewayPushTask task : tasks) {
-                processSingleTask(c.get().getStub(), task);
+                processSingleTask(clientOpt.get().getStub(), task);
             }
         } catch (Exception e) {
             logger.error(

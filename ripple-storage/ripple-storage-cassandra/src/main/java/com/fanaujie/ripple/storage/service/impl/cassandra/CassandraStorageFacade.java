@@ -546,11 +546,29 @@ public class CassandraStorageFacade implements RippleStorageFacade {
     }
 
     @Override
-    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId) {
-        session.execute(
-                conversationCqlStatement
-                        .getUpdateBotSessionIdStmt()
-                        .bind(botSessionId, ownerId, conversationId));
+    public void updateConversationBotSessionId(long ownerId, String conversationId, String botSessionId, long version) {
+        BatchStatement batch =
+                new BatchStatementBuilder(DefaultBatchType.LOGGED)
+                        .addStatement(
+                                conversationCqlStatement
+                                        .getUpdateBotSessionIdStmt()
+                                        .bind(botSessionId, ownerId, conversationId))
+                        .addStatement(
+                                conversationCqlStatement
+                                        .getInsertConversationVersionStmt()
+                                        .bind(
+                                                ownerId,
+                                                version,
+                                                conversationId,
+                                                null, // peer_id
+                                                null, // group_id
+                                                ConversationOperation.UPDATE_BOT_SESSION_ID.getValue(),
+                                                null, // last_read_message_id
+                                                null, // name
+                                                null, // avatar
+                                                botSessionId))
+                        .build();
+        session.execute(batch);
     }
 
     @Override
@@ -1913,20 +1931,36 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                 row.getString("webhook_url"),
                 row.getString("api_key"),
                 row.getString("description"),
+                parseResponseMode(row.getString("response_mode")),
                 row.getInstant("created_at"),
                 row.getInstant("updated_at"));
     }
 
     @Override
     public void saveBotConfig(BotConfig config) {
+        String responseModeStr = config.getResponseMode() != null
+                ? config.getResponseMode().name()
+                : BotResponseMode.STREAMING.name();
         BoundStatement bound = botCqlStatement.getInsertBotConfigStmt().bind(
                 config.getUserId(),
                 config.getWebhookUrl(),
                 config.getApiKey(),
                 config.getDescription(),
+                responseModeStr,
                 config.getCreatedAt(),
                 config.getUpdatedAt());
         session.execute(bound);
+    }
+
+    private BotResponseMode parseResponseMode(String value) {
+        if (value == null || value.isEmpty()) {
+            return BotResponseMode.STREAMING;
+        }
+        try {
+            return BotResponseMode.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return BotResponseMode.STREAMING;
+        }
     }
 
     @Override
@@ -1952,6 +1986,7 @@ public class CassandraStorageFacade implements RippleStorageFacade {
                     row.getString("webhook_url"),
                     row.getString("api_key"),
                     row.getString("description"),
+                    parseResponseMode(row.getString("response_mode")),
                     row.getInstant("created_at"),
                     row.getInstant("updated_at")));
         }

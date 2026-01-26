@@ -36,8 +36,7 @@ message BotMessageData {
   int64 send_timestamp = 7;
   string webhook_url = 8;
   string api_key = 9;
-  reserved 10, 11;
-  reserved "timeout_ms", "sender_name";
+  string response_mode = 10;
 }
 
 message MessagePayload {

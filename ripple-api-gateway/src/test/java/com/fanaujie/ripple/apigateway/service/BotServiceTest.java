@@ -5,6 +5,7 @@ import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
 import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
 import com.fanaujie.ripple.storage.model.BotConfig;
+import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.storage.model.User;
@@ -164,6 +165,92 @@ class BotServiceTest {
             assertFalse(response.getBody().getData().getBotId().isEmpty());
             assertEquals("new-bot", response.getBody().getData().getAccount());
         }
+
+        @Test
+        void registerBot_withStreamingMode_succeeds() {
+            // Given
+            BotRegistrationRequest request = new BotRegistrationRequest();
+            request.setAccount("streaming-bot");
+            request.setDisplayName("Streaming Bot");
+            request.setWebhookUrl(WEBHOOK_URL);
+            request.setResponseMode("STREAMING");
+
+            when(storageFacade.userExists("streaming-bot")).thenReturn(false);
+
+            // When
+            ResponseEntity<BotRegistrationResponse> response = botService.registerBot(request);
+
+            // Then
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            verify(storageFacade).saveBotConfig(argThat(config ->
+                    config.getResponseMode() == BotResponseMode.STREAMING
+            ));
+        }
+
+        @Test
+        void registerBot_withBatchMode_succeeds() {
+            // Given
+            BotRegistrationRequest request = new BotRegistrationRequest();
+            request.setAccount("batch-bot");
+            request.setDisplayName("Batch Bot");
+            request.setWebhookUrl(WEBHOOK_URL);
+            request.setResponseMode("BATCH");
+
+            when(storageFacade.userExists("batch-bot")).thenReturn(false);
+
+            // When
+            ResponseEntity<BotRegistrationResponse> response = botService.registerBot(request);
+
+            // Then
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            verify(storageFacade).saveBotConfig(argThat(config ->
+                    config.getResponseMode() == BotResponseMode.BATCH
+            ));
+        }
+
+        @Test
+        void registerBot_withoutResponseMode_defaultsToStreaming() {
+            // Given
+            BotRegistrationRequest request = new BotRegistrationRequest();
+            request.setAccount("default-mode-bot");
+            request.setDisplayName("Default Mode Bot");
+            request.setWebhookUrl(WEBHOOK_URL);
+            // responseMode not set
+
+            when(storageFacade.userExists("default-mode-bot")).thenReturn(false);
+
+            // When
+            ResponseEntity<BotRegistrationResponse> response = botService.registerBot(request);
+
+            // Then
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            verify(storageFacade).saveBotConfig(argThat(config ->
+                    config.getResponseMode() == BotResponseMode.STREAMING
+            ));
+        }
+
+        @Test
+        void registerBot_withInvalidResponseMode_returns400() {
+            // Given
+            BotRegistrationRequest request = new BotRegistrationRequest();
+            request.setAccount("invalid-mode-bot");
+            request.setDisplayName("Invalid Mode Bot");
+            request.setWebhookUrl(WEBHOOK_URL);
+            request.setResponseMode("INVALID_MODE");
+
+            when(storageFacade.userExists("invalid-mode-bot")).thenReturn(false);
+
+            // When
+            ResponseEntity<BotRegistrationResponse> response = botService.registerBot(request);
+
+            // Then
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            assertNotNull(response.getBody());
+            assertEquals(400, response.getBody().getCode());
+            assertTrue(response.getBody().getMessage().contains("Invalid responseMode"));
+
+            verify(storageFacade, never()).saveBotConfig(any());
+        }
     }
 
     // ==================== Update Bot Tests ====================
@@ -271,6 +358,69 @@ class BotServiceTest {
 
             verify(storageFacade, never()).saveBotConfig(any());
             verify(botConfigStorage, never()).invalidate(anyLong());
+        }
+
+        @Test
+        void updateBot_changesResponseMode() {
+            // Given
+            BotConfig existingConfig = createBotConfig(BOT_ID);
+            existingConfig.setResponseMode(BotResponseMode.STREAMING);
+            when(storageFacade.getBotConfig(BOT_ID)).thenReturn(existingConfig);
+
+            BotUpdateRequest request = new BotUpdateRequest();
+            request.setResponseMode("BATCH");
+
+            // When
+            ResponseEntity<CommonResponse> response = botService.updateBot(BOT_ID, request);
+
+            // Then
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+
+            verify(storageFacade).saveBotConfig(argThat(config ->
+                    config.getResponseMode() == BotResponseMode.BATCH
+            ));
+        }
+
+        @Test
+        void updateBot_withoutResponseMode_preservesExisting() {
+            // Given
+            BotConfig existingConfig = createBotConfig(BOT_ID);
+            existingConfig.setResponseMode(BotResponseMode.BATCH);
+            when(storageFacade.getBotConfig(BOT_ID)).thenReturn(existingConfig);
+
+            BotUpdateRequest request = new BotUpdateRequest();
+            request.setWebhookUrl("https://new-url.com");
+            // responseMode not set
+
+            // When
+            ResponseEntity<CommonResponse> response = botService.updateBot(BOT_ID, request);
+
+            // Then
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+
+            verify(storageFacade).saveBotConfig(argThat(config ->
+                    config.getResponseMode() == BotResponseMode.BATCH
+            ));
+        }
+
+        @Test
+        void updateBot_withInvalidResponseMode_returns400() {
+            // Given
+            BotConfig existingConfig = createBotConfig(BOT_ID);
+            when(storageFacade.getBotConfig(BOT_ID)).thenReturn(existingConfig);
+
+            BotUpdateRequest request = new BotUpdateRequest();
+            request.setResponseMode("INVALID");
+
+            // When
+            ResponseEntity<CommonResponse> response = botService.updateBot(BOT_ID, request);
+
+            // Then
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            assertEquals(400, response.getBody().getCode());
+            assertTrue(response.getBody().getMessage().contains("Invalid responseMode"));
+
+            verify(storageFacade, never()).saveBotConfig(any());
         }
     }
 
