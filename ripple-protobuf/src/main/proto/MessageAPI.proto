@@ -29,6 +29,7 @@ message SendMessageReq {
     GroupCommandMessageContent group_command_message_content = 8;
   };
   string session_id = 9;  // Required for bot messages
+  int64 bot_id = 10;      // Set when sending to a bot (replaces receiver_id for bot messages)
 }
 
 message SendMessageResp {

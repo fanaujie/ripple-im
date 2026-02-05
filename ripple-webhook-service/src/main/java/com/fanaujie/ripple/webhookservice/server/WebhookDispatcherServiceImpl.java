@@ -1,6 +1,6 @@
 package com.fanaujie.ripple.webhookservice.server;
 
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.webhookservice.DispatchResponse;
 import com.fanaujie.ripple.protobuf.webhookservice.WebhookDispatcherGrpc;
 import com.fanaujie.ripple.webhookservice.service.WebhookDispatcherService;
@@ -20,7 +20,7 @@ public class WebhookDispatcherServiceImpl extends WebhookDispatcherGrpc.WebhookD
 
     @Override
     public void dispatchBotMessage(
-            BotMessageData request, StreamObserver<DispatchResponse> responseObserver) {
+            BotWebhookEvent request, StreamObserver<DispatchResponse> responseObserver) {
         logger.info(
                 "Received bot message dispatch request: messageId={}, botId={}, senderId={}",
                 request.getMessageId(),
@@ -29,7 +29,7 @@ public class WebhookDispatcherServiceImpl extends WebhookDispatcherGrpc.WebhookD
 
         try {
             // Fire-and-forget: dispatch asynchronously
-            // The dispatcherService handles HTTP/SSE, push, and storage internally
+            // The dispatcherService handles bot config lookup, HTTP/SSE, push, and storage internally
             dispatcherService.dispatch(request);
 
             // Return success immediately

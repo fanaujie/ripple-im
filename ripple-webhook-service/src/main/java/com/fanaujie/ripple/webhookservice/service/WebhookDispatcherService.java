@@ -1,8 +1,11 @@
 package com.fanaujie.ripple.webhookservice.service;
 
+import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.communication.gateway.GatewayPusher;
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.push.SSEEventType;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import com.fanaujie.ripple.storage.model.BotConfig;
 import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.webhookservice.http.WebhookHttpClient;
@@ -13,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class WebhookDispatcherService {
     private static final Logger logger = LoggerFactory.getLogger(WebhookDispatcherService.class);
@@ -21,28 +23,68 @@ public class WebhookDispatcherService {
     private final WebhookHttpClient httpClient;
     private final RippleStorageFacade storageFacade;
     private final GatewayPusher gatewayPusher;
-    private final AtomicLong responseMessageIdCounter;
+    private final BotConfigStorage botConfigStorage;
+    private final SnowflakeIdClient snowflakeIdClient;
 
     public WebhookDispatcherService(
             WebhookHttpClient httpClient,
             RippleStorageFacade storageFacade,
-            GatewayPusher gatewayPusher) {
+            GatewayPusher gatewayPusher,
+            BotConfigStorage botConfigStorage,
+            SnowflakeIdClient snowflakeIdClient) {
         this.httpClient = httpClient;
         this.storageFacade = storageFacade;
         this.gatewayPusher = gatewayPusher;
-        // Simple counter for generating unique message IDs for bot responses
-        // In production, use Snowflake ID service
-        this.responseMessageIdCounter = new AtomicLong(Instant.now().toEpochMilli());
+        this.botConfigStorage = botConfigStorage;
+        this.snowflakeIdClient = snowflakeIdClient;
     }
 
-    public void dispatch(BotMessageData botMessage) {
+    public void dispatch(BotWebhookEvent botMessage) {
         long senderId = botMessage.getSenderUserId();
         long botId = botMessage.getBotUserId();
         String conversationId = botMessage.getConversationId();
         long originalMessageId = botMessage.getMessageId();
 
-        // Get response mode from message data (passed from message-dispatcher)
-        BotResponseMode responseMode = parseResponseMode(botMessage.getResponseMode());
+        // Generate Snowflake ID for the bot response message upfront
+        // so all SSE events (delta, done, error) and storage use the same ID
+        long responseMessageId;
+        try {
+            responseMessageId = snowflakeIdClient.requestSnowflakeId().get().getId();
+        } catch (Exception e) {
+            logger.error("Failed to generate Snowflake ID for bot response: {}", e.getMessage());
+            pushSSEToUser(
+                    SSEEventType.SSE_EVENT_TYPE_ERROR,
+                    senderId,
+                    botId,
+                    conversationId,
+                    "Bot is currently unavailable",
+                    0);
+            return;
+        }
+
+        // Look up bot config to get webhook_url, api_key, response_mode
+        BotConfig botConfig;
+        try {
+            botConfig = botConfigStorage.get(botId);
+        } catch (Exception e) {
+            logger.error("Failed to look up bot config for botId={}: {}", botId, e.getMessage());
+            pushSSEToUser(
+                    SSEEventType.SSE_EVENT_TYPE_ERROR,
+                    senderId,
+                    botId,
+                    conversationId,
+                    "Bot is currently unavailable",
+                    0);
+            return;
+        }
+        if (botConfig == null) {
+            logger.warn("Bot config not found for botId={}, skipping dispatch", botId);
+            return;
+        }
+
+        String webhookUrl = botConfig.getWebhookUrl();
+        String apiKey = botConfig.getApiKey() != null ? botConfig.getApiKey() : "";
+        BotResponseMode responseMode = botConfig.getResponseModeOrDefault();
 
         WebhookRequest request =
                 WebhookRequest.create(
@@ -53,26 +95,35 @@ public class WebhookDispatcherService {
                         botMessage.getSendTimestamp());
 
         logger.info(
-                "Dispatching to webhook: url={}, messageId={}, responseMode={}",
-                botMessage.getWebhookUrl(),
+                "Dispatching to webhook: url={}, messageId={}, responseMessageId={}, responseMode={}",
+                webhookUrl,
                 originalMessageId,
+                responseMessageId,
                 responseMode);
 
-        StringBuilder accumulatedResponse = new StringBuilder();
+        CompletableFuture<String> future;
 
-        CompletableFuture<String> future =
-                httpClient.sendWithSSE(
-                        botMessage.getWebhookUrl(),
-                        botMessage.getApiKey(),
-                        request,
-                        event ->
-                                handleSSEEvent(
-                                        event,
-                                        senderId,
-                                        botId,
-                                        conversationId,
-                                        accumulatedResponse,
-                                        responseMode));
+        if (responseMode == BotResponseMode.BATCH) {
+            future = httpClient.sendPlain(webhookUrl, apiKey, request);
+        } else {
+            StringBuilder accumulatedResponse = new StringBuilder();
+            future = httpClient.sendWithSSE(
+                    webhookUrl,
+                    apiKey,
+                    request,
+                    event ->
+                            handleSSEEvent(
+                                    event,
+                                    senderId,
+                                    botId,
+                                    conversationId,
+                                    accumulatedResponse,
+                                    responseMode,
+                                    responseMessageId));
+            // Fallback to accumulated if fullText is null
+            future = future.thenApply(
+                    fullText -> fullText != null ? fullText : accumulatedResponse.toString());
+        }
 
         future.whenComplete(
                 (fullText, error) -> {
@@ -87,27 +138,17 @@ public class WebhookDispatcherService {
                                 botId,
                                 conversationId,
                                 "Bot is currently unavailable",
-                                0);
+                                responseMessageId);
                     } else {
                         // Save complete bot response to storage
                         saveBotResponse(
                                 conversationId,
                                 senderId,
                                 botId,
-                                fullText != null ? fullText : accumulatedResponse.toString());
+                                fullText,
+                                responseMessageId);
                     }
                 });
-    }
-
-    private BotResponseMode parseResponseMode(String value) {
-        if (value == null || value.isEmpty()) {
-            return BotResponseMode.STREAMING;
-        }
-        try {
-            return BotResponseMode.valueOf(value);
-        } catch (IllegalArgumentException e) {
-            return BotResponseMode.STREAMING;
-        }
     }
 
     private void handleSSEEvent(
@@ -116,7 +157,8 @@ public class WebhookDispatcherService {
             long botId,
             String conversationId,
             StringBuilder accumulated,
-            BotResponseMode responseMode) {
+            BotResponseMode responseMode,
+            long responseMessageId) {
 
         if (event.isDelta()) {
             accumulated.append(event.getContent());
@@ -128,7 +170,7 @@ public class WebhookDispatcherService {
                         botId,
                         conversationId,
                         event.getContent(),
-                        0);
+                        responseMessageId);
             }
         } else if (event.isDone()) {
             logger.debug("Bot response complete for user {} from bot {}", userId, botId);
@@ -159,9 +201,9 @@ public class WebhookDispatcherService {
     }
 
     private void saveBotResponse(
-            String conversationId, long userId, long botId, String responseText) {
+            String conversationId, long userId, long botId, String responseText,
+            long messageId) {
         long timestamp = Instant.now().toEpochMilli();
-        long messageId = responseMessageIdCounter.incrementAndGet();
 
         try {
             // Save bot's response as a message from bot to user

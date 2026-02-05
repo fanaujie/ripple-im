@@ -133,13 +133,12 @@ public class MessageService {
         boolean hasReceiverId =
                 request.getReceiverId() != null && !request.getReceiverId().isEmpty();
         boolean hasGroupId = request.getGroupId() != null && !request.getGroupId().isEmpty();
+        boolean hasBotId = request.getBotId() != null && !request.getBotId().isEmpty();
 
-        if (hasReceiverId && hasGroupId) {
+        int targetCount = (hasReceiverId ? 1 : 0) + (hasGroupId ? 1 : 0) + (hasBotId ? 1 : 0);
+        if (targetCount != 1) {
             throw new IllegalArgumentException(
-                    "Only one of receiverId or groupId should be provided, not both");
-        }
-        if (!hasReceiverId && !hasGroupId) {
-            throw new IllegalArgumentException("Either receiverId or groupId is required");
+                    "Exactly one of receiverId, groupId, or botId must be provided");
         }
 
         long senderId = Long.parseLong(request.getSenderId());
@@ -157,6 +156,21 @@ public class MessageService {
                 request.setConversationId(ConversationUtils.generateGroupConversationId(groupId));
             }
             builder.setConversationId(request.getConversationId()).setGroupId(groupId);
+        } else if (hasBotId) {
+            // Bot message
+            long botId = Long.parseLong(request.getBotId());
+            if (request.getConversationId() == null || request.getConversationId().isEmpty()) {
+                request.setConversationId(
+                        ConversationUtils.generateConversationId(senderId, botId));
+            }
+            builder.setConversationId(request.getConversationId())
+                    .setReceiverId(botId)
+                    .setBotId(botId);
+
+            if (request.getSessionId() == null || request.getSessionId().isEmpty()) {
+                throw new IllegalArgumentException("sessionId is required for bot messages");
+            }
+            builder.setSessionId(request.getSessionId());
         } else {
             // Single chat message
             long receiverId = Long.parseLong(request.getReceiverId());
@@ -165,11 +179,6 @@ public class MessageService {
                         ConversationUtils.generateConversationId(senderId, receiverId));
             }
             builder.setConversationId(request.getConversationId()).setReceiverId(receiverId);
-
-            // Pass sessionId for bot messages
-            if (request.getSessionId() != null && !request.getSessionId().isEmpty()) {
-                builder.setSessionId(request.getSessionId());
-            }
         }
 
         return res.getId();

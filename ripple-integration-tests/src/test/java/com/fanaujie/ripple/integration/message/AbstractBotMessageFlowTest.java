@@ -1,10 +1,8 @@
 package com.fanaujie.ripple.integration.message;
 
 import com.fanaujie.ripple.integration.base.AbstractBusinessFlowTest;
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.storage.model.BotResponseMode;
-import com.fanaujie.ripple.storage.model.ConversationSummaryInfo;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.storage.model.Message;
 import com.fanaujie.ripple.storage.model.Messages;
@@ -62,10 +60,10 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
             assertTrue(botWebhookProducer.hasMessages(), "Bot webhook should receive message");
             assertEquals(1, botWebhookProducer.messageCount());
 
-            // And - Message should NOT be sent to push topic (bots don't need push notifications)
-            assertFalse(
+            // And - Message should also be sent to push topic (for sender's other devices)
+            assertTrue(
                     pushMessageProducer.hasMessages(),
-                    "Push topic should not receive bot messages");
+                    "Push topic should receive bot messages for sender's other devices");
         }
 
         @Test
@@ -135,13 +133,10 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
             executeSendBotMessageFlow(
                     aliceId(), botId(), conversationId, 1002L, "Hello bot", "session-123");
 
-            // Then - Message should NOT be dispatched
+            // Then - Message should NOT be dispatched to bot webhook
             assertFalse(
                     botWebhookProducer.hasMessages(),
                     "Bot webhook should not receive message when config is null");
-            assertFalse(
-                    pushMessageProducer.hasMessages(),
-                    "Push topic should not receive message either");
         }
     }
 
@@ -166,9 +161,8 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
                     "Message with valid session should be dispatched");
 
             // Verify session ID in payload
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            assertTrue(payload.hasBotMessageData());
-            assertEquals("valid-session-123", payload.getBotMessageData().getSessionId());
+            BotWebhookEvent event = botWebhookProducer.getCapturedMessages().get(0).value();
+            assertEquals("valid-session-123", event.getSessionId());
         }
 
         @Test
@@ -184,9 +178,6 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
             assertFalse(
                     botWebhookProducer.hasMessages(),
                     "Message with empty session should be rejected");
-
-            // And - Message should NOT be stored (nothing in push topic either)
-            assertFalse(pushMessageProducer.hasMessages());
         }
 
         @Test
@@ -245,8 +236,8 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
 
             // Then - Message should be dispatched with new session
             assertTrue(botWebhookProducer.hasMessages());
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            assertEquals("new-session", payload.getBotMessageData().getSessionId());
+            BotWebhookEvent event = botWebhookProducer.getCapturedMessages().get(0).value();
+            assertEquals("new-session", event.getSessionId());
 
             // And - Conversation should have updated session ID
             Conversation conv = storageFacade.getConversation(aliceId(), conversationId);
@@ -367,141 +358,70 @@ public abstract class AbstractBotMessageFlowTest extends AbstractBusinessFlowTes
 
             // Then
             assertEquals(1, botWebhookProducer.messageCount());
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
+            BotWebhookEvent event = botWebhookProducer.getCapturedMessages().get(0).value();
 
-            assertTrue(payload.hasBotMessageData());
-            BotMessageData data = payload.getBotMessageData();
-
-            assertEquals(aliceId(), data.getSenderUserId());
-            assertEquals(botId(), data.getBotUserId());
-            assertEquals(conversationId, data.getConversationId());
-            assertEquals(messageId, data.getMessageId());
-            assertEquals(messageText, data.getMessageText());
-            assertEquals(sessionId, data.getSessionId());
-            assertTrue(data.getSendTimestamp() > 0);
-            assertEquals(BOT_WEBHOOK_URL, data.getWebhookUrl());
-            assertEquals(BOT_API_KEY, data.getApiKey());
+            assertEquals(aliceId(), event.getSenderUserId());
+            assertEquals(botId(), event.getBotUserId());
+            assertEquals(conversationId, event.getConversationId());
+            assertEquals(messageId, event.getMessageId());
+            assertEquals(messageText, event.getMessageText());
+            assertEquals(sessionId, event.getSessionId());
+            assertTrue(event.getSendTimestamp() > 0);
         }
 
         @Test
-        void webhookPayloadHandlesNullApiKey() throws Exception {
-            // Given - Bot with null API key
-            registerBot(botId(), BOT_WEBHOOK_URL, null);
+        void webhookPayloadDoesNotContainBotConfig() throws Exception {
+            // Given - Bot with specific config
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
             String conversationId = generateSingleConversationId(aliceId(), botId());
 
             // When
             executeSendBotMessageFlow(
                     aliceId(), botId(), conversationId, 1017L, "Hello", "session-1");
 
-            // Then - API key should be empty string (not null)
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            BotMessageData data = payload.getBotMessageData();
-            assertEquals("", data.getApiKey());
+            // Then - BotWebhookEvent should NOT contain webhook config fields
+            BotWebhookEvent event = botWebhookProducer.getCapturedMessages().get(0).value();
+            // BotWebhookEvent has no webhook_url, api_key, or response_mode fields
+            // These are resolved by webhook-service at dispatch time
+            assertEquals(aliceId(), event.getSenderUserId());
+            assertEquals(botId(), event.getBotUserId());
         }
+    }
+
+    // ==================== Push to Sender Tests ====================
+
+    @Nested
+    class PushToSenderTests {
 
         @Test
-        void webhookPayloadContainsResponseModeStreaming() throws Exception {
-            // Given - Bot with STREAMING response mode
-            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.STREAMING);
-            String conversationId = generateSingleConversationId(aliceId(), botId());
-
-            // When
-            executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1018L, "Hello", "session-1");
-
-            // Then
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            BotMessageData data = payload.getBotMessageData();
-            assertEquals("STREAMING", data.getResponseMode());
-        }
-
-        @Test
-        void webhookPayloadContainsResponseModeBatch() throws Exception {
-            // Given - Bot with BATCH response mode
-            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
-            String conversationId = generateSingleConversationId(aliceId(), botId());
-
-            // When
-            executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1019L, "Hello", "session-1");
-
-            // Then
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            BotMessageData data = payload.getBotMessageData();
-            assertEquals("BATCH", data.getResponseMode());
-        }
-
-        @Test
-        void webhookPayloadDefaultsToStreamingMode() throws Exception {
-            // Given - Bot registered without explicit response mode (uses default)
+        void botMessageIsPushedToSender() throws Exception {
+            // Given
             registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY);
             String conversationId = generateSingleConversationId(aliceId(), botId());
 
             // When
             executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1020L, "Hello", "session-1");
+                    aliceId(), botId(), conversationId, 1021L, "Hello bot", "session-1");
 
-            // Then - Default should be STREAMING
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            BotMessageData data = payload.getBotMessageData();
-            assertEquals("STREAMING", data.getResponseMode());
+            // Then - Push topic should receive message for sender's other devices
+            assertTrue(
+                    pushMessageProducer.hasMessages(),
+                    "Push topic should receive bot messages for sender's other devices");
         }
-    }
-
-    // ==================== Response Mode Tests ====================
-
-    @Nested
-    class ResponseModeTests {
 
         @Test
-        void botWithStreamingModeReceivesMessage() throws Exception {
+        void botMessageSentToBothTopics() throws Exception {
             // Given
-            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.STREAMING);
+            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY);
             String conversationId = generateSingleConversationId(aliceId(), botId());
 
             // When
             executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1021L, "Hello streaming", "session-1");
+                    aliceId(), botId(), conversationId, 1022L, "Hello bot", "session-1");
 
-            // Then
-            assertTrue(botWebhookProducer.hasMessages());
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            assertEquals("STREAMING", payload.getBotMessageData().getResponseMode());
-        }
-
-        @Test
-        void botWithBatchModeReceivesMessage() throws Exception {
-            // Given
-            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
-            String conversationId = generateSingleConversationId(aliceId(), botId());
-
-            // When
-            executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1022L, "Hello batch", "session-1");
-
-            // Then
-            assertTrue(botWebhookProducer.hasMessages());
-            MessagePayload payload = botWebhookProducer.getCapturedMessages().get(0).value();
-            assertEquals("BATCH", payload.getBotMessageData().getResponseMode());
-        }
-
-        @Test
-        void responseModeIsPersistentAcrossMessages() throws Exception {
-            // Given
-            registerBot(botId(), BOT_WEBHOOK_URL, BOT_API_KEY, BotResponseMode.BATCH);
-            String conversationId = generateSingleConversationId(aliceId(), botId());
-
-            // When - Send multiple messages
-            executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1023L, "First message", "session-1");
-            executeSendBotMessageFlow(
-                    aliceId(), botId(), conversationId, 1024L, "Second message", "session-1");
-
-            // Then - Both messages should have BATCH response mode
-            assertEquals(2, botWebhookProducer.messageCount());
-            for (var msg : botWebhookProducer.getCapturedMessages()) {
-                assertEquals("BATCH", msg.value().getBotMessageData().getResponseMode());
-            }
+            // Then - Both topics should receive messages
+            assertTrue(botWebhookProducer.hasMessages(), "Bot webhook should receive message");
+            assertTrue(pushMessageProducer.hasMessages(), "Push topic should receive message");
         }
     }
 }

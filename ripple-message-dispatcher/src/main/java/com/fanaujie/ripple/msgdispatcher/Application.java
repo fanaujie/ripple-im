@@ -24,6 +24,7 @@ import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
 import com.fanaujie.ripple.protobuf.msgdispatcher.EventData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.GroupCommandData;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
@@ -159,9 +160,9 @@ public class Application {
                 KafkaProducerConfigFactory.createStorageUpdatePayloadProducerConfig(brokerServer));
     }
 
-    private GenericProducer<String, MessagePayload> createBotWebhookProducer(String brokerServer) {
-        return new KafkaGenericProducer<String, MessagePayload>(
-                KafkaProducerConfigFactory.createMessagePayloadProducerConfig(brokerServer));
+    private GenericProducer<String, BotWebhookEvent> createBotWebhookProducer(String brokerServer) {
+        return new KafkaGenericProducer<String, BotWebhookEvent>(
+                KafkaProducerConfigFactory.createBotWebhookEventProducerConfig(brokerServer));
     }
 
     private DefaultKeyedPayloadHandler createKeyedPayloadHandler(
@@ -170,7 +171,7 @@ public class Application {
             String botWebhookTopic,
             GenericProducer<String, PushMessage> pushMessageProducer,
             GenericProducer<String, StorageUpdatePayload> storageUpdateProducer,
-            GenericProducer<String, MessagePayload> botWebhookProducer,
+            GenericProducer<String, BotWebhookEvent> botWebhookProducer,
             RippleStorageFacade userStorageFacade,
             RedisUserProfileStorage userProfileCache,
             BotConfigStorage botConfigStorage,

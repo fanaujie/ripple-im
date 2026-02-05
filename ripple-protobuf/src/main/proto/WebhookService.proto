@@ -16,6 +16,6 @@ message DispatchResponse {
 // gRPC service for dispatching bot messages to external webhooks
 service WebhookDispatcher {
   // Dispatch a bot message to external webhook
-  // The service handles HTTP/SSE call, pushes responses to user, and saves to storage
-  rpc DispatchBotMessage(BotMessageData) returns (DispatchResponse);
+  // The service looks up bot config, handles HTTP/SSE call, pushes responses to user, and saves to storage
+  rpc DispatchBotMessage(BotWebhookEvent) returns (DispatchResponse);
 }

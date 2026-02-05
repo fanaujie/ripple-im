@@ -10,6 +10,8 @@ PID_DIR="$SCRIPT_DIR/pids"
 SERVICES=(
     "ripple-upload-gateway"
     "ripple-api-gateway"
+    "ripple-bot-message-consumer"
+    "ripple-webhook-service"
     "ripple-message-gateway"
     "ripple-push-server"
     "ripple-async-storage-updater"

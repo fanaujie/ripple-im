@@ -50,6 +50,8 @@ SERVICES=(
     "ripple-async-storage-updater"
     "ripple-push-server"
     "ripple-message-gateway"
+    "ripple-webhook-service"
+    "ripple-bot-message-consumer"
     "ripple-api-gateway"
     "ripple-upload-gateway"
 )
@@ -109,6 +111,7 @@ start_service() {
     export USER_PRESENCE_SERVICE_ADDRESS="localhost:10101"
     export MESSAGE_API_SERVER_ADDRESS="localhost:10102"
     export MINIO_ENDPOINT="http://localhost:9000"
+    export WEBHOOK_SERVICE_ADDRESS="localhost:10104"
 
     nohup $java_cmd -jar "$jar_path" > "$log_file" 2>&1 &
     local pid=$!

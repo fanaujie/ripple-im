@@ -13,6 +13,7 @@ public class SendMessageRequest {
     private String conversationId;
     private String receiverId;
     private String groupId;
+    private String botId;       // Set when sending to a bot
     private String textContent;
     private String fileUrl;
     private String fileName;

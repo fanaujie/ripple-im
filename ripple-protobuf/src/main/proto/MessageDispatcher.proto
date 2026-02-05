@@ -26,7 +26,7 @@ message GroupCommandData {
   SendGroupCommandReq data = 3;
 }
 
-message BotMessageData {
+message BotWebhookEvent {
   int64 sender_user_id = 1;
   int64 bot_user_id = 2;
   string conversation_id = 3;
@@ -34,9 +34,6 @@ message BotMessageData {
   string session_id = 5;
   string message_text = 6;
   int64 send_timestamp = 7;
-  string webhook_url = 8;
-  string api_key = 9;
-  string response_mode = 10;
 }
 
 message MessagePayload {
@@ -44,6 +41,6 @@ message MessagePayload {
     EventData event_data = 1;
     MessageData message_data = 2;
     GroupCommandData group_command_data = 3;
-    BotMessageData bot_message_data = 4;
+    // Field 4 reserved: was bot_message_data, now uses standalone BotWebhookEvent
   }
 }

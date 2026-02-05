@@ -4,12 +4,10 @@ import com.fanaujie.ripple.communication.msgqueue.GenericProducer;
 import com.fanaujie.ripple.communication.msgqueue.uitls.MessageConverter;
 import com.fanaujie.ripple.communication.processor.Processor;
 import com.fanaujie.ripple.protobuf.msgapiserver.SendMessageReq;
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessageData;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.storage.exception.NotFoundUserProfileException;
-import com.fanaujie.ripple.storage.model.BotConfig;
 import com.fanaujie.ripple.storage.model.Conversation;
 import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.cache.service.ConversationSummaryStorage;
@@ -28,7 +26,7 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
     private final BotConfigStorage botConfigStorage;
     private final ConversationSummaryStorage cachingConversationStateFacade;
     private final GenericProducer<String, PushMessage> pushMessageGenericProducer;
-    private final GenericProducer<String, MessagePayload> botWebhookProducer;
+    private final GenericProducer<String, BotWebhookEvent> botWebhookProducer;
     private final String pushTopic;
     private final String botWebhookTopic;
 
@@ -38,7 +36,7 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
             ConversationSummaryStorage cachingConversationStateFacade,
             GenericProducer<String, PushMessage> pushMessageProducer,
             String pushTopic,
-            GenericProducer<String, MessagePayload> botWebhookProducer,
+            GenericProducer<String, BotWebhookEvent> botWebhookProducer,
             String botWebhookTopic) {
         this.storageFacade = storageFacade;
         this.botConfigStorage = botConfigStorage;
@@ -49,46 +47,26 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
         this.botWebhookTopic = botWebhookTopic;
     }
 
-    // Backward compatible constructor
-    public SingleMessagePayloadProcessor(
-            RippleStorageFacade storageFacade,
-            BotConfigStorage botConfigStorage,
-            ConversationSummaryStorage cachingConversationStateFacade,
-            GenericProducer<String, PushMessage> pushMessageProducer,
-            String pushTopic) {
-        this(
-                storageFacade,
-                botConfigStorage,
-                cachingConversationStateFacade,
-                pushMessageProducer,
-                pushTopic,
-                null,
-                null);
-    }
-
     @Override
     public Void handle(MessageData messageData) throws Exception {
         SendMessageReq sendMessageReq = messageData.getData();
         if (sendMessageReq.getMessageCase() == SINGLE_MESSAGE_CONTENT) {
             long groupId = sendMessageReq.getGroupId();
+            long botId = sendMessageReq.getBotId();
             if (groupId > 0) {
                 this.updateGroupConversationStorage(sendMessageReq, messageData);
                 this.pushMessageGenericProducer.send(
                         this.pushTopic,
                         String.valueOf(messageData.getSendUserId()),
                         MessageConverter.toPushMessage(messageData));
+            } else if (botId > 0) {
+                this.handleBotMessage(sendMessageReq, messageData);
             } else {
-                long receiverId = sendMessageReq.getReceiverId();
-                // Check if recipient is a bot (using cached lookup)
-                if (this.botConfigStorage.isBot(receiverId)) {
-                    this.handleBotMessage(sendMessageReq, messageData);
-                } else {
-                    this.updateSingleConversationStorage(sendMessageReq);
-                    this.pushMessageGenericProducer.send(
-                            this.pushTopic,
-                            String.valueOf(messageData.getSendUserId()),
-                            MessageConverter.toPushMessage(messageData));
-                }
+                this.updateSingleConversationStorage(sendMessageReq);
+                this.pushMessageGenericProducer.send(
+                        this.pushTopic,
+                        String.valueOf(messageData.getSendUserId()),
+                        MessageConverter.toPushMessage(messageData));
             }
             return null;
         }
@@ -99,9 +77,8 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
     private void handleBotMessage(SendMessageReq sendMessageReq, MessageData messageData)
             throws Exception {
         long senderId = sendMessageReq.getSenderId();
-        long botId = sendMessageReq.getReceiverId();
-        BotConfig botConfig = this.botConfigStorage.get(botId);
-        if (botConfig == null) {
+        long botId = sendMessageReq.getBotId();
+        if (!this.botConfigStorage.isBot(botId)) {
             logger.warn("Bot {} not found", botId);
             return;
         }
@@ -132,9 +109,16 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                     providedSessionId);
         }
 
+        // Push message to sender's other devices via push server
+        this.pushMessageGenericProducer.send(
+                this.pushTopic,
+                String.valueOf(messageData.getSendUserId()),
+                MessageConverter.toPushMessage(messageData));
+
+        // Send to bot webhook topic for webhook dispatch
         if (this.botWebhookProducer != null && this.botWebhookTopic != null) {
-            BotMessageData botMessageData =
-                    BotMessageData.newBuilder()
+            BotWebhookEvent botWebhookEvent =
+                    BotWebhookEvent.newBuilder()
                             .setSenderUserId(senderId)
                             .setBotUserId(botId)
                             .setConversationId(conversationId)
@@ -142,19 +126,14 @@ public class SingleMessagePayloadProcessor implements Processor<MessageData, Voi
                             .setSessionId(providedSessionId)
                             .setMessageText(sendMessageReq.getSingleMessageContent().getText())
                             .setSendTimestamp(sendMessageReq.getSendTimestamp())
-                            .setWebhookUrl(botConfig.getWebhookUrl())
-                            .setApiKey(botConfig.getApiKey() != null ? botConfig.getApiKey() : "")
-                            .setResponseMode(botConfig.getResponseModeOrDefault().name())
                             .build();
 
-            MessagePayload payload =
-                    MessagePayload.newBuilder().setBotMessageData(botMessageData).build();
-            this.botWebhookProducer.send(this.botWebhookTopic, String.valueOf(senderId), payload);
+            this.botWebhookProducer.send(
+                    this.botWebhookTopic, String.valueOf(senderId), botWebhookEvent);
             logger.info(
-                    "Dispatched message {} to bot webhook topic for bot {} (responseMode={})",
+                    "Dispatched message {} to bot webhook topic for bot {}",
                     sendMessageReq.getMessageId(),
-                    botId,
-                    botConfig.getResponseModeOrDefault());
+                    botId);
         } else {
             logger.warn("Bot webhook producer not configured, cannot dispatch to bot {}", botId);
         }

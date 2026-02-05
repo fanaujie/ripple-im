@@ -10,6 +10,8 @@ public class KafkaConsumerConfigFactory {
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.PushMessageDeserializer";
     private static final String STORAGE_UPDATE_PAYLOAD_DESERIALIZER =
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.StorageUpdatePayloadDeserializer";
+    private static final String BOT_WEBHOOK_EVENT_DESERIALIZER =
+            "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.BotWebhookEventDeserializer";
 
     public static KafkaConsumerConfig createMessagePayloadConsumerConfig(
             String topic,
@@ -68,6 +70,27 @@ public class KafkaConsumerConfigFactory {
                 .clientId(clientId)
                 .keyDeserializer(STRING_DESERIALIZER)
                 .valueDeserializer(STORAGE_UPDATE_PAYLOAD_DESERIALIZER)
+                .maxPollRecords(maxPollRecords)
+                .fetchMinBytes(fetchMinBytes)
+                .fetchMaxWaitMs(fetchMaxWaitMs)
+                .build();
+    }
+
+    public static KafkaConsumerConfig createBotWebhookEventConsumerConfig(
+            String topic,
+            String bootstrapServers,
+            String groupId,
+            String clientId,
+            int maxPollRecords,
+            int fetchMinBytes,
+            int fetchMaxWaitMs) {
+        return KafkaConsumerConfig.builder()
+                .topic(topic)
+                .bootstrapServers(bootstrapServers)
+                .groupId(groupId)
+                .clientId(clientId)
+                .keyDeserializer(STRING_DESERIALIZER)
+                .valueDeserializer(BOT_WEBHOOK_EVENT_DESERIALIZER)
                 .maxPollRecords(maxPollRecords)
                 .fetchMinBytes(fetchMinBytes)
                 .fetchMaxWaitMs(fetchMaxWaitMs)

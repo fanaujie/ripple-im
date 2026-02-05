@@ -1,5 +1,8 @@
 package com.fanaujie.ripple.webhookservice;
 
+import com.fanaujie.ripple.cache.driver.RedisDriver;
+import com.fanaujie.ripple.cache.service.BotConfigStorage;
+import com.fanaujie.ripple.cache.service.impl.RedisBotConfigStorage;
 import com.fanaujie.ripple.communication.gateway.DirectGatewayPusher;
 import com.fanaujie.ripple.communication.gateway.GatewayConnectionManager;
 import com.fanaujie.ripple.communication.gateway.GatewayPusher;
@@ -7,6 +10,8 @@ import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.protobuf.userpresence.UserPresenceGrpc;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.storage.spi.RippleStorageLoader;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import org.redisson.api.RedissonClient;
 import com.fanaujie.ripple.webhookservice.http.WebhookHttpClient;
 import com.fanaujie.ripple.webhookservice.server.WebhookDispatcherServiceImpl;
 import com.fanaujie.ripple.webhookservice.service.WebhookDispatcherService;
@@ -26,6 +31,7 @@ public class Application {
     private Server server;
     private WebhookHttpClient httpClient;
     private GatewayConnectionManager gatewayConnectionManager;
+    private SnowflakeIdClient snowflakeIdClient;
 
     private void run() throws Exception {
         Config config = ConfigFactory.load();
@@ -44,11 +50,21 @@ public class Application {
         int connectTimeoutMs = config.getInt("webhook.http.connect-timeout-ms");
         int readTimeoutMs = config.getInt("webhook.http.read-timeout-ms");
 
+        // Redis Configuration
+        String redisHost = config.getString("redis.host");
+        int redisPort = config.getInt("redis.port");
+
+        // Snowflake ID Server Configuration
+        String snowflakeIdHost = config.getString("snowflakeid.server.host");
+        int snowflakeIdPort = config.getInt("snowflakeid.server.port");
+
         logger.info("Starting Webhook Service...");
         logger.info("gRPC Port: {}", grpcPort);
         logger.info("ZooKeeper: {}", zookeeperAddress);
         logger.info("Gateway Discovery Path: {}", gatewayDiscoveryPath);
         logger.info("User Presence Address: {}", userPresenceAddress);
+        logger.info("Redis: {}:{}", redisHost, redisPort);
+        logger.info("Snowflake ID Server: {}:{}", snowflakeIdHost, snowflakeIdPort);
         logger.info("HTTP Connect Timeout: {}ms, Read Timeout: {}ms", connectTimeoutMs, readTimeoutMs);
 
         // Initialize storage
@@ -69,11 +85,20 @@ public class Application {
         GatewayPusher gatewayPusher = new DirectGatewayPusher(
                 gatewayConnectionManager, userPresenceClient);
 
+        // Initialize bot config storage (Redis-backed with local cache)
+        RedissonClient redissonClient = RedisDriver.createRedissonClient(redisHost, redisPort);
+        BotConfigStorage botConfigStorage = new RedisBotConfigStorage(redissonClient, storageFacade);
+
+        // Initialize Snowflake ID client for generating bot response message IDs
+        snowflakeIdClient = new SnowflakeIdClient(snowflakeIdHost, snowflakeIdPort);
+
         // Initialize dispatcher service
         WebhookDispatcherService dispatcherService = new WebhookDispatcherService(
                 httpClient,
                 storageFacade,
-                gatewayPusher);
+                gatewayPusher,
+                botConfigStorage,
+                snowflakeIdClient);
 
         // Create gRPC service implementation
         WebhookDispatcherServiceImpl grpcService = new WebhookDispatcherServiceImpl(dispatcherService);
@@ -108,6 +133,10 @@ public class Application {
         }
         if (httpClient != null) {
             httpClient.close();
+        }
+        if (snowflakeIdClient != null) {
+            snowflakeIdClient.Close();
+            logger.info("Snowflake ID client closed");
         }
         if (gatewayConnectionManager != null) {
             gatewayConnectionManager.close();

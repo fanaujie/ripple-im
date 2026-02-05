@@ -1,8 +1,13 @@
 package com.fanaujie.ripple.webhookservice.service;
 
+import com.fanaujie.ripple.cache.service.BotConfigStorage;
 import com.fanaujie.ripple.communication.gateway.GatewayPusher;
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.push.SSEEventType;
+import com.fanaujie.ripple.protobuf.snowflakeid.GenerateIdResponse;
+import com.fanaujie.ripple.snowflakeid.client.SnowflakeIdClient;
+import com.fanaujie.ripple.storage.model.BotConfig;
+import com.fanaujie.ripple.storage.model.BotResponseMode;
 import com.fanaujie.ripple.storage.service.RippleStorageFacade;
 import com.fanaujie.ripple.webhookservice.http.WebhookHttpClient;
 import com.fanaujie.ripple.webhookservice.model.SSEEvent;
@@ -15,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,6 +32,8 @@ class WebhookDispatcherServiceTest {
     private WebhookHttpClient mockHttpClient;
     private RippleStorageFacade mockStorageFacade;
     private GatewayPusher mockGatewayPusher;
+    private BotConfigStorage mockBotConfigStorage;
+    private SnowflakeIdClient mockSnowflakeIdClient;
     private WebhookDispatcherService service;
 
     private static final long SENDER_ID = 1001L;
@@ -37,22 +45,34 @@ class WebhookDispatcherServiceTest {
     private static final String SESSION_ID = "session-456";
     private static final String MESSAGE_TEXT = "Hello bot";
 
+    private final AtomicLong snowflakeIdSequence = new AtomicLong(9000L);
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         mockHttpClient = mock(WebhookHttpClient.class);
         mockStorageFacade = mock(RippleStorageFacade.class);
         mockGatewayPusher = mock(GatewayPusher.class);
+        mockBotConfigStorage = mock(BotConfigStorage.class);
+        mockSnowflakeIdClient = mock(SnowflakeIdClient.class);
+
+        // Default: each call to requestSnowflakeId returns a unique incrementing ID
+        when(mockSnowflakeIdClient.requestSnowflakeId()).thenAnswer(invocation -> {
+            long id = snowflakeIdSequence.incrementAndGet();
+            GenerateIdResponse response = GenerateIdResponse.newBuilder().setId(id).build();
+            return CompletableFuture.completedFuture(response);
+        });
 
         service =
-                new WebhookDispatcherService(mockHttpClient, mockStorageFacade, mockGatewayPusher);
+                new WebhookDispatcherService(
+                        mockHttpClient, mockStorageFacade, mockGatewayPusher,
+                        mockBotConfigStorage, mockSnowflakeIdClient);
+
+        // Default: return a STREAMING bot config
+        when(mockBotConfigStorage.get(BOT_ID)).thenReturn(createBotConfig(BotResponseMode.STREAMING));
     }
 
-    private BotMessageData createBotMessageData() {
-        return createBotMessageData("STREAMING");
-    }
-
-    private BotMessageData createBotMessageData(String responseMode) {
-        return BotMessageData.newBuilder()
+    private BotWebhookEvent createBotWebhookEvent() {
+        return BotWebhookEvent.newBuilder()
                 .setSenderUserId(SENDER_ID)
                 .setBotUserId(BOT_ID)
                 .setConversationId(CONVERSATION_ID)
@@ -60,24 +80,34 @@ class WebhookDispatcherServiceTest {
                 .setSessionId(SESSION_ID)
                 .setMessageText(MESSAGE_TEXT)
                 .setSendTimestamp(Instant.now().toEpochMilli())
-                .setWebhookUrl(WEBHOOK_URL)
-                .setApiKey(API_KEY)
-                .setResponseMode(responseMode)
                 .build();
+    }
+
+    private BotConfig createBotConfig(BotResponseMode responseMode) {
+        BotConfig config = new BotConfig();
+        config.setUserId(BOT_ID);
+        config.setWebhookUrl(WEBHOOK_URL);
+        config.setApiKey(API_KEY);
+        config.setResponseMode(responseMode);
+        return config;
     }
 
     @Nested
     class ResponseModeTests {
 
         @Test
-        void streamingMode_pushesDeltaAndDone() {
+        void streamingMode_pushesDeltaAndDone() throws Exception {
             // Given
-            BotMessageData botMessage = createBotMessageData("STREAMING");
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenReturn(createBotConfig(BotResponseMode.STREAMING));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             List<SSEEventType> pushedEventTypes = new ArrayList<>();
+            List<Long> pushedMessageIds = new ArrayList<>();
 
             doAnswer(
                             invocation -> {
                                 pushedEventTypes.add(invocation.getArgument(3));
+                                pushedMessageIds.add(invocation.getArgument(5));
                                 return null;
                             })
                     .when(mockGatewayPusher)
@@ -129,12 +159,45 @@ class WebhookDispatcherServiceTest {
                     pushedEventTypes.stream()
                             .filter(t -> t == SSEEventType.SSE_EVENT_TYPE_DONE)
                             .count());
+
+            // All SSE events (delta + done) should carry the same Snowflake message ID
+            long expectedId = pushedMessageIds.get(0);
+            assertTrue(expectedId > 0, "Message ID should be a positive Snowflake ID");
+            assertTrue(
+                    pushedMessageIds.stream().allMatch(id -> id == expectedId),
+                    "All SSE events should share the same message ID");
         }
 
         @Test
-        void batchMode_pushesDoneOnly() {
+        void batchMode_usesSendPlain() throws Exception {
             // Given
-            BotMessageData botMessage = createBotMessageData("BATCH");
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenReturn(createBotConfig(BotResponseMode.BATCH));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
+
+            when(mockHttpClient.sendPlain(anyString(), anyString(), any()))
+                    .thenReturn(CompletableFuture.completedFuture("Hello World"));
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - sendPlain was called, sendWithSSE was not
+            verify(mockHttpClient).sendPlain(anyString(), anyString(), any());
+            verify(mockHttpClient, never()).sendWithSSE(anyString(), anyString(), any(), any());
+        }
+
+        @Test
+        void batchMode_pushesDoneOnly() throws Exception {
+            // Given
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenReturn(createBotConfig(BotResponseMode.BATCH));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             List<SSEEventType> pushedEventTypes = new ArrayList<>();
 
             doAnswer(
@@ -152,14 +215,8 @@ class WebhookDispatcherServiceTest {
                             anyLong(),
                             anyLong());
 
-            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenAnswer(
-                            invocation -> {
-                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                                eventHandler.accept(SSEEvent.delta("Hello "));
-                                eventHandler.accept(SSEEvent.delta("World"));
-                                return CompletableFuture.completedFuture("Hello World");
-                            });
+            when(mockHttpClient.sendPlain(anyString(), anyString(), any()))
+                    .thenReturn(CompletableFuture.completedFuture("Hello World"));
 
             // When
             service.dispatch(botMessage);
@@ -194,9 +251,91 @@ class WebhookDispatcherServiceTest {
         }
 
         @Test
-        void defaultResponseMode_isStreaming() {
-            // Given - no responseMode set (empty string)
-            BotMessageData botMessage = createBotMessageData("");
+        void batchMode_savesResponseAndPushesDone() throws Exception {
+            // Given
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenReturn(createBotConfig(BotResponseMode.BATCH));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
+            String responseText = "Batch response";
+
+            when(mockHttpClient.sendPlain(anyString(), anyString(), any()))
+                    .thenReturn(CompletableFuture.completedFuture(responseText));
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - response saved to storage
+            verify(mockStorageFacade)
+                    .saveTextMessage(
+                            eq(CONVERSATION_ID),
+                            anyLong(),
+                            eq(BOT_ID),
+                            eq(SENDER_ID),
+                            anyLong(),
+                            eq(responseText),
+                            isNull(),
+                            isNull());
+
+            // DONE event pushed to user
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_DONE),
+                            eq(responseText),
+                            anyLong(),
+                            anyLong());
+        }
+
+        @Test
+        void batchMode_webhookError_pushesErrorEvent() throws Exception {
+            // Given
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenReturn(createBotConfig(BotResponseMode.BATCH));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
+
+            when(mockHttpClient.sendPlain(anyString(), anyString(), any()))
+                    .thenReturn(CompletableFuture.failedFuture(
+                            new RuntimeException("Connection refused")));
+
+            // When
+            service.dispatch(botMessage);
+
+            // Wait for async processing
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Then - error event pushed with the pre-generated Snowflake message ID
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_ERROR),
+                            eq("Bot is currently unavailable"),
+                            anyLong(),
+                            anyLong());
+            verify(mockStorageFacade, never())
+                    .saveTextMessage(
+                            anyString(), anyLong(), anyLong(), anyLong(),
+                            anyLong(), anyString(), any(), any());
+        }
+
+        @Test
+        void defaultResponseMode_isStreaming() throws Exception {
+            // Given - null responseMode defaults to STREAMING
+            BotConfig config = createBotConfig(null);
+            when(mockBotConfigStorage.get(BOT_ID)).thenReturn(config);
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             List<SSEEventType> pushedEventTypes = new ArrayList<>();
 
             doAnswer(
@@ -236,49 +375,46 @@ class WebhookDispatcherServiceTest {
                     pushedEventTypes.stream()
                             .anyMatch(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA));
         }
+    }
+
+    @Nested
+    class BotConfigLookupTests {
 
         @Test
-        void invalidResponseMode_defaultsToStreaming() {
-            // Given - invalid responseMode
-            BotMessageData botMessage = createBotMessageData("INVALID_MODE");
-            List<SSEEventType> pushedEventTypes = new ArrayList<>();
-
-            doAnswer(
-                            invocation -> {
-                                pushedEventTypes.add(invocation.getArgument(3));
-                                return null;
-                            })
-                    .when(mockGatewayPusher)
-                    .pushSSE(
-                            anyLong(),
-                            anyLong(),
-                            anyString(),
-                            any(),
-                            anyString(),
-                            anyLong(),
-                            anyLong());
-
-            when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
-                    .thenAnswer(
-                            invocation -> {
-                                Consumer<SSEEvent> eventHandler = invocation.getArgument(3);
-                                eventHandler.accept(SSEEvent.delta("Test"));
-                                return CompletableFuture.completedFuture("Test");
-                            });
+        void botConfigNotFound_skipsDispatch() throws Exception {
+            // Given
+            when(mockBotConfigStorage.get(BOT_ID)).thenReturn(null);
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             // When
             service.dispatch(botMessage);
 
-            // Wait for async processing
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException ignored) {
-            }
+            // Then - no HTTP call or push
+            verifyNoInteractions(mockHttpClient);
+            verifyNoInteractions(mockGatewayPusher);
+        }
 
-            // Then - should push delta (streaming is default for invalid mode)
-            assertTrue(
-                    pushedEventTypes.stream()
-                            .anyMatch(t -> t == SSEEventType.SSE_EVENT_TYPE_DELTA));
+        @Test
+        void botConfigLookupFails_pushesError() throws Exception {
+            // Given
+            when(mockBotConfigStorage.get(BOT_ID))
+                    .thenThrow(new RuntimeException("Redis down"));
+            BotWebhookEvent botMessage = createBotWebhookEvent();
+
+            // When
+            service.dispatch(botMessage);
+
+            // Then - error pushed to user
+            verify(mockGatewayPusher)
+                    .pushSSE(
+                            eq(SENDER_ID),
+                            eq(BOT_ID),
+                            eq(CONVERSATION_ID),
+                            eq(SSEEventType.SSE_EVENT_TYPE_ERROR),
+                            eq("Bot is currently unavailable"),
+                            eq(0L),
+                            anyLong());
+            verifyNoInteractions(mockHttpClient);
         }
     }
 
@@ -288,7 +424,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void deltaEvent_isPushedViaDirectGatewayPusher() {
             // Given
-            BotMessageData botMessage = createBotMessageData("STREAMING");
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
                     .thenAnswer(
@@ -307,7 +443,7 @@ class WebhookDispatcherServiceTest {
             } catch (InterruptedException ignored) {
             }
 
-            // Then
+            // Then - delta events now carry the Snowflake message ID
             verify(mockGatewayPusher)
                     .pushSSE(
                             eq(SENDER_ID),
@@ -315,14 +451,14 @@ class WebhookDispatcherServiceTest {
                             eq(CONVERSATION_ID),
                             eq(SSEEventType.SSE_EVENT_TYPE_DELTA),
                             eq("Test delta"),
-                            eq(0L),
+                            anyLong(),
                             anyLong());
         }
 
         @Test
         void doneEvent_isPushedWithMessageIdAndContent() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             String fullResponse = "Complete response";
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
@@ -358,7 +494,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void pusherFailure_continuesProcessing() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             doThrow(new RuntimeException("Push failed"))
                     .when(mockGatewayPusher)
@@ -406,7 +542,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void dispatch_WithDoneEvent_SavesResponseAndPushes() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             String fullResponse = "Hello World";
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
@@ -454,7 +590,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void dispatch_DoneEvent_GeneratesUniqueMessageId() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
                     .thenReturn(CompletableFuture.completedFuture("Response 1"));
@@ -495,7 +631,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void dispatch_WebhookError_PushesErrorEventToUser() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
                     .thenReturn(
@@ -511,7 +647,7 @@ class WebhookDispatcherServiceTest {
             } catch (InterruptedException ignored) {
             }
 
-            // Then
+            // Then - error event carries the pre-generated Snowflake message ID
             verify(mockGatewayPusher)
                     .pushSSE(
                             eq(SENDER_ID),
@@ -519,14 +655,14 @@ class WebhookDispatcherServiceTest {
                             eq(CONVERSATION_ID),
                             eq(SSEEventType.SSE_EVENT_TYPE_ERROR),
                             eq("Bot is currently unavailable"),
-                            eq(0L),
+                            anyLong(),
                             anyLong());
         }
 
         @Test
         void dispatch_WebhookError_DoesNotSaveResponse() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
                     .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Error")));
@@ -560,7 +696,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void dispatch_SavesBotResponseWithCorrectMetadata() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
             String responseText = "I am a helpful assistant";
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
@@ -591,7 +727,7 @@ class WebhookDispatcherServiceTest {
         @Test
         void dispatch_UsesAccumulatedResponseWhenFullTextNull() {
             // Given
-            BotMessageData botMessage = createBotMessageData();
+            BotWebhookEvent botMessage = createBotWebhookEvent();
 
             when(mockHttpClient.sendWithSSE(anyString(), anyString(), any(), any()))
                     .thenAnswer(

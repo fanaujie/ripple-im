@@ -11,6 +11,8 @@ public class KafkaProducerConfigFactory {
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.PushMessageSerializer";
     private static final String STORAGE_UPDATE_PAYLOAD_SERIALIZER =
             "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.StorageUpdatePayloadSerializer";
+    private static final String BOT_WEBHOOK_EVENT_SERIALIZER =
+            "com.fanaujie.ripple.communication.msgqueue.kafka.serializer.BotWebhookEventSerializer";
 
     public static KafkaProducerConfig createMessagePayloadProducerConfig(String bootstrapServers) {
         return KafkaProducerConfig.builder()
@@ -34,6 +36,15 @@ public class KafkaProducerConfigFactory {
                 .bootstrapServers(bootstrapServers)
                 .keySerializer(STRING_SERIALIZER)
                 .valueSerializer(STORAGE_UPDATE_PAYLOAD_SERIALIZER)
+                .build();
+    }
+
+    public static KafkaProducerConfig createBotWebhookEventProducerConfig(
+            String bootstrapServers) {
+        return KafkaProducerConfig.builder()
+                .bootstrapServers(bootstrapServers)
+                .keySerializer(STRING_SERIALIZER)
+                .valueSerializer(BOT_WEBHOOK_EVENT_SERIALIZER)
                 .build();
     }
 }

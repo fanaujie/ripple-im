@@ -4,7 +4,7 @@ import com.fanaujie.ripple.botmsgconsumer.client.WebhookServiceClientManager;
 import com.fanaujie.ripple.communication.msgqueue.GenericConsumer;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaConsumerConfigFactory;
 import com.fanaujie.ripple.communication.msgqueue.kafka.KafkaGenericConsumer;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -45,8 +45,8 @@ public class Application {
         BotMessageConsumer botMessageConsumer = new BotMessageConsumer(clientManager);
 
         // Create Kafka consumer
-        GenericConsumer<String, MessagePayload> consumer = new KafkaGenericConsumer<>(
-                KafkaConsumerConfigFactory.createMessagePayloadConsumerConfig(
+        GenericConsumer<String, BotWebhookEvent> consumer = new KafkaGenericConsumer<>(
+                KafkaConsumerConfigFactory.createBotWebhookEventConsumerConfig(
                         botWebhookTopic,
                         brokerServer,
                         groupId,

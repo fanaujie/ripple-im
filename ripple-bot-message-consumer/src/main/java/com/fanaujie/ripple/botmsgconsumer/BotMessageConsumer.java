@@ -3,8 +3,7 @@ package com.fanaujie.ripple.botmsgconsumer;
 import com.fanaujie.ripple.botmsgconsumer.client.WebhookServiceClientManager;
 import com.fanaujie.ripple.communication.grpc.client.GrpcClient;
 import com.fanaujie.ripple.communication.msgqueue.MessageRecord;
-import com.fanaujie.ripple.protobuf.msgdispatcher.BotMessageData;
-import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.webhookservice.DispatchResponse;
 import com.fanaujie.ripple.protobuf.webhookservice.WebhookDispatcherGrpc;
 import io.grpc.stub.StreamObserver;
@@ -22,19 +21,13 @@ public class BotMessageConsumer {
         this.clientManager = clientManager;
     }
 
-    public void consumeBatch(List<MessageRecord<String, MessagePayload>> records) throws Exception {
-        for (MessageRecord<String, MessagePayload> record : records) {
+    public void consumeBatch(List<MessageRecord<String, BotWebhookEvent>> records) throws Exception {
+        for (MessageRecord<String, BotWebhookEvent> record : records) {
             consume(record.key(), record.value());
         }
     }
 
-    public void consume(String key, MessagePayload payload) {
-        if (!payload.hasBotMessageData()) {
-            logger.warn("Received non-bot message payload on bot webhook topic");
-            return;
-        }
-
-        BotMessageData botMessage = payload.getBotMessageData();
+    public void consume(String key, BotWebhookEvent botMessage) {
         logger.info(
                 "Processing bot message: messageId={}, botId={}, senderId={}",
                 botMessage.getMessageId(),

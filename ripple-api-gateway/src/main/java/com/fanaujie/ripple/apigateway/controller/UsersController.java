@@ -1,11 +1,7 @@
 package com.fanaujie.ripple.apigateway.controller;
 
 import com.fanaujie.ripple.apigateway.dto.*;
-import com.fanaujie.ripple.apigateway.service.ConversationService;
-import com.fanaujie.ripple.apigateway.service.GroupService;
-import com.fanaujie.ripple.apigateway.service.MessageService;
-import com.fanaujie.ripple.apigateway.service.RelationService;
-import com.fanaujie.ripple.apigateway.service.UserProfileService;
+import com.fanaujie.ripple.apigateway.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -37,6 +33,7 @@ public class UsersController {
     private final UserProfileService userProfileService;
     private final RelationService relationService;
     private final GroupService groupService;
+    private final BotService botService;
 
     // ==================== Conversations ====================
 
@@ -870,5 +867,39 @@ public class UsersController {
             return ResponseEntity.badRequest()
                     .body(UserGroupSyncResponse.error(400, "Invalid user ID format"));
         }
+    }
+
+    @PostMapping("/me/bot-sessions/{botId}/new")
+    @Operation(
+            summary = "Create new bot session",
+            description =
+                    "Creates a new session with a bot, clearing any previous conversation context")
+    @ApiResponses(
+            value = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "Session created successfully",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(
+                                                        implementation =
+                                                                BotSessionResponse.class))),
+                @ApiResponse(
+                        responseCode = "404",
+                        description = "Bot not found",
+                        content =
+                                @Content(
+                                        mediaType = "application/json",
+                                        schema =
+                                                @Schema(implementation = BotSessionResponse.class)))
+            })
+    public ResponseEntity<BotSessionResponse> createNewSession(
+            @Parameter(description = "Bot user ID") @PathVariable("botId") String botId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Jwt jwt) {
+        long currentUserId = Long.parseLong(jwt.getSubject());
+        long botUserId = Long.parseLong(botId);
+        return botService.createNewSession(currentUserId, botUserId);
     }
 }

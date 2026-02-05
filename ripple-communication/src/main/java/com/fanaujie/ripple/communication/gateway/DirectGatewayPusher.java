@@ -20,14 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-/**
- * Synchronous gateway pusher for latency-sensitive operations.
- *
- * <p>This implementation performs user presence lookup synchronously and
- * uses async gRPC calls for the actual push. It's suitable for operations
- * where low latency is important, such as bot streaming responses or
- * typing indicators.
- */
 public class DirectGatewayPusher implements GatewayPusher {
     private static final Logger logger = LoggerFactory.getLogger(DirectGatewayPusher.class);
 
@@ -43,9 +35,7 @@ public class DirectGatewayPusher implements GatewayPusher {
 
     @Override
     public CompletableFuture<Void> push(
-            String serverAddress,
-            List<UserOnlineInfo> userInfos,
-            PushMessageRequest request) {
+            String serverAddress, List<UserOnlineInfo> userInfos, PushMessageRequest request) {
 
         Optional<GrpcClient<MessageGatewayGrpc.MessageGatewayStub>> clientOpt =
                 connectionManager.getClient(serverAddress);
@@ -60,34 +50,40 @@ public class DirectGatewayPusher implements GatewayPusher {
         // Build batch request
         BatchPushMessageRequest.Builder batchBuilder = BatchPushMessageRequest.newBuilder();
         for (UserOnlineInfo userInfo : userInfos) {
-            PushMessageRequest userRequest = request.toBuilder()
-                    .setReceiveUserId(userInfo.getUserId())
-                    .setReceiveDeviceId(userInfo.getDeviceId())
-                    .build();
+            PushMessageRequest userRequest =
+                    request.toBuilder()
+                            .setReceiveUserId(userInfo.getUserId())
+                            .setReceiveDeviceId(userInfo.getDeviceId())
+                            .build();
             batchBuilder.addRequests(userRequest);
         }
 
         // Send async with completion tracking
-        clientOpt.get().getStub().pushMessageToUser(
-                batchBuilder.build(),
-                new StreamObserver<BatchPushMessageResponse>() {
-                    @Override
-                    public void onNext(BatchPushMessageResponse response) {
-                        // Success
-                    }
+        clientOpt
+                .get()
+                .getStub()
+                .pushMessageToUser(
+                        batchBuilder.build(),
+                        new StreamObserver<BatchPushMessageResponse>() {
+                            @Override
+                            public void onNext(BatchPushMessageResponse response) {
+                                // Success
+                            }
 
-                    @Override
-                    public void onError(Throwable t) {
-                        logger.warn("Failed to push to gateway {}: {}",
-                                serverAddress, t.getMessage());
-                        future.completeExceptionally(t);
-                    }
+                            @Override
+                            public void onError(Throwable t) {
+                                logger.warn(
+                                        "Failed to push to gateway {}: {}",
+                                        serverAddress,
+                                        t.getMessage());
+                                future.completeExceptionally(t);
+                            }
 
-                    @Override
-                    public void onCompleted() {
-                        future.complete(null);
-                    }
-                });
+                            @Override
+                            public void onCompleted() {
+                                future.complete(null);
+                            }
+                        });
 
         return future;
     }
@@ -104,9 +100,10 @@ public class DirectGatewayPusher implements GatewayPusher {
 
         try {
             // Query user-presence for user's gateway location
-            QueryUserOnlineReq req = QueryUserOnlineReq.newBuilder()
-                    .addUserIds(String.valueOf(receiveUserId))
-                    .build();
+            QueryUserOnlineReq req =
+                    QueryUserOnlineReq.newBuilder()
+                            .addUserIds(String.valueOf(receiveUserId))
+                            .build();
             QueryUserOnlineResp resp = userPresenceClient.getStub().queryUserOnline(req);
 
             if (resp.getUserOnlineInfosList().isEmpty()) {
@@ -116,27 +113,31 @@ public class DirectGatewayPusher implements GatewayPusher {
             }
 
             // Group by gateway server
-            Map<String, List<UserOnlineInfo>> usersByServer = resp.getUserOnlineInfosList()
-                    .stream()
-                    .collect(Collectors.groupingBy(UserOnlineInfo::getServerLocation));
+            Map<String, List<UserOnlineInfo>> usersByServer =
+                    resp.getUserOnlineInfosList().stream()
+                            .collect(Collectors.groupingBy(UserOnlineInfo::getServerLocation));
 
             // Send to each gateway
-            List<CompletableFuture<Void>> futures = usersByServer.entrySet().stream()
-                    .map(entry -> pushSSEToServer(
-                            entry.getKey(),
-                            entry.getValue(),
-                            sendUserId,
-                            conversationId,
-                            eventType,
-                            content,
-                            messageId,
-                            sendTimestamp))
-                    .toList();
+            List<CompletableFuture<Void>> futures =
+                    usersByServer.entrySet().stream()
+                            .map(
+                                    entry ->
+                                            pushSSEToServer(
+                                                    entry.getKey(),
+                                                    entry.getValue(),
+                                                    sendUserId,
+                                                    conversationId,
+                                                    eventType,
+                                                    content,
+                                                    messageId,
+                                                    sendTimestamp))
+                            .toList();
 
             return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
 
         } catch (Exception e) {
-            logger.error("Error pushing SSE event to user {}: {}", receiveUserId, e.getMessage(), e);
+            logger.error(
+                    "Error pushing SSE event to user {}: {}", receiveUserId, e.getMessage(), e);
             // Return completed future - don't propagate error for push failures
             return CompletableFuture.completedFuture(null);
         }
@@ -161,39 +162,45 @@ public class DirectGatewayPusher implements GatewayPusher {
         }
 
         // Build batch request using GatewayRequestBuilder
-        BatchPushMessageRequest batchRequest = GatewayRequestBuilder.buildSSEBatchRequest(
-                userInfos,
-                sendUserId,
-                conversationId,
-                eventType,
-                content,
-                messageId,
-                sendTimestamp);
+        BatchPushMessageRequest batchRequest =
+                GatewayRequestBuilder.buildSSEBatchRequest(
+                        userInfos,
+                        sendUserId,
+                        conversationId,
+                        eventType,
+                        content,
+                        messageId,
+                        sendTimestamp);
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         // Send async
-        clientOpt.get().getStub().pushMessageToUser(
-                batchRequest,
-                new StreamObserver<BatchPushMessageResponse>() {
-                    @Override
-                    public void onNext(BatchPushMessageResponse response) {
-                        // Success
-                    }
+        clientOpt
+                .get()
+                .getStub()
+                .pushMessageToUser(
+                        batchRequest,
+                        new StreamObserver<BatchPushMessageResponse>() {
+                            @Override
+                            public void onNext(BatchPushMessageResponse response) {
+                                // Success
+                            }
 
-                    @Override
-                    public void onError(Throwable t) {
-                        logger.warn("Failed to push SSE to gateway {}: {}",
-                                serverAddress, t.getMessage());
-                        // Complete normally to not fail the whole operation
-                        future.complete(null);
-                    }
+                            @Override
+                            public void onError(Throwable t) {
+                                logger.warn(
+                                        "Failed to push SSE to gateway {}: {}",
+                                        serverAddress,
+                                        t.getMessage());
+                                // Complete normally to not fail the whole operation
+                                future.complete(null);
+                            }
 
-                    @Override
-                    public void onCompleted() {
-                        future.complete(null);
-                    }
-                });
+                            @Override
+                            public void onCompleted() {
+                                future.complete(null);
+                            }
+                        });
 
         return future;
     }

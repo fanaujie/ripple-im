@@ -9,6 +9,7 @@ import com.fanaujie.ripple.msgapiserver.processor.SingleMessageContentProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.RelationUpdateEventPayloadProcessor;
 import com.fanaujie.ripple.msgdispatcher.consumer.processor.SingleMessagePayloadProcessor;
 import com.fanaujie.ripple.protobuf.msgapiserver.*;
+import com.fanaujie.ripple.protobuf.msgdispatcher.BotWebhookEvent;
 import com.fanaujie.ripple.protobuf.msgdispatcher.MessagePayload;
 import com.fanaujie.ripple.protobuf.push.PushMessage;
 import com.fanaujie.ripple.protobuf.storageupdater.StorageUpdatePayload;
@@ -44,7 +45,7 @@ public abstract class AbstractBusinessFlowTest {
     protected MockProducer<String, MessagePayload> messagePayloadProducer;
     protected MockProducer<String, PushMessage> pushMessageProducer;
     protected MockProducer<String, StorageUpdatePayload> storageUpdateProducer;
-    protected MockProducer<String, MessagePayload> botWebhookProducer;
+    protected MockProducer<String, BotWebhookEvent> botWebhookProducer;
 
     // Processors - Relation
     protected RelationEventProcessor relationEventProcessor;
